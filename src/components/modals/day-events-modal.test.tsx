@@ -471,4 +471,245 @@ describe('DayEventsModal', () => {
     expect(body.previousElementSibling).toHaveClass('modal-header')
     expect(body.nextElementSibling).toHaveClass('modal-footer')
   })
+
+  describe('Expenses tab and actions', () => {
+    const mockPersons = [
+      { id: 'p1', name: 'Dra. Camila', color: '#3b82f6' },
+      { id: 'p2', name: 'Dr. Lucas', color: '#10b981' },
+    ]
+
+    beforeEach(() => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'events',
+        events: [],
+        expenses: [],
+        persons: mockPersons,
+        monthParticipants: {},
+      })
+    })
+
+    it('switches between Evento and Gasto tabs', () => {
+      render(<DayEventsModal />)
+
+      // Starts on events tab
+      expect(screen.getByTestId('events-tab-content')).toBeInTheDocument()
+      expect(screen.queryByTestId('expenses-tab-content')).not.toBeInTheDocument()
+
+      // Click on Registrar Gasto tab
+      const expenseTabBtn = screen.getByTestId('tab-expenses')
+      fireEvent.click(expenseTabBtn)
+
+      expect(screen.getByTestId('expenses-tab-content')).toBeInTheDocument()
+      expect(screen.queryByTestId('events-tab-content')).not.toBeInTheDocument()
+
+      // Click back on Evento tab
+      const eventTabBtn = screen.getByTestId('tab-events')
+      fireEvent.click(eventTabBtn)
+
+      expect(screen.getByTestId('events-tab-content')).toBeInTheDocument()
+      expect(screen.queryByTestId('expenses-tab-content')).not.toBeInTheDocument()
+    })
+
+    it('opens directly in expenses tab when dayEventsModalTab is expenses', () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+      })
+
+      render(<DayEventsModal />)
+
+      expect(screen.getByTestId('expenses-tab-content')).toBeInTheDocument()
+      expect(screen.queryByTestId('events-tab-content')).not.toBeInTheDocument()
+    })
+
+    it('lists existing expenses with category and reimbursement person', () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        expenses: [
+          {
+            id: 'exp-1',
+            date: '2026-10-15',
+            description: 'Compra de Medicamento',
+            amount: 145.5,
+            category: 'MEDICATION',
+            personId: 'p1',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+          },
+          {
+            id: 'exp-2',
+            date: '2026-10-15',
+            description: 'Material de Limpeza',
+            amount: 50.0,
+            category: 'SUPPLIES',
+            createdAt: '2026-10-15T11:00:00Z',
+            updatedAt: '2026-10-15T11:00:00Z',
+          },
+        ],
+      })
+
+      render(<DayEventsModal />)
+
+      expect(screen.getByText('Compra de Medicamento')).toBeInTheDocument()
+      expect(screen.getByText('Material de Limpeza')).toBeInTheDocument()
+      expect(screen.getByText('Dra. Camila')).toBeInTheDocument()
+      expect(screen.getByTestId('expense-reimbursement-badge')).toHaveStyle({
+        backgroundColor: '#3b82f6',
+      })
+      expect(
+        screen.getByRole('button', { name: /Editar gasto Compra de Medicamento/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /Excluir gasto Compra de Medicamento/i }),
+      ).toBeInTheDocument()
+    })
+
+    it('validates required fields when adding an expense', async () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+      })
+
+      render(<DayEventsModal />)
+
+      // Open form
+      const openAddBtn = screen.getAllByTestId('open-add-expense-btn')[0]
+      fireEvent.click(openAddBtn)
+
+      // Try submitting empty
+      const submitBtn = screen.getByTestId('submit-expense-btn')
+      fireEvent.click(submitBtn)
+
+      expect(
+        screen.getByText(/A descrição do gasto é obrigatória/i),
+      ).toBeInTheDocument()
+
+      // Fill description but invalid amount
+      const descInput = screen.getByLabelText(/Descrição do Gasto/i)
+      fireEvent.change(descInput, { target: { value: 'Farmácia Central' } })
+      fireEvent.click(submitBtn)
+
+      expect(
+        screen.getByText(/Informe um valor monetário válido maior que zero/i),
+      ).toBeInTheDocument()
+    })
+
+    it('adds a new expense with caregiver and category successfully', async () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        expenses: [],
+      })
+
+      render(<DayEventsModal />)
+
+      // Open form
+      const openAddBtn = screen.getAllByTestId('open-add-expense-btn')[0]
+      fireEvent.click(openAddBtn)
+
+      // Fill form
+      fireEvent.change(
+        screen.getByLabelText(/Descrição do Gasto/i),
+        { target: { value: 'Medicamento Especial' } },
+      )
+      fireEvent.change(
+        screen.getByLabelText(/Valor/i),
+        { target: { value: '89.90' } },
+      )
+      fireEvent.change(
+        screen.getByLabelText(/Reembolso para Profissional/i),
+        { target: { value: 'p1' } },
+      )
+      fireEvent.change(
+        screen.getByLabelText(/Categoria do Gasto/i),
+        { target: { value: 'MEDICATION' } },
+      )
+
+      // Submit
+      fireEvent.click(screen.getByTestId('submit-expense-btn'))
+
+      // Verify expense added to store
+      const updatedExpenses = useScheduleStore.getState().expenses
+      expect(updatedExpenses).toHaveLength(1)
+      expect(updatedExpenses[0]).toMatchObject({
+        date: '2026-10-15',
+        description: 'Medicamento Especial',
+        amount: 89.9,
+        personId: 'p1',
+        category: 'MEDICATION',
+      })
+    })
+
+    it('edits an existing expense successfully', async () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        expenses: [
+          {
+            id: 'exp-1',
+            date: '2026-10-15',
+            description: 'Gasto Original',
+            amount: 50.0,
+            category: 'OTHER',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+          },
+        ],
+      })
+
+      render(<DayEventsModal />)
+
+      // Click edit button
+      const editBtn = screen.getByRole('button', {
+        name: /Editar gasto Gasto Original/i,
+      })
+      fireEvent.click(editBtn)
+
+      // Check form is populated
+      const descInput = screen.getByDisplayValue('Gasto Original')
+      fireEvent.change(descInput, { target: { value: 'Gasto Atualizado' } })
+
+      const amountInput = screen.getByDisplayValue('50')
+      fireEvent.change(amountInput, { target: { value: '75' } })
+
+      // Save
+      const saveBtn = screen.getByTestId('submit-expense-btn')
+      expect(saveBtn).toHaveTextContent('Salvar Gasto')
+      fireEvent.click(saveBtn)
+
+      const updatedExpenses = useScheduleStore.getState().expenses
+      expect(updatedExpenses).toHaveLength(1)
+      expect(updatedExpenses[0].description).toBe('Gasto Atualizado')
+      expect(updatedExpenses[0].amount).toBe(75)
+    })
+
+    it('deletes an expense when the delete button is clicked', async () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        expenses: [
+          {
+            id: 'exp-to-delete',
+            date: '2026-10-15',
+            description: 'Item a Excluir',
+            amount: 30.0,
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+          },
+        ],
+      })
+
+      render(<DayEventsModal />)
+
+      const deleteBtn = screen.getByRole('button', {
+        name: /Excluir gasto Item a Excluir/i,
+      })
+      fireEvent.click(deleteBtn)
+
+      const updatedExpenses = useScheduleStore.getState().expenses
+      expect(updatedExpenses).toHaveLength(0)
+    })
+  })
 })

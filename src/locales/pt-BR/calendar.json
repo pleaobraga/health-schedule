@@ -61,8 +61,8 @@
   "paymentsModal": {
     "title": "Fechamento de Valores do Mês",
     "subtitle": "Cálculo detalhado dos valores a pagar aos profissionais escalados em {{month}}",
-    "totalToPay": "Total Geral a Pagar",
-    "totalShifts": "Total de Plantões Escalados",
+    "totalToPay": "Total a Pagar",
+    "totalShifts": "Total de Plantões",
     "totalActivePeople": "Profissionais Atuando",
     "shiftsCount": "{{count}} plantão",
     "shiftsCountPlural": "{{count}} plantões",
@@ -81,7 +81,18 @@
     "defaultShiftName": "Plantão",
     "viewDetails": "Ver detalhes",
     "hideDetails": "Ocultar detalhes",
-    "close": "Fechar"
+    "close": "Fechar",
+    "shiftsSubtotal": "Plantões: {{amount}}",
+    "reimbursementsSubtotal": "Reembolso: {{amount}}",
+    "reimbursementsTitle": "Reembolsos de Gastos ({{count}})",
+    "generalExpensesTitle": "Despesas Operacionais Gerais",
+    "generalExpensesSubtitle": "Gastos avulsos do mês sem profissional associado",
+    "totalGeneralExpenses": "Despesas Gerais",
+    "generalExpensesCount": "{{count}} despesa",
+    "generalExpensesCountPlural": "{{count}} despesas",
+    "reimbursementBadge": "Reembolso",
+    "noExpensesInMonth": "Nenhuma despesa operacional registrada.",
+    "categoryLabel": "Categoria: {{category}}"
   },
   "fullscreen": "Tela Cheia",
   "fullscreenTooltip": "Abrir calendário em tela cheia",
@@ -133,7 +144,9 @@
     "viewOrAddEvents": "Ver ou adicionar eventos do dia",
     "disp": "Disp.",
     "scheduledBadge": "Escalado",
-    "conflict": "Conflito: {{count}} escalados"
+    "conflict": "Conflito: {{count}} escalados",
+    "expensesBadge": "Gastos",
+    "expensesTooltip": "{{count}} gasto(s) totalizando {{total}}. Clique para ver ou editar."
   },
   "candidatePicker": {
     "assignPerson": "Escalar pessoa",
@@ -151,6 +164,8 @@
   },
   "eventsModal": {
     "title": "Eventos do Dia",
+    "tabEvents": "Evento / Compromisso",
+    "tabExpenses": "Registrar Gasto",
     "subtitle": "Eventos e plantões cadastrados para esta data",
     "eventsCount": "Eventos Cadastrados ({{count}})",
     "noEvents": "Nenhum evento registrado para este dia.",
@@ -189,9 +204,39 @@
     "delete": "Excluir evento",
     "deleteAria": "Excluir evento {{title}}",
     "close": "Fechar",
+    "expensesCount": "Gastos do Dia ({{count}})",
+    "noExpenses": "Nenhum gasto registrado para este dia.",
+    "noExpensesSubtitle": "Registre gastos de farmácia, insumos ou alimentação vinculados ou não a um profissional.",
+    "addExpense": "Novo Gasto para este Dia",
+    "editExpense": "Editar Gasto",
+    "cancelEditExpense": "Cancelar Edição",
+    "submitExpense": "Registrar Gasto",
+    "saveExpense": "Salvar Gasto",
+    "expenseDate": "Data do Gasto",
+    "expenseDescription": "Descrição do Gasto *",
+    "expenseDescriptionPlaceholder": "Ex: Farmácia, Alimentação, Insumos médicos",
+    "expenseAmount": "Valor (R$) *",
+    "expenseAmountPlaceholder": "0,00",
+    "expensePerson": "Reembolso para Profissional (Opcional)",
+    "noExpensePersonOption": "Nenhum profissional (Gasto Geral / Operacional)",
+    "reimbursementBadge": "Reembolso: {{name}}",
+    "generalExpenseBadge": "Gasto Geral / Operacional",
+    "expenseCategory": "Categoria do Gasto (Opcional)",
+    "selectCategory": "Selecione uma categoria...",
+    "categories": {
+      "none": "Sem categoria",
+      "MEDICATION": "Medicamentos",
+      "TRANSPORT": "Transporte",
+      "SUPPLIES": "Insumos e Suprimentos",
+      "OTHER": "Outros"
+    },
+    "editExpenseAria": "Editar gasto {{description}}",
+    "deleteExpenseAria": "Excluir gasto {{description}}",
     "errors": {
       "titleRequired": "O título do evento é obrigatório.",
-      "addressRequired": "Por favor, selecione ou digite o endereço do evento."
+      "addressRequired": "Por favor, selecione ou digite o endereço do evento.",
+      "descriptionRequired": "A descrição do gasto é obrigatória.",
+      "amountRequired": "Informe um valor monetário válido maior que zero."
     }
   },
   "unsavedModal": {

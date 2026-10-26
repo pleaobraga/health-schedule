@@ -67,6 +67,7 @@ export function CalendarGrid() {
     assignments,
     dayShiftAssignments,
     events,
+    expenses,
     setSelectedDateForEvents,
     removePersonFromDay,
     addPersonToDay,
@@ -603,6 +604,7 @@ export function CalendarGrid() {
             const assigned = assignments[dayInfo.dateStr] || []
             const dayShiftMapForDate = dayShiftAssignments[dayInfo.dateStr]
             const dayEvents = events.filter((e) => e.date === dayInfo.dateStr)
+            const dayExpenses = expenses.filter((e) => e.date === dayInfo.dateStr)
             const isHighlightedAvail = highlightedPerson
               ? isPersonAvailable(highlightedPerson.id, dayInfo.dayNumber)
               : false
@@ -623,6 +625,7 @@ export function CalendarGrid() {
                 allPersons={persons}
                 monthPersons={monthPersons}
                 events={dayEvents}
+                dailyExpenses={dayExpenses}
                 highlightedPerson={highlightedPerson}
                 isHighlightedPersonAvailable={isHighlightedAvail}
                 highlightedScheduledPerson={highlightedScheduledPerson}
@@ -630,6 +633,7 @@ export function CalendarGrid() {
                 isPersonAvailable={isPersonAvailable}
                 violations={validationErrors.filter((err) => err.date === dayInfo.dateStr)}
                 onOpenEvents={() => setSelectedDateForEvents(dayInfo.dateStr)}
+                onOpenExpenses={() => setSelectedDateForEvents(dayInfo.dateStr, 'expenses')}
                 onRemovePerson={(personId) =>
                   removePersonFromDay(dayInfo.dateStr, personId)
                 }

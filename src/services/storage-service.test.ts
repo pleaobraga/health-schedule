@@ -46,6 +46,22 @@ describe('StorageService - local-first persistence', () => {
       load: StorageService.getEvents,
     },
     {
+      label: 'daily expenses',
+      value: [
+        {
+          id: 'exp-test',
+          date: '2026-10-20',
+          description: 'Farmácia',
+          amount: 45.5,
+          category: 'MEDICATION',
+          createdAt: '2026-10-20T10:00:00.000Z',
+          updatedAt: '2026-10-20T10:00:00.000Z',
+        },
+      ],
+      save: StorageService.saveExpenses,
+      load: StorageService.getExpenses,
+    },
+    {
       label: 'month participants',
       value: { '2026-10': ['p1', 'p2'] } as Record<string, string[]>,
       save: StorageService.saveMonthParticipants,

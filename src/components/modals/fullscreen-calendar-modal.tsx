@@ -3,6 +3,7 @@ import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
   Printer,
   X,
 } from 'lucide-react'
@@ -17,6 +18,7 @@ import {
   getMonthCalendarGrid,
 } from '../../utils/date-utils'
 import { getScheduleFileBaseName } from '../../utils/export-to-excel'
+import { formatBRL } from '../../utils/shift-rate-utils'
 
 import type { ShiftDefinition } from '../../types'
 
@@ -34,6 +36,7 @@ export function FullScreenCalendarModal() {
     shiftDefinitions = [],
     monthActiveShifts = {},
     events,
+    expenses,
     getDayActiveShifts,
     setSelectedDateForEvents,
   } = useScheduleStore()
@@ -223,6 +226,12 @@ export function FullScreenCalendarModal() {
               const dayShiftMap = dayShiftAssignments[dayInfo.dateStr] || {}
               const dayEvents = events.filter((e) => e.date === dayInfo.dateStr)
               const hasEvents = dayEvents.length > 0
+              const dayExpenses = expenses.filter((e) => e.date === dayInfo.dateStr)
+              const dayExpensesTotal = dayExpenses.reduce(
+                (sum, curr) => sum + (curr.amount || 0),
+                0,
+              )
+              const hasExpenses = dayExpensesTotal > 0
               const hasMultiplePersons = assigned.length > 1
               const dayShifts = getDayActiveShifts(dayInfo.dateStr)
 
@@ -268,7 +277,11 @@ export function FullScreenCalendarModal() {
                   {/* Cell Top Header */}
                   <div
                     className={`flex items-center justify-between mb-1.5 mobile:justify-center mobile:pt-1 mobile:pb-0.5 ${
-                      hasEvents ? 'mobile:bg-red-50 mobile:dark:bg-red-950/60' : ''
+                      hasEvents
+                        ? 'mobile:bg-red-50 mobile:dark:bg-red-950/60'
+                        : hasExpenses
+                        ? 'mobile:bg-emerald-50 mobile:dark:bg-emerald-950/60'
+                        : ''
                     }`}
                   >
                     {/* Day number: on small screens (<= 640px) it opens the events modal */}
@@ -295,16 +308,36 @@ export function FullScreenCalendarModal() {
                       {dayInfo.dayNumber}
                     </button>
 
-                    {/* Events Count Tag */}
-                    {hasEvents && (
-                      <span
-                        className="mobile:hidden inline-flex items-center gap-1 text-[11px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 px-1.5 py-0.5 rounded-md print:bg-red-50 dark:print:bg-red-50 print:border print:border-red-300 dark:print:border-red-300 print:text-red-700 dark:print:text-red-700"
-                        title={dayEvents.map((e) => e.title).join(' | ')}
-                      >
-                        <CalendarIcon className="w-3 h-3" />
-                        <span>{dayEvents.length}</span>
-                      </span>
-                    )}
+                    {/* Right header actions: Expenses icon + Events Count Tag */}
+                    <div className="flex items-center gap-0.5">
+                      {hasExpenses && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDateForEvents(dayInfo.dateStr, 'expenses')}
+                          data-testid={`fullscreen-expense-badge-${dayInfo.dateStr}`}
+                          aria-label={t('calendar:dayCell.expensesTooltip', {
+                            amount: formatBRL(dayExpensesTotal),
+                          })}
+                          title={t('calendar:dayCell.expensesTooltip', {
+                            amount: formatBRL(dayExpensesTotal),
+                          })}
+                          className="mobile:hidden p-1 rounded-md text-xs transition flex items-center text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 print:text-emerald-800 cursor-pointer"
+                        >
+                          <DollarSign className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {/* Events Count Tag */}
+                      {hasEvents && (
+                        <span
+                          className="mobile:hidden inline-flex items-center gap-1 text-[11px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 px-1.5 py-0.5 rounded-md print:bg-red-50 dark:print:bg-red-50 print:border print:border-red-300 dark:print:border-red-300 print:text-red-700 dark:print:text-red-700"
+                          title={dayEvents.map((e) => e.title).join(' | ')}
+                        >
+                          <CalendarIcon className="w-3 h-3" />
+                          <span>{dayEvents.length}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Cell Body with Assigned Persons */}

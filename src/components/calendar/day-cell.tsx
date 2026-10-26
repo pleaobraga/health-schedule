@@ -1,14 +1,15 @@
-import { Calendar as CalendarIcon, CalendarCheck, X, Sparkles, AlertCircle, Plus } from 'lucide-react'
+import { Calendar as CalendarIcon, CalendarCheck, X, Sparkles, AlertCircle, Plus, DollarSign } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CandidatePicker } from './candidate-picker'
 import { useScheduleStore } from '../../store/use-schedule-store'
 import { formatDisplayDate } from '../../utils/date-utils'
+import { formatBRL } from '../../utils/shift-rate-utils'
 import { AddDayShiftModal } from '../modals/add-day-shift-modal'
 import { DayViolationsModal } from '../modals/day-violations-modal'
 
-import type { Person, CalendarEvent, ValidationError, ShiftDefinition } from '../../types'
+import type { Person, CalendarEvent, ValidationError, ShiftDefinition, DailyExpense } from '../../types'
 import type { CalendarDayInfo } from '../../utils/date-utils'
 
 export interface DayCellProps {
@@ -21,6 +22,7 @@ export interface DayCellProps {
   allPersons: Person[]
   monthPersons?: Person[]
   events: CalendarEvent[]
+  dailyExpenses?: DailyExpense[]
   highlightedPerson: Person | null
   isHighlightedPersonAvailable: boolean
   highlightedScheduledPerson?: Person | null
@@ -28,6 +30,7 @@ export interface DayCellProps {
   isPersonAvailable: (personId: string, dayNumber: number, shiftId?: string) => boolean
   violations?: ValidationError[]
   onOpenEvents: () => void
+  onOpenExpenses?: () => void
   onRemovePerson: (personId: string) => void
   onAddPerson: (personId: string, shiftId?: string) => void
   onAssignPersonToShift?: (shiftId: string, personId: string) => void
@@ -44,6 +47,7 @@ export function DayCell({
   allPersons,
   monthPersons,
   events,
+  dailyExpenses,
   highlightedPerson,
   isHighlightedPersonAvailable,
   highlightedScheduledPerson = null,
@@ -51,6 +55,7 @@ export function DayCell({
   isPersonAvailable,
   violations,
   onOpenEvents,
+  onOpenExpenses,
   onRemovePerson,
   onAddPerson,
   onAssignPersonToShift,
@@ -59,6 +64,11 @@ export function DayCell({
   const { t } = useTranslation(['calendar', 'common'])
   const { dayNumber, isCurrentMonth, isToday, dateStr } = dayInfo
   const hasEvents = events.length > 0
+  const dayExpensesTotal = (dailyExpenses || []).reduce(
+    (acc, curr) => acc + (curr.amount || 0),
+    0,
+  )
+  const hasExpenses = dayExpensesTotal > 0
   const eventsButtonLabel = hasEvents
     ? t('calendar:dayCell.eventsTooltip', { count: events.length })
     : t('calendar:dayCell.viewOrAddEvents')
@@ -111,20 +121,46 @@ export function DayCell({
       {/* Top Header of the Cell */}
       <div
         className={`flex items-center justify-between mb-1 mobile:justify-center mobile:pt-1 mobile:pb-0.5 ${
-          hasEvents ? 'mobile:bg-red-50 mobile:dark:bg-red-950/60' : ''
+          hasEvents
+            ? 'mobile:bg-red-50 mobile:dark:bg-red-950/60'
+            : hasExpenses
+            ? 'mobile:bg-emerald-50 mobile:dark:bg-emerald-950/60'
+            : ''
         }`}
       >
         <div className="flex items-center gap-1.5">
           {/* Day number: RED if has 1 or more events. On small screens (<= 640px) it opens the events modal */}
           <button
             type="button"
-            onClick={onOpenEvents}
+            onClick={
+              hasEvents
+                ? onOpenEvents
+                : hasExpenses && onOpenExpenses
+                ? onOpenExpenses
+                : onOpenEvents
+            }
             tabIndex={-1}
             data-testid="day-number-button"
-            aria-label={eventsButtonLabel}
+            aria-label={
+              hasEvents
+                ? eventsButtonLabel
+                : hasExpenses
+                ? t('calendar:dayCell.expensesTooltip', {
+                    amount: formatBRL(dayExpensesTotal),
+                  })
+                : eventsButtonLabel
+            }
             className={`pointer-events-none mobile:pointer-events-auto mobile:cursor-pointer text-sm font-semibold inline-flex items-center justify-center transition-colors ${
               hasEvents
                 ? 'text-red-600 font-extrabold dark:text-red-400 bg-red-50 dark:bg-red-950/60 w-6 h-6 rounded-full mobile:bg-transparent mobile:dark:bg-transparent mobile:w-auto mobile:h-auto mobile:rounded-none'
+                : hasExpenses
+                ? `mobile:text-emerald-700 mobile:font-extrabold mobile:dark:text-emerald-400 mobile:bg-transparent mobile:dark:bg-transparent mobile:w-auto mobile:h-auto mobile:rounded-none ${
+                    isToday
+                      ? 'text-indigo-600 dark:text-indigo-400 font-bold px-1'
+                      : isCurrentMonth
+                      ? 'text-slate-800 dark:text-slate-200'
+                      : 'text-slate-400 dark:text-slate-600'
+                  }`
                 : isToday
                 ? 'text-indigo-600 dark:text-indigo-400 font-bold px-1'
                 : isCurrentMonth
@@ -177,24 +213,51 @@ export function DayCell({
           )}
         </div>
 
-        {/* Discreet Calendar / Event Button */}
-        <button
-          type="button"
-          onClick={onOpenEvents}
-          title={eventsButtonLabel}
-          className={`mobile:hidden p-1 rounded-md text-xs transition flex items-center gap-0.5 ${
-            hasEvents
-              ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 font-semibold'
-              : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <CalendarIcon className="w-3.5 h-3.5" />
-          {hasEvents && (
-            <span className="text-[10px] font-bold leading-none bg-red-600 text-white w-4 h-4 rounded-full flex items-center justify-center">
-              {events.length}
-            </span>
+        {/* Right header actions: Expenses icon + Event Button */}
+        <div className="flex items-center gap-0.5">
+          {hasExpenses && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (onOpenExpenses) {
+                  onOpenExpenses()
+                } else {
+                  onOpenEvents()
+                }
+              }}
+              data-testid={`day-expense-badge-${dateStr}`}
+              aria-label={t('calendar:dayCell.expensesTooltip', {
+                amount: formatBRL(dayExpensesTotal),
+              })}
+              title={t('calendar:dayCell.expensesTooltip', {
+                amount: formatBRL(dayExpensesTotal),
+              })}
+              className="mobile:hidden p-1 rounded-md text-xs transition flex items-center text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 cursor-pointer"
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+            </button>
           )}
-        </button>
+
+          {/* Discreet Calendar / Event Button */}
+          <button
+            type="button"
+            onClick={onOpenEvents}
+            title={eventsButtonLabel}
+            className={`mobile:hidden p-1 rounded-md text-xs transition flex items-center gap-0.5 ${
+              hasEvents
+                ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 font-semibold'
+                : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <CalendarIcon className="w-3.5 h-3.5" />
+            {hasEvents && (
+              <span className="text-[10px] font-bold leading-none bg-red-600 text-white w-4 h-4 rounded-full flex items-center justify-center">
+                {events.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Body of the Cell */}

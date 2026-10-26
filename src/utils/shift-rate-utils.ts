@@ -1,4 +1,67 @@
-import type { MonthlyAvailability } from '../types'
+import type { MonthlyAvailability, DailyExpense } from '../types'
+
+export interface MonthExpensesSummary {
+  personReimbursements: Record<string, number>
+  personExpenses: Record<string, DailyExpense[]>
+  generalExpenses: DailyExpense[]
+  generalExpensesTotal: number
+  totalReimbursements: number
+  totalExpenses: number
+}
+
+/**
+ * Formats a numeric value into Brazilian Real (BRL) currency string.
+ */
+export function formatBRL(val: number): string {
+  return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+/**
+ * Aggregates expenses for a given month ('YYYY-MM'), categorizing them into:
+ * - Professional reimbursements (expenses with personId)
+ * - General operational expenses (expenses without personId)
+ */
+export function calculateMonthExpensesSummary(
+  expenses: DailyExpense[] = [],
+  month: string,
+): MonthExpensesSummary {
+  const monthPrefix = `${month}-`
+  const monthExpenses = (expenses || []).filter(
+    (e) => typeof e.date === 'string' && e.date.startsWith(monthPrefix),
+  )
+
+  const personReimbursements: Record<string, number> = {}
+  const personExpenses: Record<string, DailyExpense[]> = {}
+  const generalExpenses: DailyExpense[] = []
+  let generalExpensesTotal = 0
+  let totalReimbursements = 0
+
+  for (const exp of monthExpenses) {
+    const amount =
+      typeof exp.amount === 'number' && !isNaN(exp.amount) ? exp.amount : 0
+    if (exp.personId && exp.personId.trim() !== '') {
+      personReimbursements[exp.personId] =
+        (personReimbursements[exp.personId] || 0) + amount
+      if (!personExpenses[exp.personId]) {
+        personExpenses[exp.personId] = []
+      }
+      personExpenses[exp.personId].push(exp)
+      totalReimbursements += amount
+    } else {
+      generalExpenses.push(exp)
+      generalExpensesTotal += amount
+    }
+  }
+
+  return {
+    personReimbursements,
+    personExpenses,
+    generalExpenses,
+    generalExpensesTotal,
+    totalReimbursements,
+    totalExpenses: totalReimbursements + generalExpensesTotal,
+  }
+}
 
 /**
  * Parses user input for rate into a valid positive number.

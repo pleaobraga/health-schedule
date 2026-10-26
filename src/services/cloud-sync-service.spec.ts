@@ -137,6 +137,7 @@ describe('CloudSyncService', () => {
         monthActiveRules: {},
         availabilities: [{ personId: 'p2', month: '2026-11', availableDays: [3] }],
         events: [{ id: 'e2', date: '2026-11-20', title: 'Training' }],
+        expenses: [],
       })
     })
 

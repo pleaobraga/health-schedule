@@ -19,6 +19,7 @@ import type {
   Person,
   MonthlyAvailability,
   CalendarEvent,
+  DailyExpense,
   ValidationError,
   NavigationTab,
   Address,
@@ -58,6 +59,8 @@ interface ScheduleStore {
   dayShiftAssignments: Record<string, Record<string, string>>;
   savedDayShiftAssignments: Record<string, Record<string, string>>;
   events: CalendarEvent[];
+  expenses: DailyExpense[];
+  dayEventsModalTab: 'events' | 'expenses';
   addresses: Address[];
   shiftDefinitions: ShiftDefinition[];
   shiftRules: ShiftRule[];
@@ -105,7 +108,8 @@ interface ScheduleStore {
   setEditMode: (val: boolean) => void;
   setHighlightedPersonId: (id: string | null) => void;
   setHighlightedScheduledPersonId: (id: string | null) => void;
-  setSelectedDateForEvents: (dateStr: string | null) => void;
+  setSelectedDateForEvents: (dateStr: string | null, initialTab?: 'events' | 'expenses') => void;
+  setDayEventsModalTab: (tab: 'events' | 'expenses') => void;
   setFullScreenModalOpen: (open: boolean) => void;
   isUnsavedModalOpen: boolean;
   setUnsavedModalOpen: (open: boolean) => void;
@@ -155,6 +159,11 @@ interface ScheduleStore {
   updateEvent: (eventId: string, event: Partial<Omit<CalendarEvent, 'id'>>) => void;
   deleteEvent: (eventId: string) => void;
 
+  // Expenses management
+  addExpense: (expense: Omit<DailyExpense, 'id' | 'createdAt' | 'updatedAt'>) => Promise<DailyExpense>;
+  updateExpense: (expenseId: string, updatedData: Partial<Omit<DailyExpense, 'id' | 'createdAt'>>) => Promise<void>;
+  deleteExpense: (expenseId: string) => Promise<void>;
+
   // Address management
   addAddress: (address: Omit<Address, 'id'>) => Address;
   updateAddress: (id: string, address: Partial<Omit<Address, 'id'>>) => void;
@@ -203,6 +212,7 @@ const buildMonthCloudPayload = (state: ScheduleStore) => ({
   monthParticipants: state.monthParticipants,
   availabilities: state.availabilities,
   events: state.events,
+  expenses: state.expenses,
   dayShiftAssignments: state.isEditMode
     ? state.savedDayShiftAssignments
     : state.dayShiftAssignments,
@@ -274,6 +284,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   highlightedPersonId: null,
   highlightedScheduledPersonId: null,
   selectedDateForEvents: null,
+  dayEventsModalTab: 'events',
   isFullScreenModalOpen: false,
   isUnsavedModalOpen: false,
   isDarkMode: initialDarkMode,
@@ -286,6 +297,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   dayShiftAssignments: StorageService.getDayShiftAssignments(),
   savedDayShiftAssignments: StorageService.getDayShiftAssignments(),
   events: StorageService.getEvents(),
+  expenses: StorageService.getExpenses(),
   addresses: StorageService.getAddresses(),
   shiftDefinitions: StorageService.getShiftDefinitions(),
   shiftRules: StorageService.getShiftRules(),
@@ -391,8 +403,12 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     })
   },
 
-  setSelectedDateForEvents: (dateStr) => {
-    set({ selectedDateForEvents: dateStr })
+  setSelectedDateForEvents: (dateStr, initialTab = 'events') => {
+    set({ selectedDateForEvents: dateStr, dayEventsModalTab: initialTab })
+  },
+
+  setDayEventsModalTab: (tab) => {
+    set({ dayEventsModalTab: tab })
   },
 
   setFullScreenModalOpen: (open) => {
@@ -1084,6 +1100,47 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     syncMonthScheduleIfEnabled(get(), month)
   },
 
+  addExpense: async (expenseData) => {
+    const now = new Date().toISOString()
+    const id = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    const newExpense: DailyExpense = {
+      ...expenseData,
+      id,
+      createdAt: now,
+      updatedAt: now,
+    }
+    const updated = [...get().expenses, newExpense]
+    StorageService.saveExpenses(updated)
+    set({ expenses: updated })
+
+    const month = expenseData.date.substring(0, 7)
+    syncMonthScheduleIfEnabled(get(), month)
+    return newExpense
+  },
+
+  updateExpense: async (expenseId, updatedData) => {
+    const now = new Date().toISOString()
+    const updated = get().expenses.map((e) =>
+      e.id === expenseId ? { ...e, ...updatedData, updatedAt: now } : e
+    )
+    StorageService.saveExpenses(updated)
+    set({ expenses: updated })
+
+    const targetExpense = updated.find((e) => e.id === expenseId)
+    const month = targetExpense ? targetExpense.date.substring(0, 7) : get().currentMonth
+    syncMonthScheduleIfEnabled(get(), month)
+  },
+
+  deleteExpense: async (expenseId) => {
+    const targetExpense = get().expenses.find((e) => e.id === expenseId)
+    const month = targetExpense ? targetExpense.date.substring(0, 7) : get().currentMonth
+    const updated = get().expenses.filter((e) => e.id !== expenseId)
+    StorageService.saveExpenses(updated)
+    set({ expenses: updated })
+
+    syncMonthScheduleIfEnabled(get(), month)
+  },
+
   addAddress: (addressData) => {
     const id = `addr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
     const newAddress: Address = { id, ...addressData }
@@ -1587,6 +1644,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     StorageService.saveAssignments(get().assignments)
     StorageService.saveDayShiftAssignments(get().dayShiftAssignments)
     StorageService.saveEvents(get().events)
+    StorageService.saveExpenses(get().expenses)
     StorageService.saveMonthParticipants(get().monthParticipants)
     StorageService.saveAddresses(get().addresses)
     StorageService.saveShiftDefinitions(get().shiftDefinitions)
@@ -1699,6 +1757,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         const monthParticipants = monthData.monthParticipants ?? {}
         const availabilities = monthData.availabilities ?? []
         const events = monthData.events ?? []
+        const expenses = monthData.expenses ?? []
         const monthDailyShifts = monthData.monthDailyShifts ?? {}
         const monthActiveShifts = monthData.monthActiveShifts ?? {}
         const monthActiveRules = monthData.monthActiveRules ?? {}
@@ -1708,6 +1767,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         StorageService.saveMonthParticipants(monthParticipants)
         StorageService.saveAvailabilities(availabilities)
         StorageService.saveEvents(events)
+        StorageService.saveExpenses(expenses)
         StorageService.saveMonthDailyShiftsMap(monthDailyShifts)
         StorageService.saveMonthActiveShiftsMap(monthActiveShifts)
         StorageService.saveMonthActiveRulesMap(monthActiveRules)
@@ -1720,6 +1780,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           monthParticipants,
           availabilities,
           events,
+          expenses,
           monthDailyShifts,
           monthActiveShifts,
           monthActiveRules,
@@ -1798,6 +1859,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     const assignments = StorageService.getAssignments()
     const dayShiftAssignments = StorageService.getDayShiftAssignments()
     const events = StorageService.getEvents()
+    const expenses = StorageService.getExpenses()
     const addresses = StorageService.getAddresses()
     const shiftDefinitions = StorageService.getShiftDefinitions()
     const shiftRules = StorageService.getShiftRules()
@@ -1814,6 +1876,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       dayShiftAssignments,
       savedDayShiftAssignments: { ...dayShiftAssignments },
       events,
+      expenses,
       addresses,
       shiftDefinitions,
       shiftRules,
@@ -1837,6 +1900,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       dayShiftAssignments: {},
       savedDayShiftAssignments: {},
       events: [],
+      expenses: [],
       addresses: [],
       shiftDefinitions: [],
       shiftRules: [],

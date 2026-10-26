@@ -78,6 +78,7 @@ export async function exportAppData(): Promise<void> {
   const availabilities = StorageService.getAvailabilities()
   const assignments = StorageService.getAssignments()
   const events = StorageService.getEvents()
+  const expenses = StorageService.getExpenses()
   const addresses = StorageService.getAddresses()
   const shiftDefinitions = StorageService.getShiftDefinitions()
   const shiftRules = StorageService.getShiftRules()
@@ -94,6 +95,7 @@ export async function exportAppData(): Promise<void> {
     availabilities,
     assignments,
     events,
+    expenses,
     addresses,
     shiftDefinitions,
     shiftRules,
@@ -169,6 +171,7 @@ export async function validateAndParseBackup(file: File): Promise<AppDataSnapsho
       : {}
 
   const events = Array.isArray(raw.events) ? raw.events : []
+  const expenses = Array.isArray(raw.expenses) ? raw.expenses : []
   const addresses = Array.isArray(raw.addresses) ? raw.addresses : []
   const availabilities = raw.availabilities ?? []
   const shiftDefinitions = Array.isArray(raw.shiftDefinitions) ? (raw.shiftDefinitions as ShiftDefinition[]) : undefined
@@ -198,6 +201,7 @@ export async function validateAndParseBackup(file: File): Promise<AppDataSnapsho
     availabilities: availabilities as AppDataSnapshot['availabilities'],
     assignments,
     events,
+    expenses,
     addresses,
     shiftDefinitions,
     shiftRules,
@@ -238,6 +242,9 @@ export async function restoreAppData(data: AppDataSnapshot): Promise<void> {
 
   const events = Array.isArray(data.events) ? data.events : []
   StorageService.saveEvents(events)
+
+  const expenses = Array.isArray(data.expenses) ? data.expenses : []
+  StorageService.saveExpenses(expenses)
 
   const addresses = Array.isArray(data.addresses) ? data.addresses : []
   StorageService.saveAddresses(addresses)
@@ -391,6 +398,17 @@ export async function mergeAppData(data: AppDataSnapshot): Promise<void> {
   }
   const mergedEvents = Array.from(eventMap.values())
   StorageService.saveEvents(mergedEvents)
+
+  // 5b. Merge expenses by id
+  const currentExpenses = StorageService.getExpenses()
+  const incomingExpenses = Array.isArray(data.expenses) ? data.expenses : []
+  const expenseMap = new Map(currentExpenses.map((exp) => [exp.id, exp]))
+  for (const exp of incomingExpenses) {
+    const existing = expenseMap.get(exp.id)
+    expenseMap.set(exp.id, existing ? { ...existing, ...exp } : exp)
+  }
+  const mergedExpenses = Array.from(expenseMap.values())
+  StorageService.saveExpenses(mergedExpenses)
 
   // 6. Merge addresses by id
   const currentAddresses = StorageService.getAddresses()

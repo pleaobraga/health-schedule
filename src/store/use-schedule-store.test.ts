@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useScheduleStore } from './use-schedule-store'
 import { useToastStore } from './use-toast-store'
 import { CloudSyncService } from '../services/cloud-sync-service'
+import { StorageService } from '../services/storage-service'
 
 describe('useScheduleStore', () => {
   beforeEach(() => {
@@ -732,6 +733,46 @@ describe('useScheduleStore', () => {
         message: 'Escala salva neste dispositivo, mas não foi possível sincronizar com a nuvem.',
       }),
     ])
+  })
+
+  it('creates, updates and deletes daily expenses with offline-first persistence and cloud sync', async () => {
+    CloudSyncService.setSyncEnabled(true)
+    const saveMonthSpy = vi.spyOn(CloudSyncService, 'saveMonthToCloud').mockResolvedValue(true)
+
+    useScheduleStore.setState({ expenses: [] })
+
+    // 1. Add expense
+    const created = await useScheduleStore.getState().addExpense({
+      date: '2026-10-15',
+      description: 'Medicamentos Farmácia',
+      amount: 120.5,
+      personId: 'p1',
+      category: 'MEDICATION',
+    })
+
+    expect(created.id).toBeDefined()
+    expect(created.description).toBe('Medicamentos Farmácia')
+    expect(useScheduleStore.getState().expenses).toHaveLength(1)
+    expect(StorageService.getExpenses()).toHaveLength(1)
+    expect(saveMonthSpy).toHaveBeenCalledWith('2026-10', expect.objectContaining({
+      expenses: expect.arrayContaining([expect.objectContaining({ id: created.id, amount: 120.5 })]),
+    }))
+
+    // 2. Update expense
+    await useScheduleStore.getState().updateExpense(created.id, {
+      amount: 150.0,
+      description: 'Medicamentos Farmácia e Curativos',
+    })
+
+    const updatedExpense = useScheduleStore.getState().expenses.find((e) => e.id === created.id)
+    expect(updatedExpense?.amount).toBe(150.0)
+    expect(updatedExpense?.description).toBe('Medicamentos Farmácia e Curativos')
+    expect(StorageService.getExpenses()[0].amount).toBe(150.0)
+
+    // 3. Delete expense
+    await useScheduleStore.getState().deleteExpense(created.id)
+    expect(useScheduleStore.getState().expenses).toHaveLength(0)
+    expect(StorageService.getExpenses()).toHaveLength(0)
   })
 })
 

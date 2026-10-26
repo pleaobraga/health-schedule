@@ -43,6 +43,19 @@ export interface CalendarEvent {
   personId?: string // Cuidadora / Profissional associada ao evento
 }
 
+export type DailyExpenseCategory = 'MEDICATION' | 'TRANSPORT' | 'SUPPLIES' | 'OTHER'
+
+export interface DailyExpense {
+  id: string
+  date: string // 'YYYY-MM-DD'
+  description: string // Motivo do gasto (ex: "Farmácia", "Alimentação")
+  amount: number // Valor monetário em reais
+  personId?: string // ID opcional do profissional (para fins de reembolso direto)
+  category?: DailyExpenseCategory
+  createdAt: string
+  updatedAt: string
+}
+
 export type ValidationSeverity = 'error' | 'warning' | 'info';
 
 export interface ValidationError {
@@ -73,6 +86,7 @@ export interface AppDataSnapshot {
   availabilities: Record<string, unknown> | MonthlyAvailability[]; // Monthly availability mapping for each person
   assignments: Record<string, unknown>; // Schedule assignments and daily allocations
   events: Array<CalendarEvent | (CalendarEvent & { [key: string]: unknown })>;
+  expenses?: Array<DailyExpense | (DailyExpense & { [key: string]: unknown })>;
   addresses?: Address[];
   shiftDefinitions?: ShiftDefinition[];
   shiftRules?: ShiftRule[];
@@ -96,6 +110,7 @@ export interface GuestDataset {
   availabilities: MonthlyAvailability[];
   assignments: Record<string, string[]>;
   events: CalendarEvent[];
+  expenses?: DailyExpense[];
   monthParticipants: Record<string, string[]>;
   addresses?: Address[];
   shiftDefinitions?: ShiftDefinition[];

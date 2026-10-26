@@ -61,8 +61,8 @@
   "paymentsModal": {
     "title": "Monthly Payments Summary",
     "subtitle": "Detailed calculation of amounts payable to scheduled professionals in {{month}}",
-    "totalToPay": "Total Amount Due",
-    "totalShifts": "Total Scheduled Shifts",
+    "totalToPay": "Total to Pay",
+    "totalShifts": "Total Shifts",
     "totalActivePeople": "Active Professionals",
     "shiftsCount": "{{count}} shift",
     "shiftsCountPlural": "{{count}} shifts",
@@ -81,7 +81,18 @@
     "defaultShiftName": "Shift",
     "viewDetails": "View details",
     "hideDetails": "Hide details",
-    "close": "Close"
+    "close": "Close",
+    "shiftsSubtotal": "Shifts: {{amount}}",
+    "reimbursementsSubtotal": "Reimbursement: {{amount}}",
+    "reimbursementsTitle": "Expense Reimbursements ({{count}})",
+    "generalExpensesTitle": "General Operational Expenses",
+    "generalExpensesSubtitle": "Monthly expenses not linked to a specific professional",
+    "totalGeneralExpenses": "General Expenses",
+    "generalExpensesCount": "{{count}} expense",
+    "generalExpensesCountPlural": "{{count}} expenses",
+    "reimbursementBadge": "Reimbursement",
+    "noExpensesInMonth": "No operational expenses recorded.",
+    "categoryLabel": "Category: {{category}}"
   },
   "fullscreen": "Fullscreen",
   "fullscreenTooltip": "Open calendar in fullscreen mode",
@@ -133,7 +144,9 @@
     "viewOrAddEvents": "View or add day events",
     "disp": "Avail.",
     "scheduledBadge": "Scheduled",
-    "conflict": "Conflict: {{count}} assigned"
+    "conflict": "Conflict: {{count}} assigned",
+    "expensesBadge": "Expenses",
+    "expensesTooltip": "{{count}} expense(s) totaling {{total}}. Click to view or edit."
   },
   "candidatePicker": {
     "assignPerson": "Assign person",
@@ -151,6 +164,8 @@
   },
   "eventsModal": {
     "title": "Day Events",
+    "tabEvents": "Event / Appointment",
+    "tabExpenses": "Record Expense",
     "subtitle": "Events and shifts recorded for this date",
     "eventsCount": "Registered Events ({{count}})",
     "noEvents": "No events recorded for this day.",
@@ -189,9 +204,39 @@
     "delete": "Delete event",
     "deleteAria": "Delete event {{title}}",
     "close": "Close",
+    "expensesCount": "Daily Expenses ({{count}})",
+    "noExpenses": "No expenses recorded for this day.",
+    "noExpensesSubtitle": "Record medication, supplies, or transport expenses with or without reimbursement.",
+    "addExpense": "New Expense for this Day",
+    "editExpense": "Edit Expense",
+    "cancelEditExpense": "Cancel Editing",
+    "submitExpense": "Record Expense",
+    "saveExpense": "Save Expense",
+    "expenseDate": "Expense Date",
+    "expenseDescription": "Expense Description *",
+    "expenseDescriptionPlaceholder": "E.g.: Pharmacy, Meals, Medical Supplies",
+    "expenseAmount": "Amount (R$) *",
+    "expenseAmountPlaceholder": "0.00",
+    "expensePerson": "Reimbursement for Professional (Optional)",
+    "noExpensePersonOption": "No professional (General / Operational Expense)",
+    "reimbursementBadge": "Reimbursement: {{name}}",
+    "generalExpenseBadge": "General Operational Expense",
+    "expenseCategory": "Expense Category (Optional)",
+    "selectCategory": "Select a category...",
+    "categories": {
+      "none": "No category",
+      "MEDICATION": "Medication",
+      "TRANSPORT": "Transport",
+      "SUPPLIES": "Supplies",
+      "OTHER": "Other"
+    },
+    "editExpenseAria": "Edit expense {{description}}",
+    "deleteExpenseAria": "Delete expense {{description}}",
     "errors": {
       "titleRequired": "Event title is required.",
-      "addressRequired": "Please select or type an event address."
+      "addressRequired": "Please select or type an event address.",
+      "descriptionRequired": "Expense description is required.",
+      "amountRequired": "Please enter a valid amount greater than zero."
     }
   },
   "unsavedModal": {

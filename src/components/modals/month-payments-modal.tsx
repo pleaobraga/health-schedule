@@ -2,6 +2,7 @@ import {
   AlertCircle,
   ChevronDown,
   DollarSign,
+  Receipt,
   Search,
   Users,
   X,
@@ -11,10 +12,17 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { useScheduleStore } from '../../store/use-schedule-store'
-import { formatMonthYear, getDaysCountInMonth } from '../../utils/date-utils'
-import { getPersonShiftRate } from '../../utils/shift-rate-utils'
+import {
+  formatDisplayDate,
+  formatMonthYear,
+  getDaysCountInMonth,
+} from '../../utils/date-utils'
+import {
+  calculateMonthExpensesSummary,
+  getPersonShiftRate,
+} from '../../utils/shift-rate-utils'
 
-import type { Person, ShiftDefinition } from '../../types'
+import type { DailyExpense, Person, ShiftDefinition } from '../../types'
 
 export interface MonthPaymentsModalProps {
   isOpen: boolean
@@ -37,8 +45,11 @@ export interface PersonShiftWorkItem {
 export interface PersonPaymentSummary {
   person: Person
   shiftsCount: number
+  shiftsAmount: number
+  reimbursementsAmount: number
   totalAmount: number
   items: PersonShiftWorkItem[]
+  expenses: DailyExpense[]
 }
 
 const getWeekdayLabel = (
@@ -65,6 +76,7 @@ export function MonthPaymentsModal({
     dayShiftAssignments,
     assignments,
     shiftDefinitions,
+    expenses,
   } = useScheduleStore()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -91,6 +103,11 @@ export function MonthPaymentsModal({
     persons.forEach((p) => map.set(p.id, p))
     return map
   }, [persons])
+
+  const monthExpensesSummary = useMemo(
+    () => calculateMonthExpensesSummary(expenses, currentMonth),
+    [expenses, currentMonth],
+  )
 
   // Calculate payments per person for currentMonth
   const summaries: PersonPaymentSummary[] = useMemo(() => {
@@ -169,15 +186,49 @@ export function MonthPaymentsModal({
         color: '#64748b',
       }
 
-      const totalAmount = items.reduce((acc, curr) => acc + curr.rate, 0)
+      const shiftsAmount = items.reduce((acc, curr) => acc + curr.rate, 0)
+      const reimbursementsAmount =
+        monthExpensesSummary.personReimbursements[personId] || 0
+      const personExpenses =
+        monthExpensesSummary.personExpenses[personId] || []
+      const totalAmount = shiftsAmount + reimbursementsAmount
 
       result.push({
         person,
         shiftsCount: items.length,
+        shiftsAmount,
+        reimbursementsAmount,
         totalAmount,
         items: items.sort((a, b) => a.day - b.day),
+        expenses: personExpenses,
       })
     })
+
+    // Add any professional who has reimbursements but no scheduled shifts in currentMonth
+    Object.keys(monthExpensesSummary.personReimbursements).forEach(
+      (personId) => {
+        if (personItemsMap.has(personId)) return
+        const person = personMap.get(personId) || {
+          id: personId,
+          name: 'Profissional',
+          color: '#64748b',
+        }
+        const reimbursementsAmount =
+          monthExpensesSummary.personReimbursements[personId] || 0
+        const personExpenses =
+          monthExpensesSummary.personExpenses[personId] || []
+
+        result.push({
+          person,
+          shiftsCount: 0,
+          shiftsAmount: 0,
+          reimbursementsAmount,
+          totalAmount: reimbursementsAmount,
+          items: [],
+          expenses: personExpenses,
+        })
+      },
+    )
 
     // Sort by total amount desc, then name asc
     return result.sort(
@@ -192,6 +243,7 @@ export function MonthPaymentsModal({
     availabilities,
     shiftDefMap,
     personMap,
+    monthExpensesSummary,
     i18n.language,
     t,
   ])
@@ -204,7 +256,7 @@ export function MonthPaymentsModal({
   }, [summaries, searchQuery])
 
   // Totals
-  const grandTotal = useMemo(
+  const totalPersonnelAmount = useMemo(
     () => summaries.reduce((acc, curr) => acc + curr.totalAmount, 0),
     [summaries],
   )
@@ -212,6 +264,16 @@ export function MonthPaymentsModal({
     () => summaries.reduce((acc, curr) => acc + curr.shiftsCount, 0),
     [summaries],
   )
+  const totalShiftsAmount = useMemo(
+    () => summaries.reduce((acc, curr) => acc + curr.shiftsAmount, 0),
+    [summaries],
+  )
+  const totalReimbursementsAmount = useMemo(
+    () => summaries.reduce((acc, curr) => acc + curr.reimbursementsAmount, 0),
+    [summaries],
+  )
+  const generalExpensesTotal = monthExpensesSummary.generalExpensesTotal
+  const grandTotal = totalPersonnelAmount + generalExpensesTotal
 
   if (!isOpen || typeof document === 'undefined') return null
 
@@ -234,7 +296,7 @@ export function MonthPaymentsModal({
       aria-labelledby="month-payments-modal-title"
       className="modal-overlay fixed inset-0 z-120 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn"
     >
-      <div className="modal-panel bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] transition-colors">
+      <div className="modal-panel bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-[900px] overflow-hidden flex flex-col max-h-[92vh] transition-colors">
         {/* Header */}
         <div className="modal-header flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 shrink-0">
           <div className="flex items-center gap-3">
@@ -270,7 +332,7 @@ export function MonthPaymentsModal({
         {/* Body */}
         <div className="modal-body p-6 overflow-y-auto space-y-5 custom-scrollbar">
           {/* Top KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Grand Total */}
             <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex flex-col justify-between">
               <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
@@ -279,6 +341,13 @@ export function MonthPaymentsModal({
               <span className="text-xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
                 {formatBRL(grandTotal)}
               </span>
+              {(totalReimbursementsAmount > 0 || generalExpensesTotal > 0) && (
+                <span className="text-[10px] text-emerald-800/80 dark:text-emerald-300/80 mt-1 font-medium truncate">
+                  {t('calendar:paymentsModal.shiftsSubtotal', {
+                    amount: formatBRL(totalShiftsAmount),
+                  })}
+                </span>
+              )}
             </div>
 
             {/* Total Shifts */}
@@ -295,6 +364,13 @@ export function MonthPaymentsModal({
                       count: totalShiftsScheduled,
                     })}
               </span>
+              {totalReimbursementsAmount > 0 && (
+                <span className="text-[10px] text-indigo-800/80 dark:text-indigo-300/80 mt-1 font-medium truncate">
+                  {t('calendar:paymentsModal.reimbursementsSubtotal', {
+                    amount: formatBRL(totalReimbursementsAmount),
+                  })}
+                </span>
+              )}
             </div>
 
             {/* Active People */}
@@ -309,6 +385,25 @@ export function MonthPaymentsModal({
                     })
                   : t('calendar:paymentsModal.peopleCountPlural', {
                       count: summaries.length,
+                    })}
+              </span>
+            </div>
+
+            {/* General Operational Expenses */}
+            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex flex-col justify-between">
+              <span className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                <span>{t('calendar:paymentsModal.totalGeneralExpenses')}</span>
+              </span>
+              <span className="text-xl font-black text-amber-700 dark:text-amber-400 mt-1">
+                {formatBRL(generalExpensesTotal)}
+              </span>
+              <span className="text-[10px] text-amber-800/80 dark:text-amber-300/80 mt-1 font-medium truncate">
+                {monthExpensesSummary.generalExpenses.length === 1
+                  ? t('calendar:paymentsModal.generalExpensesCount', {
+                      count: monthExpensesSummary.generalExpenses.length,
+                    })
+                  : t('calendar:paymentsModal.generalExpensesCountPlural', {
+                      count: monthExpensesSummary.generalExpenses.length,
                     })}
               </span>
             </div>
@@ -376,7 +471,7 @@ export function MonthPaymentsModal({
                           <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
                             {summary.person.name}
                           </h4>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
                             <span>
                               {summary.shiftsCount === 1
                                 ? t('calendar:paymentsModal.shiftsCompleted', {
@@ -389,6 +484,16 @@ export function MonthPaymentsModal({
                                     },
                                   )}
                             </span>
+                            {summary.reimbursementsAmount > 0 && (
+                              <span
+                                data-testid={`person-reimbursement-badge-${summary.person.id}`}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded-md border border-emerald-200 dark:border-emerald-800"
+                              >
+                                {t('calendar:paymentsModal.reimbursementsSubtotal', {
+                                  amount: formatBRL(summary.reimbursementsAmount),
+                                })}
+                              </span>
+                            )}
                             {unconfiguredCount > 0 && (
                               <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-[11px] font-semibold">
                                 <AlertCircle className="w-3 h-3" />
@@ -420,55 +525,149 @@ export function MonthPaymentsModal({
                       </div>
                     </div>
 
-                    {/* Detailed Shift Items (Collapsible) */}
+                    {/* Detailed Shift Items & Reimbursements (Collapsible) */}
                     {isExpanded && (
-                      <div className="p-4 pt-1 border-t border-slate-100 dark:border-slate-800/70 bg-slate-50/50 dark:bg-slate-800/30 space-y-1.5 animate-fadeIn">
-                        {summary.items.map((item, idx) => (
-                          <div
-                            key={`${item.dateStr}-${item.shiftId}-${idx}`}
-                            className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="font-bold text-slate-700 dark:text-slate-300 min-w-[70px]">
-                                {t('calendar:paymentsModal.dayDetail', {
-                                  day: item.day,
-                                  weekday: item.weekday,
-                                })}
-                              </span>
-
-                              <span
-                                className="px-2 py-0.5 rounded-sm text-[10px] font-black text-white shrink-0"
-                                style={{ backgroundColor: item.shiftColor }}
+                      <div className="p-4 pt-1 border-t border-slate-100 dark:border-slate-800/70 bg-slate-50/50 dark:bg-slate-800/30 space-y-3 animate-fadeIn">
+                        {summary.items.length > 0 && (
+                          <div className="space-y-1.5">
+                            {summary.items.map((item, idx) => (
+                              <div
+                                key={`${item.dateStr}-${item.shiftId}-${idx}`}
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs"
                               >
-                                {item.shiftCode}
-                              </span>
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <span className="font-bold text-slate-700 dark:text-slate-300 min-w-[70px]">
+                                    {t('calendar:paymentsModal.dayDetail', {
+                                      day: item.day,
+                                      weekday: item.weekday,
+                                    })}
+                                  </span>
 
-                              <span className="text-slate-600 dark:text-slate-300 truncate">
-                                {item.shiftName}
-                              </span>
-                            </div>
+                                  <span
+                                    className="px-2 py-0.5 rounded-sm text-[10px] font-black text-white shrink-0"
+                                    style={{ backgroundColor: item.shiftColor }}
+                                  >
+                                    {item.shiftCode}
+                                  </span>
 
-                            <div className="flex items-center gap-2 shrink-0 ml-2">
-                              {item.hasRateConfigured ? (
-                                <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                                  {formatBRL(item.rate)}
-                                </span>
-                              ) : (
-                                <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                  <AlertCircle className="w-3 h-3" />
-                                  {t(
-                                    'calendar:paymentsModal.rateNotConfigured',
+                                  <span className="text-slate-600 dark:text-slate-300 truncate">
+                                    {item.shiftName}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                  {item.hasRateConfigured ? (
+                                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                                      {formatBRL(item.rate)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" />
+                                      {t(
+                                        'calendar:paymentsModal.rateNotConfigured',
+                                      )}
+                                    </span>
                                   )}
-                                </span>
-                              )}
-                            </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
+
+                        {summary.expenses.length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            <h5 className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                              {t('calendar:paymentsModal.reimbursementsTitle', {
+                                count: summary.expenses.length,
+                              })}
+                            </h5>
+                            {summary.expenses.map((exp) => (
+                              <div
+                                key={exp.id}
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/50 text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 shrink-0">
+                                    {formatDisplayDate(exp.date, i18n.language)}
+                                  </span>
+                                  {exp.category && (
+                                    <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-bold uppercase bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 shrink-0">
+                                      {t(
+                                        `calendar:eventsModal.categories.${exp.category}` as unknown as TemplateStringsArray,
+                                      )}
+                                    </span>
+                                  )}
+                                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                                    {exp.description}
+                                  </span>
+                                </div>
+                                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0 ml-2">
+                                  {formatBRL(exp.amount)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 )
               })}
+
+              {/* General Operational Expenses Section */}
+              {monthExpensesSummary.generalExpenses.length > 0 && (
+                <div
+                  data-testid="general-expenses-section"
+                  className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/40 dark:bg-amber-950/20 p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                        <Receipt className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          {t('calendar:paymentsModal.generalExpensesTitle')}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {t('calendar:paymentsModal.generalExpensesSubtitle')}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-sm font-black text-amber-700 dark:text-amber-400">
+                      {formatBRL(monthExpensesSummary.generalExpensesTotal)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {monthExpensesSummary.generalExpenses.map((exp) => (
+                      <div
+                        key={exp.id}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">
+                            {formatDisplayDate(exp.date, i18n.language)}
+                          </span>
+                          {exp.category && (
+                            <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-bold uppercase bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 shrink-0">
+                              {t(
+                                `calendar:eventsModal.categories.${exp.category}` as unknown as TemplateStringsArray,
+                              )}
+                            </span>
+                          )}
+                          <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                            {exp.description}
+                          </span>
+                        </div>
+                        <span className="font-extrabold text-amber-700 dark:text-amber-400 shrink-0 ml-2">
+                          {formatBRL(exp.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

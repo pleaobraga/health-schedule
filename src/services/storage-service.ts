@@ -5,6 +5,7 @@ import type {
   Person,
   MonthlyAvailability,
   CalendarEvent,
+  DailyExpense,
   GuestProfile,
   GuestDataset,
   Address,
@@ -17,6 +18,7 @@ const STORAGE_KEYS = {
   AVAILABILITIES: 'scale_manager_availabilities_v1',
   ASSIGNMENTS: 'scale_manager_assignments_v1',
   EVENTS: 'scale_manager_events_v1',
+  EXPENSES: 'scale_manager_expenses_v1',
   MONTH_PARTICIPANTS: 'scale_manager_month_participants_v1',
   ADDRESSES: 'scale_manager_addresses_v1',
   SHIFT_DEFINITIONS: 'scale_manager_shift_definitions_v1',
@@ -150,6 +152,33 @@ export class StorageService {
       }
     } catch (err) {
       console.error('Failed to save events to localStorage:', err)
+    }
+  }
+
+  /**
+   * Load daily expenses (returns empty array if storage has no data)
+   */
+  static getExpenses(): DailyExpense[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.EXPENSES)
+      if (!data) {
+        return []
+      }
+      return JSON.parse(data)
+    } catch (err) {
+      console.error('Failed to load expenses from localStorage:', err)
+      return []
+    }
+  }
+
+  static saveExpenses(expenses: DailyExpense[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses))
+      if (!isRestoringDataset) {
+        StorageService.snapshotActiveSession()
+      }
+    } catch (err) {
+      console.error('Failed to save expenses to localStorage:', err)
     }
   }
 
@@ -408,6 +437,7 @@ export class StorageService {
     localStorage.removeItem(STORAGE_KEYS.AVAILABILITIES)
     localStorage.removeItem(STORAGE_KEYS.ASSIGNMENTS)
     localStorage.removeItem(STORAGE_KEYS.EVENTS)
+    localStorage.removeItem(STORAGE_KEYS.EXPENSES)
     localStorage.removeItem(STORAGE_KEYS.MONTH_PARTICIPANTS)
     localStorage.removeItem(STORAGE_KEYS.ADDRESSES)
     localStorage.removeItem(STORAGE_KEYS.SHIFT_DEFINITIONS)
@@ -516,6 +546,7 @@ export class StorageService {
       availabilities: StorageService.getAvailabilities(),
       assignments: StorageService.getAssignments(),
       events: StorageService.getEvents(),
+      expenses: StorageService.getExpenses(),
       monthParticipants: StorageService.getMonthParticipants(),
       addresses: StorageService.getAddresses(),
       shiftDefinitions: StorageService.getShiftDefinitions(),
@@ -534,6 +565,7 @@ export class StorageService {
       StorageService.saveAvailabilities(dataset.availabilities || [])
       StorageService.saveAssignments(dataset.assignments || {})
       StorageService.saveEvents(dataset.events || [])
+      StorageService.saveExpenses(dataset.expenses || [])
       StorageService.saveMonthParticipants(dataset.monthParticipants || {})
       StorageService.saveAddresses(dataset.addresses || [])
       if (dataset.shiftDefinitions) {

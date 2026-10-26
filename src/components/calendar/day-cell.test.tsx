@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 
 import { DayCell } from './day-cell'
 
-import type { Person, CalendarEvent } from '../../types'
+import type { Person, CalendarEvent, DailyExpense } from '../../types'
 import type { CalendarDayInfo } from '../../utils/date-utils'
 
 describe('DayCell', () => {
@@ -561,5 +561,147 @@ describe('DayCell', () => {
     const dayNumberBtn = screen.getByTestId('day-number-button')
     expect(dayNumberBtn).toHaveClass('mobile:rounded-none', 'mobile:bg-transparent', 'mobile:w-auto')
     expect(dayNumberBtn.parentElement?.parentElement).toHaveClass('mobile:bg-red-50')
+  })
+
+  it('renders daily expense badge with only the $ icon when expenses are present and triggers onOpenExpenses on click', () => {
+    const expenses: DailyExpense[] = [
+      {
+        id: 'exp-1',
+        date: '2026-10-15',
+        description: 'Farmácia',
+        amount: 85.5,
+        createdAt: '2026-10-15T10:00:00Z',
+        updatedAt: '2026-10-15T10:00:00Z',
+      },
+    ]
+    const onOpenExpenses = vi.fn()
+    const onOpenEvents = vi.fn()
+
+    render(
+      <DayCell
+        dayInfo={mockDayInfo}
+        currentMonth="2026-10"
+        isEditMode={false}
+        assignedPersonIds={[]}
+        allPersons={mockPersons}
+        events={[]}
+        dailyExpenses={expenses}
+        highlightedPerson={null}
+        isHighlightedPersonAvailable={false}
+        isPersonAvailable={() => true}
+        onOpenEvents={onOpenEvents}
+        onOpenExpenses={onOpenExpenses}
+        onRemovePerson={vi.fn()}
+        onAddPerson={vi.fn()}
+      />
+    )
+
+    const badge = screen.getByTestId('day-expense-badge-2026-10-15')
+    expect(badge).toBeInTheDocument()
+    // It should NOT contain formatted text in the button body, only the $ icon
+    expect(badge).not.toHaveTextContent('R$')
+
+    fireEvent.click(badge)
+    expect(onOpenExpenses).toHaveBeenCalledTimes(1)
+    expect(onOpenEvents).not.toHaveBeenCalled()
+  })
+
+  it('on small screens, a day with only expenses gets a green background on the number row', () => {
+    const expenses: DailyExpense[] = [
+      {
+        id: 'exp-1',
+        date: '2026-10-15',
+        description: 'Farmácia',
+        amount: 50,
+        createdAt: '2026-10-15T10:00:00Z',
+        updatedAt: '2026-10-15T10:00:00Z',
+      },
+    ]
+    const onOpenExpenses = vi.fn()
+
+    render(
+      <DayCell
+        dayInfo={mockDayInfo}
+        currentMonth="2026-10"
+        isEditMode={false}
+        assignedPersonIds={[]}
+        allPersons={mockPersons}
+        events={[]}
+        dailyExpenses={expenses}
+        highlightedPerson={null}
+        isHighlightedPersonAvailable={false}
+        isPersonAvailable={() => true}
+        onOpenEvents={vi.fn()}
+        onOpenExpenses={onOpenExpenses}
+        onRemovePerson={vi.fn()}
+        onAddPerson={vi.fn()}
+      />
+    )
+
+    const dayNumberBtn = screen.getByTestId('day-number-button')
+    expect(dayNumberBtn.parentElement?.parentElement).toHaveClass('mobile:bg-emerald-50')
+
+    // Clicking day number on mobile triggers onOpenExpenses
+    fireEvent.click(dayNumberBtn)
+    expect(onOpenExpenses).toHaveBeenCalledTimes(1)
+  })
+
+  it('on small screens, a day with both events and expenses preserves the red background on the number row', () => {
+    const events: CalendarEvent[] = [{ id: 'e1', date: '2026-10-15', title: 'Meeting' }]
+    const expenses: DailyExpense[] = [
+      {
+        id: 'exp-1',
+        date: '2026-10-15',
+        description: 'Farmácia',
+        amount: 50,
+        createdAt: '2026-10-15T10:00:00Z',
+        updatedAt: '2026-10-15T10:00:00Z',
+      },
+    ]
+
+    render(
+      <DayCell
+        dayInfo={mockDayInfo}
+        currentMonth="2026-10"
+        isEditMode={false}
+        assignedPersonIds={[]}
+        allPersons={mockPersons}
+        events={events}
+        dailyExpenses={expenses}
+        highlightedPerson={null}
+        isHighlightedPersonAvailable={false}
+        isPersonAvailable={() => true}
+        onOpenEvents={vi.fn()}
+        onOpenExpenses={vi.fn()}
+        onRemovePerson={vi.fn()}
+        onAddPerson={vi.fn()}
+      />
+    )
+
+    const dayNumberBtn = screen.getByTestId('day-number-button')
+    expect(dayNumberBtn.parentElement?.parentElement).toHaveClass('mobile:bg-red-50')
+    expect(dayNumberBtn.parentElement?.parentElement).not.toHaveClass('mobile:bg-emerald-50')
+  })
+
+  it('does not render daily expense badge when expenses array is empty or zero', () => {
+    render(
+      <DayCell
+        dayInfo={mockDayInfo}
+        currentMonth="2026-10"
+        isEditMode={false}
+        assignedPersonIds={[]}
+        allPersons={mockPersons}
+        events={[]}
+        dailyExpenses={[]}
+        highlightedPerson={null}
+        isHighlightedPersonAvailable={false}
+        isPersonAvailable={() => true}
+        onOpenEvents={vi.fn()}
+        onRemovePerson={vi.fn()}
+        onAddPerson={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByTestId('day-expense-badge-2026-10-15')).not.toBeInTheDocument()
   })
 })

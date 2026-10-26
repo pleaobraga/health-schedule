@@ -1,3 +1,5 @@
+import type { DailyExpense } from './index'
+
 // --- CONFIGURAÇÃO DE TURNOS ---
 export interface ShiftDefinition {
   id: string
@@ -72,6 +74,7 @@ export interface MonthScheduleDocument {
     }
   > // Chave: `${YYYY-MM-DD}_${shiftId}`
   assignments?: Record<string, string[]> // Backward-compatibility
+  expenses?: DailyExpense[]
   activePersonIds?: string[] // IDs dos profissionais vinculados a este mês
   activeShiftIds?: string[] // IDs dos turnos ativos aplicáveis para este mês
   activeRuleIds?: string[] // IDs das regras ativas aplicáveis para este mês

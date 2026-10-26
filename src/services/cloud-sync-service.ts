@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   getDocsFromServer,
+  onSnapshot,
   setDoc,
   serverTimestamp
 } from 'firebase/firestore'
@@ -13,6 +14,7 @@ import { StorageService } from './storage-service'
 import type {
   MonthlyAvailability,
   CalendarEvent,
+  DailyExpense,
   Person,
   Address,
   ShiftDefinition,
@@ -36,6 +38,7 @@ export interface MonthScheduleData {
   monthParticipants?: Record<string, string[]>;
   availabilities?: MonthlyAvailability[];
   events?: CalendarEvent[];
+  expenses?: DailyExpense[];
   dayShiftAssignments?: Record<string, Record<string, string>>;
   monthDailyShifts?: Record<string, Record<string, number[]>>;
   monthActiveShifts?: Record<string, string[]>;
@@ -95,6 +98,7 @@ export function getMonthsInScheduleData(data: MonthScheduleData): string[] {
   Object.keys(data.dayShiftAssignments ?? {}).forEach((date) => addMonth(date.slice(0, 7)))
   data.availabilities?.forEach((a) => addMonth(a.month))
   data.events?.forEach((e) => addMonth(e.date?.slice(0, 7)))
+  data.expenses?.forEach((exp) => addMonth(exp.date?.slice(0, 7)))
 
   return Array.from(months).sort()
 }
@@ -115,6 +119,7 @@ export function sliceMonthScheduleData(
     monthActiveRules: pickMonthKey(data.monthActiveRules, month),
     availabilities: (data.availabilities ?? []).filter((a) => a.month === month),
     events: (data.events ?? []).filter((e) => isDateInMonth(e.date, month)),
+    expenses: (data.expenses ?? []).filter((exp) => isDateInMonth(exp.date, month)),
   }
 }
 
@@ -157,6 +162,10 @@ export function replaceMonthScheduleData(
       ...(base.events ?? []).filter((e) => !isDateInMonth(e.date, month)),
       ...monthSlice.events,
     ],
+    expenses: [
+      ...(base.expenses ?? []).filter((exp) => !isDateInMonth(exp.date, month)),
+      ...monthSlice.expenses,
+    ],
   }
 }
 
@@ -186,6 +195,7 @@ export function mergeMonthDocs(monthDocs: MonthScheduleDoc[]): MonthScheduleData
     monthParticipants: { ...newestLegacy?.monthParticipants },
     availabilities: [...(newestLegacy?.availabilities ?? [])],
     events: [...(newestLegacy?.events ?? [])],
+    expenses: [...(newestLegacy?.expenses ?? [])],
     dayShiftAssignments: { ...newestLegacy?.dayShiftAssignments },
     monthDailyShifts: { ...newestLegacy?.monthDailyShifts },
     monthActiveShifts: { ...newestLegacy?.monthActiveShifts },
@@ -206,6 +216,7 @@ const toMonthScheduleDoc = (month: string, data: DocumentData): MonthScheduleDoc
   monthParticipants: data.monthParticipants,
   availabilities: data.availabilities,
   events: data.events,
+  expenses: data.expenses,
   dayShiftAssignments: data.dayShiftAssignments,
   monthDailyShifts: data.monthDailyShifts,
   monthActiveShifts: data.monthActiveShifts,
@@ -339,6 +350,34 @@ export class CloudSyncService {
     } catch (err) {
       console.error('Failed to list cloud months:', err)
       return []
+    }
+  }
+
+  /**
+   * Subscribes to real-time Firestore updates for a specific month schedule doc.
+   * Returns an unsubscribe function or null if offline / disabled.
+   */
+  static subscribeMonthSchedule(
+    month: string,
+    onUpdate: (doc: MonthScheduleDoc) => void,
+    onError?: (error: unknown) => void,
+  ): (() => void) | null {
+    if (!this.isOnline() || !this.isSyncEnabled()) return null
+    try {
+      return onSnapshot(
+        doc(db, SCHEDULES_COLLECTION, month),
+        (snapshot) => {
+          if (!snapshot.exists()) return
+          onUpdate(toMonthScheduleDoc(month, snapshot.data()))
+        },
+        (err) => {
+          console.error(`Error in onSnapshot listener for ${month}:`, err)
+          onError?.(err)
+        },
+      )
+    } catch (err) {
+      console.error('Failed to attach onSnapshot listener:', err)
+      return null
     }
   }
 
