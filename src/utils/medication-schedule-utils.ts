@@ -447,3 +447,68 @@ export function getMedicationVersionHistory(
   })
   return entries.reverse()
 }
+
+export function groupMedicationsBySource(
+  version: Pick<MedicationScheduleVersion, 'medications'>,
+): MedicationSourceGroup[] {
+  const groupsMap = new Map<string, MedicationSourceGroup>()
+  const withoutSource: MedicationColumn[] = []
+
+  for (const med of version.medications ?? []) {
+    const rawSource = med.source?.trim() ?? ''
+    const normSource = normalizeItemName(rawSource)
+    if (!normSource) {
+      withoutSource.push(med)
+      continue
+    }
+
+    const existing = groupsMap.get(normSource)
+    if (existing) {
+      existing.medications.push(med)
+    } else {
+      groupsMap.set(normSource, {
+        source: rawSource,
+        medications: [med],
+      })
+    }
+  }
+
+  const result = Array.from(groupsMap.values())
+  if (withoutSource.length > 0) {
+    result.push({
+      source: null,
+      medications: withoutSource,
+    })
+  }
+  return result
+}
+
+export function searchMedicationProfessionals(
+  query: string,
+  versions: MedicationScheduleVersion[],
+): string[] {
+  const normQuery = normalizeItemName(query ?? '')
+  if (normQuery.length < PROFESSIONAL_SEARCH_MIN_LENGTH) {
+    return []
+  }
+
+  const newestFirst = sortMedicationVersions(versions).reverse()
+  const seenNormalized = new Set<string>()
+  const results: string[] = []
+
+  for (const ver of newestFirst) {
+    const rawProf = (ver.professional ?? '').trim()
+    const normProf = normalizeItemName(rawProf)
+    if (!normProf || seenNormalized.has(normProf)) continue
+
+    if (normProf.includes(normQuery)) {
+      seenNormalized.add(normProf)
+      results.push(rawProf)
+      if (results.length >= PROFESSIONAL_SEARCH_MAX_RESULTS) {
+        break
+      }
+    }
+  }
+
+  return results
+}

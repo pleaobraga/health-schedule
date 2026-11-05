@@ -6,7 +6,9 @@ import {
   getMedicationVersionAt,
   getMedicationVersionChanges,
   getMedicationVersionHistory,
+  groupMedicationsBySource,
   normalizeMedicationVersionInput,
+  searchMedicationProfessionals,
   validateMedicationVersionInput,
 } from './medication-schedule-utils'
 
@@ -593,6 +595,62 @@ describe('medication-schedule-utils', () => {
         code: 'DUPLICATE_TIME',
         time: '06:00',
       })
+    })
+  })
+
+  describe('groupMedicationsBySource and searchMedicationProfessionals', () => {
+    it('groups by source, with medications without a source last', () => {
+      const groups = groupMedicationsBySource({
+        medications: [
+          { id: 'm1', name: 'Dutam' },
+          { id: 'm2', name: 'Prolopa', source: 'Posto de Saúde' },
+          { id: 'm3', name: 'Rasagilina', source: 'Farmácia de Minas' },
+          { id: 'm4', name: 'Entacapona', source: 'posto de saude' },
+        ],
+      })
+
+      expect(
+        groups.map((g) => [g.source, g.medications.map((m) => m.id)]),
+      ).toEqual([
+        ['Posto de Saúde', ['m2', 'm4']],
+        ['Farmácia de Minas', ['m3']],
+        [null, ['m1']],
+      ])
+    })
+
+    it('returns empty array when version has no medications', () => {
+      expect(groupMedicationsBySource({ medications: [] })).toEqual([])
+    })
+
+    it('suggests recent professionals without repeats', () => {
+      const versions = [
+        version('v1', '2026-01-01', { professional: 'Dra. Ana Lima' }),
+        version('v2', '2026-02-01', { professional: 'Dr. Pedro Lima' }),
+        version('v3', '2026-03-01', { professional: 'dra. ana lima' }),
+      ]
+
+      expect(searchMedicationProfessionals('lim', versions)).toEqual([
+        'dra. ana lima',
+        'Dr. Pedro Lima',
+      ])
+      expect(searchMedicationProfessionals('li', versions)).toEqual([])
+    })
+
+    it('returns at most 4 professional suggestions ordered from newest to oldest', () => {
+      const versions = [
+        version('v1', '2026-01-01', { professional: 'Dr. Carlos Silva' }),
+        version('v2', '2026-02-01', { professional: 'Dra. Beatriz Silva' }),
+        version('v3', '2026-03-01', { professional: 'Dr. Eduardo Silva' }),
+        version('v4', '2026-04-01', { professional: 'Dra. Fernanda Silva' }),
+        version('v5', '2026-05-01', { professional: 'Dr. Gabriel Silva' }),
+      ]
+
+      expect(searchMedicationProfessionals('silva', versions)).toEqual([
+        'Dr. Gabriel Silva',
+        'Dra. Fernanda Silva',
+        'Dr. Eduardo Silva',
+        'Dra. Beatriz Silva',
+      ])
     })
   })
 })
