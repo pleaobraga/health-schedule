@@ -91,7 +91,7 @@ describe('DayEventsModal', () => {
     const titleInput = screen.getByPlaceholderText('Ex: Auditoria ou Reunião Clínica')
     fireEvent.change(titleInput, { target: { value: 'Reunião Geral' } })
 
-    const timeInput = screen.getByLabelText(/Horário \(Opcional\)/i)
+    const timeInput = screen.getByLabelText(/^Horário$/i)
     fireEvent.change(timeInput, { target: { value: '14:30' } })
 
     // The manual address textarea is hidden by default
@@ -197,7 +197,7 @@ describe('DayEventsModal', () => {
     const titleInput = screen.getByPlaceholderText('Ex: Auditoria ou Reunião Clínica')
     expect(titleInput).toHaveValue('Plantão Manhã')
 
-    const timeInput = screen.getByLabelText(/Horário \(Opcional\)/i)
+    const timeInput = screen.getByLabelText(/^Horário$/i)
     expect(timeInput).toHaveValue('07:00')
 
     const addressInput = screen.getByPlaceholderText(/Digite o endereço completo na hora/i)
@@ -626,7 +626,7 @@ describe('DayEventsModal', () => {
       )
 
       const personSelect = screen.getByRole('combobox', {
-        name: 'Reembolso para Profissional (Opcional)',
+        name: 'Reembolso para Profissional',
       })
       expect(personSelect).toHaveValue('removed-person')
       expect(personSelect).toHaveDisplayValue('Profissional removido')
@@ -661,7 +661,7 @@ describe('DayEventsModal', () => {
       )
 
       const personSelect = screen.getByRole('combobox', {
-        name: 'Reembolso para Profissional (Opcional)',
+        name: 'Reembolso para Profissional',
       })
       expect(personSelect).toHaveValue('p3')
       expect(personSelect).toHaveDisplayValue('Enf. Beatriz')

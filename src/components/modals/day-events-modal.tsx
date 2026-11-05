@@ -663,6 +663,7 @@ export function DayEventsModal() {
                 </label>
                 <input
                   type="text"
+                  aria-invalid={Boolean(error)}
                   value={title}
                   onChange={(e) => {
                     setTitle(e.target.value)
@@ -1161,6 +1162,9 @@ export function DayEventsModal() {
                 <input
                   id="expense-description"
                   type="text"
+                  aria-invalid={
+                    expenseError === t('calendar:eventsModal.errors.descriptionRequired')
+                  }
                   value={expenseDescription}
                   onChange={(e) => {
                     setExpenseDescription(e.target.value)
@@ -1185,6 +1189,9 @@ export function DayEventsModal() {
                 <input
                   id="expense-amount"
                   type="text"
+                  aria-invalid={
+                    expenseError === t('calendar:eventsModal.errors.amountRequired')
+                  }
                   value={expenseAmount}
                   onChange={(e) => {
                     setExpenseAmount(e.target.value)

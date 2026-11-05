@@ -108,6 +108,7 @@ export function PersonModal({
               </label>
               <input
                 type="text"
+                aria-invalid={Boolean(error)}
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value)

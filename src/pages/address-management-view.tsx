@@ -162,6 +162,7 @@ function AddressModal({
                 id="address-name"
                 type="text"
                 required
+                aria-invalid={error === t('addresses:errors.nameRequired')}
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value)
@@ -184,6 +185,7 @@ function AddressModal({
                   id="address-street"
                   type="text"
                   required
+                  aria-invalid={error === t('addresses:errors.streetRequired')}
                   value={street}
                   onChange={(e) => {
                     setStreet(e.target.value)
@@ -205,6 +207,7 @@ function AddressModal({
                   id="address-number"
                   type="text"
                   required
+                  aria-invalid={error === t('addresses:errors.numberRequired')}
                   value={number}
                   onChange={(e) => {
                     setNumber(e.target.value)

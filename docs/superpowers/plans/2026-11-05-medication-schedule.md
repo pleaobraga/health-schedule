@@ -20,6 +20,7 @@
 - Sem texto fixo na interface. Toda chave nova existe em `pt-BR` e `en-US`.
 - Todo componente novo tem `.stories.tsx`, variantes `dark:*` e funciona em telas de até 640px sem rolagem horizontal da página.
 - A dose é texto livre: não converta para número.
+- Campos obrigatórios terminam a label com ` *`, sem nenhum "(Opcional)", e ficam vermelhos quando violados, seguindo "Form fields" no `CLAUDE.md`. Inclua o formulário em `src/components/required-fields.test.tsx`.
 - Versões antigas nunca são alteradas por uma versão nova.
 - Não importar a planilha, não usar versão antiga como base, não criar estoque, alertas, registro de doses tomadas nem Excel.
 - Aparência, layout, ícones e textos ficam a seu critério. O plano fixa comportamento e nomes de código.

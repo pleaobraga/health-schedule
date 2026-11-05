@@ -68,6 +68,11 @@ Not enforced by tooling:
 - React 19 style: no `React` import for JSX, no `forwardRef` or `React.FC`, `use(Context)` over `useContext`, and no `useMemo` / `useCallback` / `memo` without a measured bottleneck.
 - Props use an `interface`, and event handlers use the `handle` prefix.
 - Add `dark:*` variants to all new UI, and `print:*` overrides where the view prints.
+- Form fields:
+  - A required field ends its label with ` *`, and an optional field has no marker: never write "(Opcional)" or "(Optional)" in labels, placeholders, or hints.
+  - Select options carry only the name, with no explanation in parentheses. Names like "Português (Brasil)" and units like "(R$)" in labels are fine.
+  - A violated required field turns red. Native `required` gets this from `:user-invalid`. App validation sets `aria-invalid` on the input from the same condition as the error message, `invalid` on `DatePicker`, and `aria-invalid` on `Select`. The style lives once in `src/index.css`; don't add red border classes per field.
+  - `src/components/required-fields.test.tsx` covers these rules; add new forms to it.
 - Popovers inside scrollable or `overflow-hidden` containers use `createPortal` to `document.body` with `computePopoverPosition` ([src/utils/popover-position.ts](src/utils/popover-position.ts)).
 - Keep Firestore usage within the free Spark plan: no audit logs or telemetry, and rewrite only the month an action touched (`syncMonthScheduleIfEnabled`).
 - `.ai-rules.md` holds the full local rules but is gitignored, so it may be missing on a fresh clone.

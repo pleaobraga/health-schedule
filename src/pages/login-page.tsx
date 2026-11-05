@@ -251,7 +251,7 @@ export function LoginPage() {
               htmlFor="email"
               className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300"
             >
-              {t('auth:email')}
+              {t('auth:email')} *
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
@@ -277,7 +277,7 @@ export function LoginPage() {
               htmlFor="password"
               className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300"
             >
-              {t('auth:password')}
+              {t('auth:password')} *
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
@@ -490,7 +490,7 @@ export function LoginPage() {
                 htmlFor="new-guest-name"
                 className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
               >
-                {t('auth:guestNameLabel')}
+                {t('auth:guestNameLabel')} *
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
@@ -500,8 +500,12 @@ export function LoginPage() {
                   id="new-guest-name"
                   type="text"
                   required
+                  aria-invalid={guestError === t('auth:errors.requiredName')}
                   value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
+                  onChange={(e) => {
+                    setGuestName(e.target.value)
+                    setGuestError(null)
+                  }}
                   placeholder={t('auth:guestNamePlaceholder')}
                   disabled={isGuestSubmitting}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-white text-sm placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition disabled:opacity-60"

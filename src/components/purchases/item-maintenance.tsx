@@ -171,13 +171,14 @@ export function ItemMaintenance({ item, onClose }: ItemMaintenanceProps) {
                   htmlFor="item-maintenance-rename-input"
                   className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1"
                 >
-                  {t('purchases:maintenance.renameLabel')}
+                  {t('purchases:maintenance.renameLabel')} *
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     id="item-maintenance-rename-input"
                     data-testid="item-maintenance-rename-input"
                     type="text"
+                    aria-invalid={errorCode === 'NAME_REQUIRED' || errorCode === 'NAME_CONFLICT'}
                     value={newName}
                     onChange={(e) => {
                       setNewName(e.target.value)
@@ -217,12 +218,13 @@ export function ItemMaintenance({ item, onClose }: ItemMaintenanceProps) {
                   htmlFor="item-maintenance-merge-select"
                   className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1"
                 >
-                  {t('purchases:maintenance.mergeLabel')}
+                  {t('purchases:maintenance.mergeLabel')} *
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Select
                     id="item-maintenance-merge-select"
                     data-testid="item-maintenance-merge-select"
+                    aria-invalid={errorCode === 'SAME_ITEM'}
                     value={targetId}
                     onChange={(e) => {
                       setTargetId(e.target.value)

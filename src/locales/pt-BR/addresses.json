@@ -13,7 +13,7 @@
   "streetPlaceholder": "Ex: Av. Paulista",
   "number": "Número *",
   "numberPlaceholder": "Ex: 1000 ou S/N",
-  "complement": "Complemento (Opcional)",
+  "complement": "Complemento",
   "complementPlaceholder": "Ex: Sala 42, Bloco B",
   "complementAbbr": "Compl.:",
   "neighborhood": "Bairro",

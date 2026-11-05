@@ -53,7 +53,7 @@ describe('LoginPage', () => {
 
     expect(screen.getByTestId('login-page')).toBeInTheDocument()
     expect(screen.getByLabelText(/e-mail/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^senha$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^senha \*$/i)).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /entrar na aplicação/i }),
     ).toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('LoginPage', () => {
   it('toggles the password visibility', () => {
     renderWithAuth()
 
-    const passwordInput = screen.getByLabelText(/^senha$/i) as HTMLInputElement
+    const passwordInput = screen.getByLabelText(/^senha \*$/i) as HTMLInputElement
     expect(passwordInput.type).toBe('password')
 
     const toggleBtn = screen.getByRole('button', { name: /exibir senha/i })
@@ -81,7 +81,7 @@ describe('LoginPage', () => {
     renderWithAuth({ login: mockLogin })
 
     const emailInput = screen.getByLabelText(/e-mail/i)
-    const passwordInput = screen.getByLabelText(/^senha$/i)
+    const passwordInput = screen.getByLabelText(/^senha \*$/i)
 
     fireEvent.change(emailInput, { target: { value: 'errado@exemplo.com' } })
     fireEvent.change(passwordInput, { target: { value: 'senha123' } })
@@ -115,7 +115,7 @@ describe('LoginPage', () => {
     fireEvent.change(screen.getByLabelText(/e-mail/i), {
       target: { value: 'medico@hospital.com' },
     })
-    fireEvent.change(screen.getByLabelText(/^senha$/i), {
+    fireEvent.change(screen.getByLabelText(/^senha \*$/i), {
       target: { value: 'segredo123' },
     })
 

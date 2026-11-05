@@ -13,7 +13,7 @@
   "streetPlaceholder": "E.g.: Paulista Avenue",
   "number": "Number *",
   "numberPlaceholder": "E.g.: 1000 or N/A",
-  "complement": "Complement (Optional)",
+  "complement": "Complement",
   "complementPlaceholder": "E.g.: Suite 42, Building B",
   "complementAbbr": "Apt/Suite:",
   "neighborhood": "Neighborhood",

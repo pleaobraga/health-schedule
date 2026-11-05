@@ -43,7 +43,10 @@ import type {
   Person,
 } from '../../types'
 import type { ExpenseImportWarning } from '../../utils/expense-item-import'
-import type { ExpenseValidationError } from '../../utils/expense-item-utils'
+import type {
+  ExpenseValidationCode,
+  ExpenseValidationError,
+} from '../../utils/expense-item-utils'
 
 export interface PurchaseFormProps {
   expense?: DailyExpense
@@ -115,6 +118,8 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
     null,
   )
   const [errors, setErrors] = useState<ExpenseValidationError[]>([])
+  const hasFormError = (code: ExpenseValidationCode) =>
+    errors.some((err) => err.code === code && err.lineIndex === undefined)
   const [importError, setImportError] = useState<
     'FILE_TOO_LARGE' | 'TOO_MANY_ITEMS' | 'UNREADABLE_FILE' | 'EMPTY_FILE' | null
   >(null)
@@ -482,6 +487,7 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                   id="purchase-date-input"
                   data-testid="purchase-date-input"
                   value={date}
+                  invalid={hasFormError('DATE_INVALID')}
                   onChange={(val) => {
                     setDate(val)
                     setErrors([])
@@ -504,6 +510,7 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                     data-testid="purchase-amount-input"
                     type="text"
                     inputMode="decimal"
+                    aria-invalid={hasFormError('AMOUNT_INVALID')}
                     value={amount}
                     onChange={(e) => {
                       setAmount(e.target.value)
@@ -528,6 +535,7 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                 id="purchase-description-input"
                 data-testid="purchase-description-input"
                 type="text"
+                aria-invalid={hasFormError('DESCRIPTION_REQUIRED')}
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value)
@@ -710,6 +718,8 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                     const lineErrors = errors.filter(
                       (err) => err.lineIndex === idx,
                     )
+                    const hasLineError = (...codes: ExpenseValidationCode[]) =>
+                      lineErrors.some((err) => codes.includes(err.code))
 
                     return (
                       <div
@@ -728,12 +738,17 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                               htmlFor={`purchase-line-name-${idx}`}
                               className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1"
                             >
-                              {t('purchases:form.itemNameLabel')}
+                              {t('purchases:form.itemNameLabel')} *
                             </label>
                             <input
                               id={`purchase-line-name-${idx}`}
                               data-testid={`purchase-line-name-${idx}`}
                               type="text"
+                              aria-invalid={hasLineError(
+                                'ITEM_REQUIRED',
+                                'ITEM_NOT_FOUND',
+                                'DUPLICATE_ITEM',
+                              )}
                               value={line.name}
                               onChange={(e) =>
                                 handleLineNameChange(idx, e.target.value)
@@ -805,6 +820,7 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                               data-testid={`purchase-line-qty-${idx}`}
                               type="text"
                               inputMode="decimal"
+                              aria-invalid={hasLineError('QUANTITY_INVALID')}
                               value={line.quantity}
                               onChange={(e) => {
                                 const val = e.target.value
@@ -835,6 +851,7 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                               data-testid={`purchase-line-amount-${idx}`}
                               type="text"
                               inputMode="decimal"
+                              aria-invalid={hasLineError('LINE_AMOUNT_INVALID')}
                               value={line.amount}
                               onChange={(e) => {
                                 const val = e.target.value

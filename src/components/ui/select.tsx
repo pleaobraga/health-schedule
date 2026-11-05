@@ -87,6 +87,7 @@ export function Select({
   children,
   'data-testid': testId,
   'aria-label': ariaLabel,
+  'aria-invalid': ariaInvalid,
   ...rest
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -290,6 +291,7 @@ export function Select({
         data-testid={testId ? `${testId}-trigger` : undefined}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-invalid={ariaInvalid}
         onClick={handleToggle}
         onKeyDown={handleTriggerKeyDown}
         className={className ? `${baseTriggerClasses} ${className}` : baseTriggerClasses}

@@ -154,7 +154,7 @@ export function CreateUserModal({
                 htmlFor="user-name"
                 className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300"
               >
-                {t('users:createModal.name')}
+                {t('users:createModal.name')} *
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -179,7 +179,7 @@ export function CreateUserModal({
                 htmlFor="user-email"
                 className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300"
               >
-                {t('users:createModal.email')}
+                {t('users:createModal.email')} *
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -204,7 +204,7 @@ export function CreateUserModal({
                 htmlFor="user-password"
                 className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300"
               >
-                {t('users:createModal.password')}
+                {t('users:createModal.password')} *
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">

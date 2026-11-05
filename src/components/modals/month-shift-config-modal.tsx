@@ -312,7 +312,7 @@ export function MonthShiftConfigModal({
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                    {t('calendar:dailyShiftsConfig.shiftName')}
+                    {t('calendar:dailyShiftsConfig.shiftName')} *
                   </label>
                   <input
                     type="text"
@@ -329,7 +329,7 @@ export function MonthShiftConfigModal({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                      {t('calendar:dailyShiftsConfig.startTime')}
+                      {t('calendar:dailyShiftsConfig.startTime')} *
                     </label>
                     <input
                       type="time"
@@ -341,7 +341,7 @@ export function MonthShiftConfigModal({
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                      {t('calendar:dailyShiftsConfig.duration')}
+                      {t('calendar:dailyShiftsConfig.duration')} *
                     </label>
                     <input
                       type="number"

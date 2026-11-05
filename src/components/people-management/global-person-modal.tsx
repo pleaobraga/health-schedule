@@ -122,6 +122,7 @@ export function GlobalPersonModal({
               <input
                 id="person-name-input"
                 type="text"
+                aria-invalid={Boolean(error)}
                 autoFocus
                 value={name}
                 onChange={(e) => {

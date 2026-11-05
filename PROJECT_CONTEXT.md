@@ -263,7 +263,12 @@ Uses `HashRouter` with `<Routes>` (`#/...`):
    - Floating menus/popovers inside scrollable or `overflow-hidden` containers (such as `CandidatePicker`, `PersonCard` shift balloon, `CalendarGrid` options menu, and `LanguageSelector`) must render via `createPortal(..., document.body)` with `position: fixed` and coordinates calculated via `computePopoverPosition` (`src/utils/popover-position.ts`) so they are never clipped by page or container boundaries.
 4. **Dark Mode Parity**:
    - Every component must include `dark:*` Tailwind classes for backgrounds, borders, and text contrast, plus `print:*` overrides where applicable.
-5. **Calendar Cell Parity**:
+5. **Form Field Rules**:
+   - Required fields end their label with ` *`. Optional fields have no marker, and "(Opcional)" / "(Optional)" never appear in labels, placeholders, or hints.
+   - Select options contain only the name, without explanations in parentheses.
+   - A violated required field turns red through one shared style in `src/index.css`: `:user-invalid` for native `required`, and `aria-invalid` for app validation, set from the same condition as the error message. `DatePicker` takes `invalid`, and `Select` forwards `aria-invalid` to its visible trigger.
+   - `src/components/required-fields.test.tsx` covers these rules.
+6. **Calendar Cell Parity**:
    - `FullScreenCalendarModal` renders its own day cells instead of reusing `DayCell`, so calendar cell changes must be applied to both.
 
 ---

@@ -37,6 +37,7 @@ export interface DatePickerProps {
   onChange: (dateStr: string) => void
   placeholder?: string
   disabled?: boolean
+  invalid?: boolean
   className?: string
   'data-testid'?: string
   'aria-label'?: string
@@ -71,6 +72,7 @@ export function DatePicker({
   onChange,
   placeholder,
   disabled = false,
+  invalid = false,
   className = '',
   'data-testid': testId,
   'aria-label': ariaLabel,
@@ -235,6 +237,7 @@ export function DatePicker({
         data-testid={testId ? `${testId}-trigger` : 'date-picker-trigger'}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
+        aria-invalid={invalid}
         onClick={handleToggle}
         className={
           className ? `${baseTriggerClasses} ${className}` : baseTriggerClasses

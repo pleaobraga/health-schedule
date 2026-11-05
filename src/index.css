@@ -335,4 +335,18 @@
   }
 }
 
-
+/*
+ * Violated required fields turn red. :user-invalid covers native constraints after the user
+ * interacts or submits; aria-invalid covers fields validated by the app, including the visible
+ * triggers of Select and DatePicker.
+ */
+input:user-invalid,
+select:user-invalid,
+textarea:user-invalid,
+input[aria-invalid='true'],
+select[aria-invalid='true'],
+textarea[aria-invalid='true'],
+button[aria-invalid='true'] {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px #ef4444 !important;
+}
