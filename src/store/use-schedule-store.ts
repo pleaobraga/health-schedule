@@ -13,6 +13,10 @@ import {
   isEventInPast,
   getCurrentMonth,
 } from '../utils/date-utils'
+import {
+  resolveExpenseLines,
+  validateExpenseInput,
+} from '../utils/expense-item-utils'
 import { captureMonthSnapshots, getMonthReferencedIds, getMonthRegistry } from '../utils/month-registry'
 import { validateSchedule } from '../utils/validate-schedule'
 
@@ -23,6 +27,8 @@ import type {
   DailyExpense,
   ExpenseInput,
   ExpenseItem,
+  ExpenseLineInput,
+  ExpenseUpdateInput,
   ValidationError,
   NavigationTab,
   Address,
@@ -30,6 +36,7 @@ import type {
   ShiftDefinition,
   ShiftRule,
 } from '../types'
+import type { ExpenseValidationError } from '../utils/expense-item-utils'
 import type { MonthRegistry } from '../utils/month-registry'
 
 
@@ -44,6 +51,10 @@ export interface CloudPushResult {
   code?: 'success' | 'offline' | 'error';
   message: string;
 }
+
+export type ExpenseActionResult =
+  | { ok: true; expense: DailyExpense }
+  | { ok: false; errors: ExpenseValidationError[] }
 
 interface ScheduleStore {
   // Navigation & UI state
@@ -171,8 +182,8 @@ interface ScheduleStore {
   deleteEvent: (eventId: string) => void;
 
   // Expenses management
-  addExpense: (expense: ExpenseInput) => Promise<DailyExpense>;
-  updateExpense: (expenseId: string, updatedData: Partial<Omit<DailyExpense, 'id' | 'createdAt'>>) => Promise<void>;
+  addExpense: (expense: ExpenseInput) => Promise<ExpenseActionResult>;
+  updateExpense: (expenseId: string, updatedData: ExpenseUpdateInput) => Promise<ExpenseActionResult>;
   deleteExpense: (expenseId: string) => Promise<void>;
 
   // Address management
@@ -1194,36 +1205,164 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   },
 
   addExpense: async (expenseData) => {
+    const errors = validateExpenseInput(expenseData, get().expenseItems)
+    if (errors.length > 0) {
+      return { ok: false, errors }
+    }
+
     const now = new Date().toISOString()
+    const createId = () =>
+      `expitem_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    const { lines, items: nextItems } = resolveExpenseLines({
+      lines: expenseData.items ?? [],
+      items: get().expenseItems,
+      now,
+      createId,
+    })
+    const itemsChanged = nextItems.length !== get().expenseItems.length
+    const personName = expenseData.personId
+      ? get().persons.find((p) => p.id === expenseData.personId)?.name
+      : undefined
+
     const id = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
-    const { items: _items, ...rest } = expenseData
     const newExpense: DailyExpense = {
-      ...rest,
       id,
-      items: [],
+      date: expenseData.date,
+      description: expenseData.description.trim(),
+      amount: expenseData.amount,
+      ...(expenseData.personId ? { personId: expenseData.personId } : {}),
+      ...(personName ? { personName } : {}),
+      ...(expenseData.category ? { category: expenseData.category } : {}),
+      items: lines,
       createdAt: now,
       updatedAt: now,
     }
+
+    if (itemsChanged) {
+      StorageService.saveExpenseItems(nextItems)
+    }
     const updated = [...get().expenses, newExpense]
     StorageService.saveExpenses(updated)
-    set({ expenses: updated })
+    set({
+      expenses: updated,
+      ...(itemsChanged ? { expenseItems: nextItems } : {}),
+    })
 
-    const month = expenseData.date.substring(0, 7)
+    if (itemsChanged && CloudSyncService.isSyncEnabled()) {
+      CloudSyncService.saveExpenseItemsToCloud(nextItems).catch((err) => {
+        console.error('Failed to sync expense items to cloud:', err)
+      })
+    }
+
+    const month = newExpense.date.substring(0, 7)
     syncMonthScheduleIfEnabled(get(), month)
-    return newExpense
+    return { ok: true, expense: newExpense }
   },
 
   updateExpense: async (expenseId, updatedData) => {
+    const existing = get().expenses.find((e) => e.id === expenseId)
+    if (!existing) {
+      return { ok: false, errors: [{ code: 'EXPENSE_NOT_FOUND' }] }
+    }
+
+    const nextDate = updatedData.date !== undefined ? updatedData.date : existing.date
+    const nextDescription =
+      updatedData.description !== undefined
+        ? updatedData.description
+        : existing.description
+    const nextAmount =
+      updatedData.amount !== undefined ? updatedData.amount : existing.amount
+    const hasPersonIdKey = 'personId' in updatedData
+    const nextPersonId = hasPersonIdKey ? updatedData.personId : existing.personId
+    const hasCategoryKey = 'category' in updatedData
+    const nextCategory = hasCategoryKey ? updatedData.category : existing.category
+    const nextLinesInput: ExpenseLineInput[] =
+      updatedData.items !== undefined
+        ? updatedData.items
+        : existing.items.map((line) => ({
+            id: line.id,
+            itemId: line.itemId,
+            quantity: line.quantity,
+            amount: line.amount,
+          }))
+
+    const combinedInput: ExpenseInput = {
+      date: nextDate,
+      description: nextDescription,
+      amount: nextAmount,
+      ...(nextPersonId ? { personId: nextPersonId } : {}),
+      ...(nextCategory ? { category: nextCategory } : {}),
+      items: nextLinesInput,
+    }
+
+    const errors = validateExpenseInput(combinedInput, get().expenseItems)
+    if (errors.length > 0) {
+      return { ok: false, errors }
+    }
+
     const now = new Date().toISOString()
+    const createId = () =>
+      `expitem_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    const { lines, items: nextItems } = resolveExpenseLines({
+      lines: nextLinesInput,
+      items: get().expenseItems,
+      savedLines: existing.items,
+      now,
+      createId,
+    })
+    const itemsChanged = nextItems.length !== get().expenseItems.length
+
+    let personName: string | undefined
+    if (nextPersonId) {
+      if (nextPersonId === existing.personId) {
+        personName =
+          existing.personName ??
+          get().persons.find((p) => p.id === nextPersonId)?.name
+      } else {
+        personName = get().persons.find((p) => p.id === nextPersonId)?.name
+      }
+    }
+
+    const updatedExpense: DailyExpense = {
+      id: existing.id,
+      date: nextDate,
+      description: nextDescription.trim(),
+      amount: nextAmount,
+      ...(nextPersonId ? { personId: nextPersonId } : {}),
+      ...(personName ? { personName } : {}),
+      ...(nextCategory ? { category: nextCategory } : {}),
+      items: lines,
+      createdAt: existing.createdAt,
+      updatedAt: now,
+    }
+
+    if (itemsChanged) {
+      StorageService.saveExpenseItems(nextItems)
+    }
     const updated = get().expenses.map((e) =>
-      e.id === expenseId ? { ...e, ...updatedData, updatedAt: now } : e
+      e.id === expenseId ? updatedExpense : e,
     )
     StorageService.saveExpenses(updated)
-    set({ expenses: updated })
+    set({
+      expenses: updated,
+      ...(itemsChanged ? { expenseItems: nextItems } : {}),
+    })
 
-    const targetExpense = updated.find((e) => e.id === expenseId)
-    const month = targetExpense ? targetExpense.date.substring(0, 7) : get().currentMonth
-    syncMonthScheduleIfEnabled(get(), month)
+    if (itemsChanged && CloudSyncService.isSyncEnabled()) {
+      CloudSyncService.saveExpenseItemsToCloud(nextItems).catch((err) => {
+        console.error('Failed to sync expense items to cloud:', err)
+      })
+    }
+
+    const monthsToSync = new Set([
+      existing.date.substring(0, 7),
+      updatedExpense.date.substring(0, 7),
+    ])
+    monthsToSync.forEach((month) => {
+      syncMonthScheduleIfEnabled(get(), month)
+    })
+
+    return { ok: true, expense: updatedExpense }
   },
 
   deleteExpense: async (expenseId) => {

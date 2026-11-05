@@ -744,13 +744,17 @@ describe('useScheduleStore', () => {
     useScheduleStore.setState({ expenses: [] })
 
     // 1. Add expense
-    const created = await useScheduleStore.getState().addExpense({
+    const createdRes = await useScheduleStore.getState().addExpense({
       date: '2026-10-15',
       description: 'Medicamentos Farmácia',
       amount: 120.5,
       personId: 'p1',
       category: 'MEDICATION',
     })
+
+    expect(createdRes.ok).toBe(true)
+    if (!createdRes.ok) return
+    const created = createdRes.expense
 
     expect(created.id).toBeDefined()
     expect(created.description).toBe('Medicamentos Farmácia')
@@ -778,13 +782,15 @@ describe('useScheduleStore', () => {
   })
 
   it('saves an expense without lines using an empty items list', async () => {
-    const created = await useScheduleStore.getState().addExpense({
+    const result = await useScheduleStore.getState().addExpense({
       date: '2026-10-15',
       description: 'Farmácia',
       amount: 32.5,
     })
 
-    expect(created.items).toEqual([])
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.expense.items).toEqual([])
     expect(useScheduleStore.getState().expenses[0].items).toEqual([])
   })
 })
