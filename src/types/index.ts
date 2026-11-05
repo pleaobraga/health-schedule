@@ -56,6 +56,18 @@ export interface DailyExpense {
   updatedAt: string
 }
 
+/**
+ * Registries as they were for a past month, saved before a registry change could alter them.
+ */
+export interface MonthRegistrySnapshot {
+  capturedAt: string
+  persons: Person[]
+  shiftDefinitions: ShiftDefinition[]
+  shiftRules: ShiftRule[]
+  activeShiftIds: string[]
+  activeRuleIds: string[]
+}
+
 export type ValidationSeverity = 'error' | 'warning' | 'info';
 
 export interface ValidationError {
@@ -94,6 +106,7 @@ export interface AppDataSnapshot {
   monthActiveRules?: Record<string, string[]>;
   monthDailyShifts?: Record<string, Record<string, number[]>>;
   dayShiftAssignments?: Record<string, Record<string, string>>;
+  monthSnapshots?: Record<string, MonthRegistrySnapshot>;
   theme?: string;
   [key: string]: unknown; // Extensible for global settings, themes, or future properties
 }
@@ -119,6 +132,7 @@ export interface GuestDataset {
   monthActiveRules?: Record<string, string[]>;
   monthDailyShifts?: Record<string, Record<string, number[]>>;
   dayShiftAssignments?: Record<string, Record<string, string>>;
+  monthSnapshots?: Record<string, MonthRegistrySnapshot>;
 }
 
 export * from './scheduleConfig'

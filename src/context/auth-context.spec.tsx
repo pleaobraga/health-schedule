@@ -35,10 +35,12 @@ vi.mock('firebase/firestore', async (importOriginal) => {
   return {
     ...actual,
     doc: vi.fn().mockReturnValue({}),
+    collection: vi.fn().mockReturnValue({}),
     getDoc: vi.fn().mockResolvedValue({
       exists: () => true,
       data: () => ({ role: 'admin' }),
     }),
+    getDocsFromServer: vi.fn().mockResolvedValue({ docs: [] }),
     setDoc: vi.fn().mockResolvedValue(undefined),
   }
 })

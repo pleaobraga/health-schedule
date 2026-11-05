@@ -35,6 +35,7 @@ export function MonthShiftConfigModal({
   ])
   const {
     shiftDefinitions,
+    getRegistryForMonth,
     monthDailyShifts,
     setMonthDailyShifts,
     addShiftDefinition,
@@ -98,13 +99,20 @@ export function MonthShiftConfigModal({
 
   if (!isOpen || typeof document === 'undefined') return null
 
+  // Shifts as this month recorded them, plus the current ones that can still be added to it
+  const monthShifts = getRegistryForMonth(currentMonth).shiftDefinitions
+  const knownShifts = [
+    ...monthShifts,
+    ...shiftDefinitions.filter((s) => !monthShifts.some((m) => m.id === s.id)),
+  ]
+
   // All shifts currently available in this month's config
   const activeShiftIdsInModal = Object.keys(localShiftDays)
   const shiftsInModal: ShiftDefinition[] = activeShiftIdsInModal
-    .map((sId) => shiftDefinitions.find((s) => s.id === sId))
+    .map((sId) => knownShifts.find((s) => s.id === sId))
     .filter((s): s is ShiftDefinition => Boolean(s))
 
-  const currentSelectedShift = shiftDefinitions.find(
+  const currentSelectedShift = knownShifts.find(
     (s) => s.id === selectedShiftId,
   )
   const currentSelectedDays = localShiftDays[selectedShiftId] || []

@@ -8,6 +8,7 @@ import type {
   DailyExpense,
   GuestProfile,
   GuestDataset,
+  MonthRegistrySnapshot,
   Address,
   ShiftDefinition,
   ShiftRule,
@@ -27,6 +28,7 @@ const STORAGE_KEYS = {
   MONTH_ACTIVE_RULES: 'scale_manager_month_rules_v1',
   MONTH_DAILY_SHIFTS: 'scale_manager_month_daily_shifts_v1',
   DAY_SHIFT_ASSIGNMENTS: 'scale_manager_day_shift_assignments_v1',
+  MONTH_SNAPSHOTS: 'scale_manager_month_snapshots_v1',
   GUEST_PROFILES: 'scale_manager_guest_profiles_v1',
   ACTIVE_GUEST_ID: 'scale_manager_active_guest_id_v1',
   GUEST_DATA_PREFIX: 'scale_manager_guest_data_v1_',
@@ -341,6 +343,31 @@ export class StorageService {
   }
 
   /**
+   * Load past-month registry snapshots ('YYYY-MM' -> snapshot)
+   */
+  static getMonthSnapshots(): Record<string, MonthRegistrySnapshot> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.MONTH_SNAPSHOTS)
+      if (!data) return {}
+      return JSON.parse(data)
+    } catch (err) {
+      console.error('Failed to load month snapshots from localStorage:', err)
+      return {}
+    }
+  }
+
+  static saveMonthSnapshots(snapshots: Record<string, MonthRegistrySnapshot>): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.MONTH_SNAPSHOTS, JSON.stringify(snapshots))
+      if (!isRestoringDataset) {
+        StorageService.snapshotActiveSession()
+      }
+    } catch (err) {
+      console.error('Failed to save month snapshots to localStorage:', err)
+    }
+  }
+
+  /**
    * Load month daily shift mappings ('YYYY-MM' -> { [shiftId]: number[] })
    */
   static getMonthDailyShiftsMap(): Record<string, Record<string, number[]>> {
@@ -446,6 +473,7 @@ export class StorageService {
     localStorage.removeItem(STORAGE_KEYS.MONTH_ACTIVE_RULES)
     localStorage.removeItem(STORAGE_KEYS.MONTH_DAILY_SHIFTS)
     localStorage.removeItem(STORAGE_KEYS.DAY_SHIFT_ASSIGNMENTS)
+    localStorage.removeItem(STORAGE_KEYS.MONTH_SNAPSHOTS)
   }
 
   /**
@@ -555,6 +583,7 @@ export class StorageService {
       monthActiveRules: StorageService.getMonthActiveRulesMap(),
       monthDailyShifts: StorageService.getMonthDailyShiftsMap(),
       dayShiftAssignments: StorageService.getDayShiftAssignments(),
+      monthSnapshots: StorageService.getMonthSnapshots(),
     }
   }
 
@@ -568,6 +597,7 @@ export class StorageService {
       StorageService.saveExpenses(dataset.expenses || [])
       StorageService.saveMonthParticipants(dataset.monthParticipants || {})
       StorageService.saveAddresses(dataset.addresses || [])
+      StorageService.saveMonthSnapshots(dataset.monthSnapshots || {})
       if (dataset.shiftDefinitions) {
         StorageService.saveShiftDefinitions(dataset.shiftDefinitions)
       }

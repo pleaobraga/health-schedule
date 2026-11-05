@@ -42,6 +42,8 @@ The app runs in guest mode without Firebase credentials. `pre-commit` runs lint-
 
 **Cloud documents.** `schedules/{YYYY-MM}` (schema v2) holds only that month. Older v1 docs hold a full dataset copy, so `mergeMonthDocs` uses the newest one as a base and applies v2 slices on top. Global data lives in `schedules/_master_{people,addresses,shifts,rules}`. A pull fetches every doc and replaces the local schedule, including any draft. `firestore.rules` lets any authenticated user read and write `schedules`; the admin restriction is enforced only in the client.
 
+**History rule.** A registry change (people, shifts, rules, expense items, addresses) must never change what a past month shows; a past month is any month before `getCurrentMonth()`. Directly editing a past month stays allowed. Before any change to people, shifts, or rules, the store's `freezePastMonths` saves them per past month in `monthSnapshots`. Screens showing a month must read `getRegistryForMonth(month)`, not `persons`, `shiftDefinitions`, or `shiftRules`, and any new registry-changing action must call `freezePastMonths` first. Registry screens and pick lists use the live data.
+
 **Rendering.**
 
 - `DayEventsModal`, `FullScreenCalendarModal`, and `UnsavedChangesModal` are mounted once in `RootLayout` and driven by store state.

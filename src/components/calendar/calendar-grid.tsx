@@ -61,7 +61,6 @@ export function CalendarGrid() {
     toggleEditMode,
     highlightedPersonId,
     highlightedScheduledPersonId,
-    persons,
     monthParticipants,
     availabilities,
     assignments,
@@ -82,13 +81,15 @@ export function CalendarGrid() {
     hasUnsavedChanges,
     pullCloudData,
     validationErrors,
-    shiftRules,
-    shiftDefinitions,
+    getRegistryForMonth,
     getActiveRuleIds,
     toggleMonthRule,
     validateCurrentSchedule,
     getDayActiveShifts,
   } = useScheduleStore()
+  const { persons, shiftRules, shiftDefinitions } = getRegistryForMonth(
+    currentMonth || getCurrentMonth(),
+  )
 
   useEffect(() => {
     if (!currentMonth) {

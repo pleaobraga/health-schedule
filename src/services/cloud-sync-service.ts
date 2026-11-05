@@ -15,6 +15,7 @@ import type {
   MonthlyAvailability,
   CalendarEvent,
   DailyExpense,
+  MonthRegistrySnapshot,
   Person,
   Address,
   ShiftDefinition,
@@ -43,6 +44,7 @@ export interface MonthScheduleData {
   monthDailyShifts?: Record<string, Record<string, number[]>>;
   monthActiveShifts?: Record<string, string[]>;
   monthActiveRules?: Record<string, string[]>;
+  monthSnapshots?: Record<string, MonthRegistrySnapshot>;
 }
 
 export interface MonthScheduleDoc extends MonthScheduleData {
@@ -94,6 +96,7 @@ export function getMonthsInScheduleData(data: MonthScheduleData): string[] {
   Object.keys(data.monthDailyShifts ?? {}).forEach(addMonth)
   Object.keys(data.monthActiveShifts ?? {}).forEach(addMonth)
   Object.keys(data.monthActiveRules ?? {}).forEach(addMonth)
+  Object.keys(data.monthSnapshots ?? {}).forEach(addMonth)
   Object.keys(data.assignments ?? {}).forEach((date) => addMonth(date.slice(0, 7)))
   Object.keys(data.dayShiftAssignments ?? {}).forEach((date) => addMonth(date.slice(0, 7)))
   data.availabilities?.forEach((a) => addMonth(a.month))
@@ -117,6 +120,7 @@ export function sliceMonthScheduleData(
     monthDailyShifts: pickMonthKey(data.monthDailyShifts, month),
     monthActiveShifts: pickMonthKey(data.monthActiveShifts, month),
     monthActiveRules: pickMonthKey(data.monthActiveRules, month),
+    monthSnapshots: pickMonthKey(data.monthSnapshots, month),
     availabilities: (data.availabilities ?? []).filter((a) => a.month === month),
     events: (data.events ?? []).filter((e) => isDateInMonth(e.date, month)),
     expenses: (data.expenses ?? []).filter((exp) => isDateInMonth(exp.date, month)),
@@ -153,6 +157,10 @@ export function replaceMonthScheduleData(
     monthActiveRules: {
       ...omitMonthKey(base.monthActiveRules, month),
       ...monthSlice.monthActiveRules,
+    },
+    monthSnapshots: {
+      ...omitMonthKey(base.monthSnapshots, month),
+      ...monthSlice.monthSnapshots,
     },
     availabilities: [
       ...(base.availabilities ?? []).filter((a) => a.month !== month),
@@ -200,6 +208,7 @@ export function mergeMonthDocs(monthDocs: MonthScheduleDoc[]): MonthScheduleData
     monthDailyShifts: { ...newestLegacy?.monthDailyShifts },
     monthActiveShifts: { ...newestLegacy?.monthActiveShifts },
     monthActiveRules: { ...newestLegacy?.monthActiveRules },
+    monthSnapshots: { ...newestLegacy?.monthSnapshots },
   }
 
   sliceDocs.forEach((slice) => {
@@ -221,6 +230,7 @@ const toMonthScheduleDoc = (month: string, data: DocumentData): MonthScheduleDoc
   monthDailyShifts: data.monthDailyShifts,
   monthActiveShifts: data.monthActiveShifts,
   monthActiveRules: data.monthActiveRules,
+  monthSnapshots: data.monthSnapshots,
   updatedAt: data.updatedAt,
 })
 

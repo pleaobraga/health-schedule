@@ -7,7 +7,7 @@ import {
   Printer,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -30,16 +30,16 @@ export function FullScreenCalendarModal() {
     currentMonth,
     goToPreviousMonth,
     goToNextMonth,
-    persons,
     assignments,
     dayShiftAssignments = {},
-    shiftDefinitions = [],
-    monthActiveShifts = {},
     events,
     expenses,
     getDayActiveShifts,
+    getActiveShiftIds,
+    getRegistryForMonth,
     setSelectedDateForEvents,
   } = useScheduleStore()
+  const { persons, shiftDefinitions } = getRegistryForMonth(currentMonth)
 
   const weekdays = [
     {
@@ -82,23 +82,12 @@ export function FullScreenCalendarModal() {
   const daysGrid = getMonthCalendarGrid(currentMonth)
   const personMap = new Map(persons.map((p) => [p.id, p]))
 
-  const activeShiftIds = useMemo(() => {
-    return (
-      monthActiveShifts[currentMonth] ??
-      shiftDefinitions.filter((s) => s.enabledByDefault).map((s) => s.id)
-    )
-  }, [monthActiveShifts, currentMonth, shiftDefinitions])
+  const activeShiftIds = getActiveShiftIds(currentMonth)
 
-  const activeShifts = useMemo(() => {
-    const map = new Map(shiftDefinitions.map((s) => [s.id, s]))
-    return activeShiftIds
-      .map((id) => map.get(id))
-      .filter((s): s is ShiftDefinition => Boolean(s))
-  }, [shiftDefinitions, activeShiftIds])
-
-  const shiftMap = useMemo(() => {
-    return new Map(shiftDefinitions.map((s) => [s.id, s]))
-  }, [shiftDefinitions])
+  const shiftMap = new Map(shiftDefinitions.map((s) => [s.id, s]))
+  const activeShifts = activeShiftIds
+    .map((id) => shiftMap.get(id))
+    .filter((s): s is ShiftDefinition => Boolean(s))
 
   // Events of the current month sorted chronologically by date and time
   const monthEvents = events

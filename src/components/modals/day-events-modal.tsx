@@ -44,7 +44,8 @@ export function DayEventsModal() {
     updateExpense,
     deleteExpense,
     assignments,
-    persons,
+    persons: currentPersons,
+    getRegistryForMonth,
     monthParticipants,
     currentMonth,
   } = useScheduleStore()
@@ -113,10 +114,17 @@ export function DayEventsModal() {
 
   const dayEvents = events.filter((e) => e.date === selectedDateForEvents)
   const dayExpenses = expenses.filter((e) => e.date === selectedDateForEvents)
+
+  // People as this month recorded them, plus the current ones that can still be linked to it
+  const dateMonth = selectedDateForEvents.substring(0, 7)
+  const monthRegistryPersons = getRegistryForMonth(dateMonth).persons
+  const persons = [
+    ...monthRegistryPersons,
+    ...currentPersons.filter((p) => !monthRegistryPersons.some((m) => m.id === p.id)),
+  ]
   const personMap = new Map<string, Person>(persons.map((p) => [p.id, p]))
 
   // Resolve caregivers registered in the month
-  const dateMonth = selectedDateForEvents.substring(0, 7)
   const currentMonthParticipantIds =
     monthParticipants[dateMonth] || monthParticipants[currentMonth] || []
   const monthPersons =

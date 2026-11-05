@@ -43,11 +43,10 @@ export function CandidatePicker({
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const monthActiveShifts = useScheduleStore((state) => state.monthActiveShifts[month])
-  const shiftDefinitions = useScheduleStore((state) => state.shiftDefinitions)
-  const hasActiveShifts =
-    Boolean(shiftId) ||
-    (monthActiveShifts ?? shiftDefinitions.filter((s) => s.enabledByDefault)).length > 0
+  const hasActiveMonthShifts = useScheduleStore(
+    (state) => state.getActiveShiftIds(month).length > 0,
+  )
+  const hasActiveShifts = Boolean(shiftId) || hasActiveMonthShifts
 
   const unassignedPersons = allPersons.filter(
     (p) => !assignedPersonIds.includes(p.id)

@@ -44,6 +44,31 @@ describe('CalendarGrid', () => {
     })
   })
 
+  it('shows a past month with the person name it recorded', () => {
+    useScheduleStore.setState({
+      currentMonth: '2020-01',
+      persons: [{ id: 'p1', name: 'Nome novo', color: '#222222', active: true }],
+      monthParticipants: { '2020-01': ['p1'] },
+      assignments: { '2020-01-15': ['p1'] },
+      dayShiftAssignments: {},
+      monthSnapshots: {
+        '2020-01': {
+          capturedAt: '2026-11-05T10:00:00.000Z',
+          persons: [{ id: 'p1', name: 'Nome antigo', color: '#111111' }],
+          shiftDefinitions: [],
+          shiftRules: [],
+          activeShiftIds: [],
+          activeRuleIds: [],
+        },
+      },
+    })
+
+    render(<CalendarGrid />)
+
+    expect(screen.getAllByText('Nome antigo').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Nome novo')).not.toBeInTheDocument()
+  })
+
   it('renders the month title and the month navigation', () => {
     render(
       <AuthProvider value={mockAdminAuth}>

@@ -222,6 +222,37 @@ describe('MonthPaymentsModal', () => {
     expect(screen.getByText('15/10/2026')).toBeInTheDocument()
   })
 
+  it('shows a past month with the person data it recorded', () => {
+    useScheduleStore.setState({
+      persons: [{ id: 'p1', name: 'Nome novo', color: '#222222' }],
+      dayShiftAssignments: { '2020-01-01': { shift_d12: 'p1' } },
+      assignments: {},
+      availabilities: [],
+      expenses: [],
+      monthSnapshots: {
+        '2020-01': {
+          capturedAt: '2026-11-05T10:00:00.000Z',
+          persons: [{ id: 'p1', name: 'Nome antigo', color: '#111111' }],
+          shiftDefinitions: [],
+          shiftRules: [],
+          activeShiftIds: [],
+          activeRuleIds: [],
+        },
+      },
+    })
+
+    render(
+      <MonthPaymentsModal
+        isOpen={true}
+        onClose={vi.fn()}
+        currentMonth="2020-01"
+      />
+    )
+
+    expect(screen.getByText('Nome antigo')).toBeInTheDocument()
+    expect(screen.queryByText('Nome novo')).not.toBeInTheDocument()
+  })
+
   it('names a reimbursement of a removed professional in the active language and keeps it in the total', async () => {
     await i18n.changeLanguage('en-US')
 

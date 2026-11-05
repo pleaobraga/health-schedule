@@ -125,6 +125,7 @@ src/
     ├── date-utils.ts          # Month navigation, calendar 42-day grid generation, past-event checks
     ├── export-to-excel.ts     # Multi-sheet XLSX workbook generator & localized filename builder
     ├── list-order.ts          # Sorting and reordering by a saved id order
+    ├── month-registry.ts      # Month snapshot capture and per-month registry lookup
     ├── popover-position.ts    # Viewport-clamped fixed popover positioning utility (for React portals)
     ├── shift-rate-utils.ts    # Shift rate lookup, monthly payment calculations & expense summaries
     └── validate-schedule.ts   # Bridge between store state and rule-engine validation
@@ -163,6 +164,8 @@ All application state lives in `src/store/use-schedule-store.ts`:
   - Managed by `addExpense`, `updateExpense`, and `deleteExpense`. Like events, expenses persist immediately, independent of the edit-mode draft.
 - `addresses: Address[]`
   - `{ id, name, street, number, complement?, neighborhood?, city? }`
+- `monthSnapshots: Record<string, MonthRegistrySnapshot>`
+  - Maps `'YYYY-MM'` -> `{ capturedAt, persons, shiftDefinitions, shiftRules, activeShiftIds, activeRuleIds }` for past months.
 
 ### UI & Highlight State
 - `currentMonth: string` (`'YYYY-MM'`, defaults to `getCurrentMonth()`)
@@ -181,7 +184,7 @@ All application state lives in `src/store/use-schedule-store.ts`:
 2. **Address Update/Delete Cascade**:
    - Updating or deleting an `Address` cascades to **future** `CalendarEvent` records (`!isEventInPast(ev.date, ev.time)`), while **past** events preserve their historical address text untouched.
 3. **Staff Deletion vs. Deactivation**:
-   - `deletePerson(id)` checks `canDeletePerson(id)`. If the person has any assignments in `assignments`, deletion is blocked and the UI prompts to deactivate (`deactivatePerson(id)`) instead. The check looks only at `assignments`, so expenses do not block deletion. A deleted person's expenses are intentionally kept to preserve financial history. Their `personId` no longer resolves, so the UI shows `calendar:removedProfessional` in place of the name, and the amounts stay in the monthly totals.
+   - `deletePerson(id)` checks `canDeletePerson(id)`. If the person has any assignments in `assignments`, deletion is blocked and the UI prompts to deactivate (`deactivatePerson(id)`) instead. The check looks only at `assignments`, so expenses do not block deletion. A deleted person's expenses are intentionally kept to preserve financial history. In the current month their `personId` no longer resolves, so the UI shows `calendar:removedProfessional` in place of the name; past months with a snapshot keep the name. Amounts stay in the monthly totals. Deletion removes availabilities, participation, and assignments only from the current month on.
 4. **Clear All Local Data**:
    - `clearAllLocalData()` in `useScheduleStore` and `StorageService.clearAllLocalData()` wipes **all** local data—including `persons`, `monthParticipants`, `availabilities`, `assignments`, `dayShiftAssignments`, `events`, `expenses`, `addresses`, `shiftDefinitions` (set to `[]`), `shiftRules` (set to `[]`), `monthActiveShifts`, `monthActiveRules`, and `monthDailyShifts`—as well as the active user/guest snapshot.
 5. **Export & Print Filenames**:
@@ -192,6 +195,12 @@ All application state lives in `src/store/use-schedule-store.ts`:
 
 ---
 
+6. **Past Months Are Immutable to Registry Changes**:
+   - A change to people, shifts, or rules never alters what a past month (any month before `getCurrentMonth()`) shows. Directly editing a past month stays allowed.
+   - Before each such change, `freezePastMonths` creates a snapshot for every past month with data and no snapshot, and adds records that existing snapshots lack. Stored records are never overwritten.
+   - `getRegistryForMonth(month)` returns the snapshot for a past month, plus live records the month references that the snapshot lacks, and the live registries otherwise. `getActiveShiftIds` and `getActiveRuleIds` read an explicit month list first, then the snapshot, then `enabledByDefault`.
+   - Protection starts at the first registry change made after this mechanism shipped; earlier changes cannot be undone.
+
 ## 6. Cloud Synchronization Architecture (`CloudSyncService`)
 
 Firestore documents are stored under the `schedules` collection:
@@ -199,7 +208,7 @@ Firestore documents are stored under the `schedules` collection:
 - `schedules/_master_addresses` -> `{ addresses: Address[], updatedAt }`
 - `schedules/_master_shifts` -> `{ shifts: ShiftDefinition[], updatedAt }`
 - `schedules/_master_rules` -> `{ rules: ShiftRule[], updatedAt }`
-- `schedules/{YYYY-MM}` -> `{ month, schemaVersion, assignments, monthParticipants, availabilities, events, expenses, dayShiftAssignments, monthDailyShifts, monthActiveShifts, monthActiveRules, updatedAt }`
+- `schedules/{YYYY-MM}` -> `{ month, schemaVersion, assignments, monthParticipants, availabilities, events, expenses, dayShiftAssignments, monthDailyShifts, monthActiveShifts, monthActiveRules, monthSnapshots, updatedAt }`
 
 Each schema v2 month document holds only that month's data. Older v1 documents hold a full copy of the dataset, so `mergeMonthDocs` uses the newest v1 document as a base and replaces each month with its v2 slice.
 

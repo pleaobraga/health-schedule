@@ -354,3 +354,62 @@ describe('BackupService', () => {
     })
   })
 })
+
+describe('BackupService month snapshots', () => {
+  const snapshot = {
+    capturedAt: '2026-11-05T10:00:00.000Z',
+    persons: [{ id: 'p1', name: 'Nome antigo', color: '#111111' }],
+    shiftDefinitions: [],
+    shiftRules: [],
+    activeShiftIds: [],
+    activeRuleIds: [],
+  }
+
+  const baseBackup: AppDataSnapshot = {
+    exportedAt: '2026-11-05T10:00:00.000Z',
+    people: [],
+    monthParticipants: {},
+    availabilities: [],
+    assignments: {},
+    events: [],
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    useScheduleStore.setState({ monthSnapshots: {} })
+  })
+
+  it('keeps snapshots through validation', async () => {
+    const file = new File(
+      [JSON.stringify({ ...baseBackup, monthSnapshots: { '2026-10': snapshot } })],
+      'backup.json',
+      { type: 'application/json' },
+    )
+
+    const parsed = await validateAndParseBackup(file)
+
+    expect(parsed.monthSnapshots).toEqual({ '2026-10': snapshot })
+  })
+
+  it('restores snapshots to storage and to the store', async () => {
+    await restoreAppData({ ...baseBackup, monthSnapshots: { '2026-10': snapshot } })
+
+    expect(StorageService.getMonthSnapshots()).toEqual({ '2026-10': snapshot })
+    expect(useScheduleStore.getState().monthSnapshots).toEqual({ '2026-10': snapshot })
+  })
+
+  it('keeps the local snapshot of a month when merging and adds the missing ones', async () => {
+    const local = { ...snapshot, capturedAt: '2026-01-01T00:00:00.000Z' }
+    StorageService.saveMonthSnapshots({ '2026-10': local })
+
+    await mergeAppData({
+      ...baseBackup,
+      monthSnapshots: { '2026-09': snapshot, '2026-10': snapshot },
+    })
+
+    expect(useScheduleStore.getState().monthSnapshots).toEqual({
+      '2026-09': snapshot,
+      '2026-10': local,
+    })
+  })
+})

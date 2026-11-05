@@ -54,8 +54,8 @@ export function Sidebar() {
     setPersonAvailability,
     insertAllPersonDaysToMonth,
     setCurrentView,
-    shiftDefinitions,
     shiftRules,
+    getRegistryForMonth,
     monthDailyShifts,
     getActiveShiftIds,
     getActiveRuleIds,
@@ -92,18 +92,19 @@ export function Sidebar() {
   }
 
   // Active items for current month
+  const monthRegistry = getRegistryForMonth(currentMonth)
   const currentParticipantIds = monthParticipants[currentMonth] || []
   const { order: personOrder, handleReorder } = useListOrder('month-people')
   const monthPersons = sortByListOrder(
-    persons.filter((p) => currentParticipantIds.includes(p.id)),
+    monthRegistry.persons.filter((p) => currentParticipantIds.includes(p.id)),
     personOrder,
   )
   const activeShiftIds = getActiveShiftIds(currentMonth)
-  const activeShifts = shiftDefinitions.filter((s) =>
+  const activeShifts = monthRegistry.shiftDefinitions.filter((s) =>
     activeShiftIds.includes(s.id),
   )
   const activeRuleIds = getActiveRuleIds(currentMonth)
-  const activeRules = shiftRules.filter((r) => activeRuleIds.includes(r.id))
+  const activeRules = monthRegistry.shiftRules.filter((r) => activeRuleIds.includes(r.id))
 
   // Configured daily shifts for current month
   const currentMonthDailyConfig = monthDailyShifts[currentMonth] || {}
@@ -317,7 +318,7 @@ export function Sidebar() {
                 ) : (
                   <>
                     {configuredDailyShiftEntries.map(([shiftId, days]) => {
-                      const shift = shiftDefinitions.find(
+                      const shift = monthRegistry.shiftDefinitions.find(
                         (s) => s.id === shiftId,
                       )
                       if (!shift) return null

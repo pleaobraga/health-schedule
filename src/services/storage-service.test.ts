@@ -215,3 +215,23 @@ describe('StorageService - local-first persistence', () => {
     expect(StorageService.getListOrder('rules')).toEqual([])
   })
 })
+
+describe('StorageService month snapshots', () => {
+  it('keeps snapshots in the dataset of a user or guest', () => {
+    const snapshot = {
+      capturedAt: '2026-11-05T10:00:00.000Z',
+      persons: [{ id: 'p1', name: 'Nome antigo', color: '#111111' }],
+      shiftDefinitions: [],
+      shiftRules: [],
+      activeShiftIds: [],
+      activeRuleIds: [],
+    }
+    StorageService.saveMonthSnapshots({ '2026-10': snapshot })
+    const dataset = StorageService.getCurrentDataset()
+
+    StorageService.saveMonthSnapshots({})
+    StorageService.restoreDataset(dataset)
+
+    expect(StorageService.getMonthSnapshots()).toEqual({ '2026-10': snapshot })
+  })
+})

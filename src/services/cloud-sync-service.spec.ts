@@ -122,6 +122,36 @@ describe('CloudSyncService', () => {
     })
   })
 
+  describe('month snapshots in month docs', () => {
+    const snapshot = {
+      capturedAt: '2026-11-05T10:00:00.000Z',
+      persons: [{ id: 'p1', name: 'Nome antigo', color: '#111111' }],
+      shiftDefinitions: [],
+      shiftRules: [],
+      activeShiftIds: [],
+      activeRuleIds: [],
+    }
+
+    it('keeps each snapshot only in the doc of its own month', () => {
+      const data = { monthSnapshots: { '2026-09': snapshot, '2026-10': snapshot } }
+
+      expect(sliceMonthScheduleData(data, '2026-10').monthSnapshots).toEqual({ '2026-10': snapshot })
+      expect(getMonthsInScheduleData(data)).toEqual(['2026-09', '2026-10'])
+    })
+
+    it('restores snapshots when month docs are merged', () => {
+      const merged = mergeMonthDocs([
+        {
+          month: '2026-10',
+          schemaVersion: MONTH_DOC_SCHEMA_VERSION,
+          monthSnapshots: { '2026-10': snapshot },
+        },
+      ])
+
+      expect(merged?.monthSnapshots).toEqual({ '2026-10': snapshot })
+    })
+  })
+
   describe('month doc helpers', () => {
     it('lists every month referenced by the dataset', () => {
       expect(getMonthsInScheduleData(fullDataset)).toEqual(['2026-10', '2026-11'])
@@ -135,6 +165,7 @@ describe('CloudSyncService', () => {
         monthDailyShifts: { '2026-11': { shift_d12: [3] } },
         monthActiveShifts: {},
         monthActiveRules: {},
+        monthSnapshots: {},
         availabilities: [{ personId: 'p2', month: '2026-11', availableDays: [3] }],
         events: [{ id: 'e2', date: '2026-11-20', title: 'Training' }],
         expenses: [],

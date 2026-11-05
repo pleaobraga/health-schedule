@@ -71,13 +71,13 @@ export function MonthPaymentsModal({
 }: MonthPaymentsModalProps) {
   const { t, i18n } = useTranslation(['calendar', 'common'])
   const {
-    persons,
     availabilities,
     dayShiftAssignments,
     assignments,
-    shiftDefinitions,
+    getRegistryForMonth,
     expenses,
   } = useScheduleStore()
+  const { persons, shiftDefinitions } = getRegistryForMonth(currentMonth)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedPersonIds, setExpandedPersonIds] = useState<string[]>([])

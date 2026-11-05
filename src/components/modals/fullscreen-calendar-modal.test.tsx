@@ -17,6 +17,30 @@ describe('FullScreenCalendarModal', () => {
     })
   })
 
+  it('shows a past month with the person name it recorded', () => {
+    useScheduleStore.setState({
+      isFullScreenModalOpen: true,
+      currentMonth: '2020-01',
+      persons: [{ id: 'p1', name: 'Nome novo', color: '#222222' }],
+      assignments: { '2020-01-15': ['p1'] },
+      monthSnapshots: {
+        '2020-01': {
+          capturedAt: '2026-11-05T10:00:00.000Z',
+          persons: [{ id: 'p1', name: 'Nome antigo', color: '#111111' }],
+          shiftDefinitions: [],
+          shiftRules: [],
+          activeShiftIds: [],
+          activeRuleIds: [],
+        },
+      },
+    })
+
+    render(<FullScreenCalendarModal />)
+
+    expect(screen.getAllByText('Nome antigo').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Nome novo')).not.toBeInTheDocument()
+  })
+
   it('does not render when isFullScreenModalOpen is false', () => {
     render(<FullScreenCalendarModal />)
     expect(screen.queryByText(/outubro 2026/i)).not.toBeInTheDocument()

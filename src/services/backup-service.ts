@@ -86,6 +86,7 @@ export async function exportAppData(): Promise<void> {
   const monthActiveRules = StorageService.getMonthActiveRulesMap()
   const monthDailyShifts = StorageService.getMonthDailyShiftsMap()
   const dayShiftAssignments = StorageService.getDayShiftAssignments()
+  const monthSnapshots = StorageService.getMonthSnapshots()
   const theme = localStorage.getItem('theme') || 'light'
 
   const snapshot: AppDataSnapshot = {
@@ -103,6 +104,7 @@ export async function exportAppData(): Promise<void> {
     monthActiveRules,
     monthDailyShifts,
     dayShiftAssignments,
+    monthSnapshots,
     theme,
   }
 
@@ -192,6 +194,10 @@ export async function validateAndParseBackup(file: File): Promise<AppDataSnapsho
     raw.dayShiftAssignments && typeof raw.dayShiftAssignments === 'object' && !Array.isArray(raw.dayShiftAssignments)
       ? (raw.dayShiftAssignments as Record<string, Record<string, string>>)
       : undefined
+  const monthSnapshots =
+    raw.monthSnapshots && typeof raw.monthSnapshots === 'object' && !Array.isArray(raw.monthSnapshots)
+      ? (raw.monthSnapshots as AppDataSnapshot['monthSnapshots'])
+      : undefined
 
   return {
     ...raw,
@@ -209,6 +215,7 @@ export async function validateAndParseBackup(file: File): Promise<AppDataSnapsho
     monthActiveRules,
     monthDailyShifts,
     dayShiftAssignments,
+    monthSnapshots,
   }
 }
 
@@ -261,6 +268,8 @@ export async function restoreAppData(data: AppDataSnapshot): Promise<void> {
   StorageService.saveMonthActiveRulesMap(data.monthActiveRules || {})
   StorageService.saveMonthDailyShiftsMap(data.monthDailyShifts || {})
   StorageService.saveDayShiftAssignments(data.dayShiftAssignments || {})
+  const restoredMonthSnapshots = data.monthSnapshots || {}
+  StorageService.saveMonthSnapshots(restoredMonthSnapshots)
 
   if (data.theme === 'dark' || data.theme === 'light') {
     localStorage.setItem('theme', data.theme)
@@ -296,6 +305,7 @@ export async function restoreAppData(data: AppDataSnapshot): Promise<void> {
     monthDailyShifts: restoredMonthDailyShifts,
     dayShiftAssignments: restoredDayShiftAssignments,
     savedDayShiftAssignments: { ...restoredDayShiftAssignments },
+    monthSnapshots: restoredMonthSnapshots,
     hasUnsavedChanges: false,
     isEditMode: false,
     validationErrors: [],
@@ -507,6 +517,13 @@ export async function mergeAppData(data: AppDataSnapshot): Promise<void> {
     StorageService.saveDayShiftAssignments(mergedDayShiftAssignments)
   }
 
+  // 13. Merge month snapshots: a local snapshot wins, since it was captured first
+  const mergedMonthSnapshots = {
+    ...(data.monthSnapshots || {}),
+    ...StorageService.getMonthSnapshots(),
+  }
+  StorageService.saveMonthSnapshots(mergedMonthSnapshots)
+
   // Update zustand store
   useScheduleStore.setState({
     persons: mergedPeople,
@@ -523,6 +540,7 @@ export async function mergeAppData(data: AppDataSnapshot): Promise<void> {
     monthDailyShifts: mergedMonthDailyShifts,
     dayShiftAssignments: mergedDayShiftAssignments,
     savedDayShiftAssignments: { ...mergedDayShiftAssignments },
+    monthSnapshots: mergedMonthSnapshots,
     hasUnsavedChanges: false,
     isEditMode: false,
     validationErrors: [],

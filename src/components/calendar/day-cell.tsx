@@ -76,8 +76,7 @@ export function DayCell({
 
   const [isViolationsModalOpen, setIsViolationsModalOpen] = useState(false)
   const [isAddShiftModalOpen, setIsAddShiftModalOpen] = useState(false)
-  const shiftRules = useScheduleStore((state) => state.shiftRules)
-  const shiftDefinitions = useScheduleStore((state) => state.shiftDefinitions)
+  const { shiftRules, shiftDefinitions } = useScheduleStore().getRegistryForMonth(currentMonth)
 
   const getPersonShift = (personId: string): ShiftDefinition | undefined => {
     if (dayShiftMap) {
