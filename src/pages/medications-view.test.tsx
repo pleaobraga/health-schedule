@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MedicationsView } from './medications-view'
 import { i18n } from '../i18n'
@@ -284,6 +284,89 @@ describe('MedicationsView', () => {
     // Edit is available to correct that historical version, but delete is not
     expect(screen.getByTestId('medications-edit-version-button')).toBeInTheDocument()
     expect(screen.queryByTestId('medications-delete-version-button')).not.toBeInTheDocument()
+  })
+
+  it('prints the displayed version with its file name and restores the title', () => {
+    let titleDuringPrint = ''
+    document.title = 'Original Title'
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {
+      titleDuringPrint = document.title
+    })
+
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+    render(<MedicationsView />)
+
+    fireEvent.click(screen.getByTestId('medications-print-button'))
+
+    expect(printSpy).toHaveBeenCalled()
+    expect(titleDuringPrint).toBe('medicamentos-13-03-2026')
+    expect(document.title).toBe('Original Title')
+    printSpy.mockRestore()
+  })
+
+  it('prints an older version with its own file name and changes when viewing historical version', () => {
+    let titleDuringPrint = ''
+    document.title = 'Original Title'
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {
+      titleDuringPrint = document.title
+    })
+
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+    render(<MedicationsView />)
+
+    // Select older version1 (2026-03-01)
+    fireEvent.click(screen.getByTestId('medication-select-version-medver_1'))
+
+    fireEvent.click(screen.getByTestId('medications-print-button'))
+
+    expect(titleDuringPrint).toBe('medicamentos-01-03-2026')
+    expect(document.title).toBe('Original Title')
+
+    const printSheet = screen.getByTestId('medication-print-sheet')
+    expect(printSheet).toBeInTheDocument()
+
+    // Table in print sheet does not contain Melatonina (introduced in version2)
+    const printTable = within(printSheet).getByTestId('medication-print-table')
+    expect(within(printTable).queryByText('Melatonina')).not.toBeInTheDocument()
+
+    // Changes section starts at version1 and does not include version2
+    const changesSection = within(printSheet).getByTestId('medication-print-changes')
+    expect(within(changesSection).queryByText(/Melatonina/)).not.toBeInTheDocument()
+    expect(within(changesSection).getByText(/Primeira versão cadastrada/)).toBeInTheDocument()
+
+    printSpy.mockRestore()
+  })
+
+  it('structures the print sheet with title, date and table without version professional on page 1, and page break before changes', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+    render(<MedicationsView />)
+
+    const printSheet = screen.getByTestId('medication-print-sheet')
+    expect(printSheet).toHaveClass('hidden')
+    expect(printSheet).toHaveClass('print:block')
+
+    const page1 = within(printSheet).getByTestId('medication-print-page-1')
+    expect(within(page1).getByText('Quadro de Horários de Medicamentos')).toBeInTheDocument()
+    expect(within(page1).getByText(/Vigência a partir de 13\/03\/2026/)).toBeInTheDocument()
+    // Does not include prescribing professional of version in page 1 header
+    expect(within(page1).queryByText(/Prescrito por Dra. Marina/)).not.toBeInTheDocument()
+
+    // But includes responsible doctor of medication in column header
+    expect(within(page1).getByText('Dra. Marina')).toBeInTheDocument()
+
+    const changes = within(printSheet).getByTestId('medication-print-changes')
+    expect(changes).toHaveClass('print-page-break-before')
+    // Shows changes down to first version
+    expect(within(changes).getByText(/Melatonina/)).toBeInTheDocument()
+    expect(within(changes).getByText(/Primeira versão cadastrada/)).toBeInTheDocument()
+  })
+
+  it('does not show print action when there are no versions', () => {
+    useScheduleStore.setState({ medicationVersions: [] })
+    render(<MedicationsView />)
+
+    expect(screen.queryByTestId('medications-print-button')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('medication-print-sheet')).not.toBeInTheDocument()
   })
 })
 

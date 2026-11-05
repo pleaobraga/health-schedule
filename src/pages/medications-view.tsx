@@ -22,6 +22,7 @@ import { MedicationVersionForm } from '../components/medications/medication-vers
 import { useScheduleStore } from '../store/use-schedule-store'
 import {
   getCurrentMedicationVersion,
+  getMedicationFileBaseName,
   getMedicationVersionAt,
   getMedicationVersionHistory,
   groupMedicationsBySource,
@@ -107,9 +108,26 @@ export function MedicationsView() {
     [medicationVersions],
   )
 
+  const printHistory = useMemo(() => {
+    if (!displayedVersion) return []
+    const idx = history.findIndex((h) => h.version.id === displayedVersion.id)
+    return idx >= 0 ? history.slice(idx) : []
+  }, [history, displayedVersion])
+
   const handleBackToCurrent = () => {
     setQueryDate('')
     setSelectedVersionId(null)
+  }
+
+  const handlePrint = () => {
+    if (!displayedVersion) return
+    const originalTitle = document.title
+    document.title = getMedicationFileBaseName(
+      displayedVersion.effectiveDate,
+      i18n.language,
+    )
+    window.print()
+    document.title = originalTitle
   }
 
   const renderChangeSummary = (change: MedicationVersionChange): string => {
@@ -180,30 +198,31 @@ export function MedicationsView() {
       data-testid="medications-view"
       className="flex-1 h-full overflow-y-auto p-4 sm:p-6 md:p-8 flex flex-col gap-6 max-w-[1500px] w-full mx-auto custom-scrollbar"
     >
-      {/* 1. Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs transition-colors">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-xs">
-            <Pill className="w-6 h-6 stroke-[2.2]" />
+      <div className="print:hidden flex flex-col gap-6 w-full">
+        {/* 1. Header Banner */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs transition-colors">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-xs">
+              <Pill className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate">
+                {t('medications:title')}
+              </h1>
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                {t('medications:subtitle')}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate">
-              {t('medications:title')}
-            </h1>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-              {t('medications:subtitle')}
-            </p>
-          </div>
-        </div>
 
-        {medicationVersions.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              data-testid="medications-print-button"
-              onClick={() => window.print()}
-              className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition cursor-pointer shrink-0"
-            >
+          {medicationVersions.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                data-testid="medications-print-button"
+                onClick={handlePrint}
+                className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition cursor-pointer shrink-0"
+              >
               <Printer className="w-4 h-4" />
               <span>{t('medications:printSchedule')}</span>
             </button>
@@ -656,6 +675,151 @@ export function MedicationsView() {
             </div>
           </div>
         </>
+      )}
+      </div>
+
+      {/* 8. Print Sheet (Rendered only for window.print, hidden on screen) */}
+      {displayedVersion && (
+        <div
+          id="medication-print-sheet"
+          data-testid="medication-print-sheet"
+          className="hidden print:block w-full bg-white text-slate-900 p-6"
+        >
+          {/* Page 1: Header + Schedule Table (No professional in header) */}
+          <div data-testid="medication-print-page-1" className="space-y-4">
+            <div className="border-b border-slate-300 pb-3">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                {t('medications:print.sheetTitle')}
+              </h1>
+              <p className="text-sm font-semibold text-slate-600 mt-1">
+                {t('medications:print.effectiveDate', {
+                  date: formatDisplayDate(displayedVersion.effectiveDate, i18n.language),
+                })}
+              </p>
+            </div>
+
+            <table
+              data-testid="medication-print-table"
+              className="w-full text-left border-collapse border border-slate-300"
+            >
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-300 text-xs font-bold text-slate-900">
+                  <th className="p-3 border border-slate-300 w-[100px]">
+                    {t('medications:timeColumn')}
+                  </th>
+                  {displayedVersion.medications.map((med) => (
+                    <th
+                      key={med.id}
+                      className="p-3 border border-slate-300 align-top"
+                    >
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-extrabold text-sm text-slate-900">
+                          {med.name}
+                        </span>
+                        {med.dosage && (
+                          <span className="text-[11px] font-semibold text-slate-700">
+                            {med.dosage}
+                          </span>
+                        )}
+                        {med.responsible && (
+                          <span className="text-[10px] text-slate-600 font-medium">
+                            {med.responsible}
+                          </span>
+                        )}
+                        {med.source && (
+                          <span className="text-[10px] text-slate-500 font-normal">
+                            {med.source}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-xs">
+                {displayedVersion.times.map((time) => (
+                  <tr key={time}>
+                    <td className="p-3 border border-slate-300 font-bold text-slate-900">
+                      {time}
+                    </td>
+                    {displayedVersion.medications.map((med) => {
+                      const dose = displayedVersion.doses[med.id]?.[time]
+                      return (
+                        <td
+                          key={med.id}
+                          className="p-3 border border-slate-300 font-medium text-slate-800"
+                        >
+                          {dose && dose.trim().length > 0 ? (
+                            <span>{dose}</span>
+                          ) : (
+                            <span className="text-slate-400">
+                              {t('medications:emptyDose')}
+                            </span>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Page 2: Changes Section (Page break before) */}
+          <div
+            data-testid="medication-print-changes"
+            className="print-page-break-before mt-8 pt-6 border-t border-slate-300"
+          >
+            <div className="mb-4">
+              <h2 className="text-xl font-black text-slate-900">
+                {t('medications:print.changesTitle')}
+              </h2>
+              <p className="text-xs text-slate-600 mt-0.5">
+                {t('medications:print.changesSubtitle')}
+              </p>
+            </div>
+
+            <div className="divide-y divide-slate-200 space-y-3">
+              {printHistory.map((entry) => (
+                <div
+                  key={entry.version.id}
+                  className="pt-3 first:pt-0 flex flex-col gap-1 text-xs"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-extrabold text-slate-900">
+                      {formatDisplayDate(entry.version.effectiveDate, i18n.language)}
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span className="font-semibold text-slate-800">
+                      {entry.version.professional}
+                    </span>
+                  </div>
+
+                  <p className="text-slate-700 italic">
+                    {entry.version.explanation}
+                  </p>
+
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {entry.changes.length === 0 ? (
+                      <span className="text-[11px] font-medium text-slate-500">
+                        {t('medications:initialVersionSummary')}
+                      </span>
+                    ) : (
+                      entry.changes.map((change, chIdx) => (
+                        <span
+                          key={`${change.type}-${chIdx}`}
+                          className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200"
+                        >
+                          {renderChangeSummary(change)}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {isFormOpen && (

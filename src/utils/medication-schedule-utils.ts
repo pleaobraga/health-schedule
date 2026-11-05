@@ -512,3 +512,17 @@ export function searchMedicationProfessionals(
 
   return results
 }
+
+export function getMedicationFileBaseName(
+  effectiveDate: string,
+  language: string,
+): string {
+  const isPt = language?.toLowerCase().startsWith('pt')
+  try {
+    const parsed = parseISO(effectiveDate)
+    const formattedDate = format(parsed, isPt ? 'dd-MM-yyyy' : 'MM-dd-yyyy')
+    return `${isPt ? 'medicamentos' : 'medications'}-${formattedDate}`
+  } catch {
+    return `${isPt ? 'medicamentos' : 'medications'}-${effectiveDate}`
+  }
+}

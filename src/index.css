@@ -319,6 +319,37 @@
     background-color: #f8fafc !important;
   }
 
+  /* Medication print sheet */
+  #medication-print-sheet,
+  html.dark #medication-print-sheet {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  #medication-print-sheet *,
+  html.dark #medication-print-sheet * {
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #medication-print-sheet table,
+  html.dark #medication-print-sheet table {
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #medication-print-sheet th,
+  #medication-print-sheet td,
+  html.dark #medication-print-sheet th,
+  html.dark #medication-print-sheet td {
+    overflow: visible !important;
+    white-space: normal !important;
+    border-color: #cbd5e1 !important;
+  }
+
   /* Hide main app elements when fullscreen modal is open for print */
   body:has(#fullscreen-calendar-modal-container) > #root {
     display: none !important;

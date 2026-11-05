@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createMedicationId,
   getCurrentMedicationVersion,
+  getMedicationFileBaseName,
   getMedicationVersionAt,
   getMedicationVersionChanges,
   getMedicationVersionHistory,
@@ -651,6 +652,17 @@ describe('medication-schedule-utils', () => {
         'Dr. Eduardo Silva',
         'Dra. Beatriz Silva',
       ])
+    })
+  })
+
+  describe('getMedicationFileBaseName', () => {
+    it.each([
+      ['2026-03-13', 'pt-BR', 'medicamentos-13-03-2026'],
+      ['2026-03-13', 'en-US', 'medications-03-13-2026'],
+      ['2026-12-31', 'pt', 'medicamentos-31-12-2026'],
+      ['2026-12-31', 'en', 'medications-12-31-2026'],
+    ])('builds the file name for %s in %s', (date, language, expected) => {
+      expect(getMedicationFileBaseName(date, language)).toBe(expected)
     })
   })
 })
