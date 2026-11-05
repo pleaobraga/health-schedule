@@ -67,3 +67,4 @@ export const EditExistingPurchase: Story = {
     return <PurchaseForm {...args} expense={existing} />
   },
 }
+

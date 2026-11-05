@@ -647,6 +647,7 @@ git commit -m "feat(purchases): add the purchases route and list"
 
 - Salvar com data, nome, total, categoria, profissional e dois itens cria uma compra com duas linhas.
 - Salvar sem itens funciona.
+- Profissional e categoria são opcionais: salvar sem eles cria uma compra sem `personId`, sem `personName` e sem `category`, que entra no fechamento como despesa geral.
 - Com 2 letras não há sugestão; com 3 há; nunca há mais de 4.
 - Escolher uma sugestão usa o `itemId` dela.
 - Digitar um nome novo cria o item, que aparece na próxima busca.

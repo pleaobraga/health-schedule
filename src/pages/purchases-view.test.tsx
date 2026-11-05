@@ -82,7 +82,14 @@ describe('PurchasesView', () => {
           description: 'Compra Antiga de Outro Mês',
           amount: 99,
           category: 'OTHER',
-          items: [],
+          items: [
+            {
+              id: 'line-old',
+              itemId: 'item-1',
+              itemName: 'Fralda G',
+              quantity: 1,
+            },
+          ],
           createdAt: '2020-01-15T10:00:00.000Z',
           updatedAt: '2020-01-15T10:00:00.000Z',
         },
@@ -191,6 +198,18 @@ describe('PurchasesView', () => {
     expect(
       screen.getByTestId('expense-summary-diff-exp-current-1'),
     ).toHaveTextContent(/10,00/)
+
+    // Exposes last purchase for each item line and opens item history showing all months
+    expect(
+      screen.getByTestId('expense-line-last-purchase-line-1'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('open-item-history-line-1'))
+    expect(screen.getByTestId('item-history')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('item-history-mode-full'))
+    expect(
+      screen.getByTestId('item-history-entry-2020-01-15'),
+    ).toBeInTheDocument()
   })
 
   it('navigates from the sidebar link to "/compras"', async () => {

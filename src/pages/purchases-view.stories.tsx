@@ -104,3 +104,4 @@ export const EmptyState: Story = {
     return <PurchasesView />
   },
 }
+

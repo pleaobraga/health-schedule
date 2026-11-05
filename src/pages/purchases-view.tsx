@@ -1,14 +1,17 @@
+import { format } from 'date-fns'
 import {
   Calendar,
   ChevronLeft,
   ChevronRight,
   DollarSign,
   Filter,
+  History,
   Package,
   Pencil,
   Plus,
   Receipt,
   RotateCcw,
+  Settings2,
   ShoppingBag,
   Trash2,
   User as UserIcon,
@@ -17,6 +20,8 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ConfirmDialog } from '../components/common/confirm-dialog'
+import { ItemHistory } from '../components/purchases/item-history'
+import { ItemMaintenance } from '../components/purchases/item-maintenance'
 import { PurchaseForm } from '../components/purchases/purchase-form'
 import { useScheduleStore } from '../store/use-schedule-store'
 import {
@@ -29,9 +34,15 @@ import {
   createDefaultExpenseFilters,
   filterExpenses,
   getExpenseLinesSummary,
+  getItemLastPurchase,
 } from '../utils/expense-item-utils'
 
-import type { DailyExpense, DailyExpenseCategory, Person } from '../types'
+import type {
+  DailyExpense,
+  DailyExpenseCategory,
+  ExpenseItem,
+  Person,
+} from '../types'
 import type { ExpenseFilters } from '../utils/expense-item-utils'
 
 const CATEGORIES: DailyExpenseCategory[] = [
@@ -65,6 +76,11 @@ export function PurchasesView() {
   const [expenseToDelete, setExpenseToDelete] = useState<DailyExpense | null>(
     null,
   )
+  const [historyItemId, setHistoryItemId] = useState<string | null>(null)
+  const [itemToMaintain, setItemToMaintain] = useState<ExpenseItem | null>(null)
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false)
+
+  const today = format(new Date(), 'yyyy-MM-dd')
 
   const activeItems = useMemo(
     () =>
@@ -191,6 +207,20 @@ export function PurchasesView() {
 
           <button
             type="button"
+            data-testid="purchases-open-catalog"
+            onClick={() => setIsCatalogOpen((prev) => !prev)}
+            className={`inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm border transition cursor-pointer shrink-0 ${
+              isCatalogOpen
+                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>{t('purchases:manageItems')}</span>
+          </button>
+
+          <button
+            type="button"
             data-testid="purchases-new-button"
             onClick={() => {
               setExpenseToEdit(undefined)
@@ -272,6 +302,105 @@ export function PurchasesView() {
           </div>
         </div>
       </div>
+
+      {/* Active Item History Panel */}
+      {historyItemId && (
+        <ItemHistory
+          itemId={historyItemId}
+          onClose={() => setHistoryItemId(null)}
+        />
+      )}
+
+      {/* Collapsible Item Catalog */}
+      {isCatalogOpen && (
+        <section
+          data-testid="purchases-item-catalog"
+          className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-2xs"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                {t('purchases:maintenance.catalogTitle')}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {t('purchases:maintenance.catalogSubtitle')}
+              </p>
+            </div>
+          </div>
+
+          {activeItems.length === 0 ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400 py-4 text-center">
+              {t('purchases:maintenance.emptyCatalog')}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {activeItems.map((item) => {
+                const last = getItemLastPurchase(
+                  item.id,
+                  expenseItems,
+                  expenses,
+                  { referenceDate: today },
+                )
+                return (
+                  <div
+                    key={item.id}
+                    data-testid={`catalog-item-${item.id}`}
+                    className="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <span className="font-bold text-slate-900 dark:text-white block truncate">
+                        {item.name}
+                      </span>
+                      {last.lastPurchaseDate !== null &&
+                        last.daysSinceLastPurchase !== null && (
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {t('purchases:list.lastPurchaseInline', {
+                              date: formatDisplayDate(
+                                last.lastPurchaseDate,
+                                i18n.language,
+                              ),
+                              days: last.daysSinceLastPurchase,
+                            })}
+                          </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        data-testid={`catalog-history-${item.id}`}
+                        onClick={() => setHistoryItemId(item.id)}
+                        title={t('purchases:list.viewItemHistory', {
+                          name: item.name,
+                        })}
+                        aria-label={t('purchases:list.viewItemHistory', {
+                          name: item.name,
+                        })}
+                        className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
+                      >
+                        <History className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        data-testid={`manage-item-${item.id}`}
+                        onClick={() => setItemToMaintain(item)}
+                        title={t('purchases:maintenance.editItemAction', {
+                          name: item.name,
+                        })}
+                        aria-label={t('purchases:maintenance.editItemAction', {
+                          name: item.name,
+                        })}
+                        className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition cursor-pointer"
+                      >
+                        <Settings2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Filter Bar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col lg:flex-row lg:items-end gap-3">
@@ -509,34 +638,84 @@ export function PurchasesView() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                       {exp.items.map((line) => {
                         const qty = line.quantity ?? 1
+                        const lastPurchase = getItemLastPurchase(
+                          line.itemId,
+                          expenseItems,
+                          expenses,
+                          { referenceDate: today },
+                        )
                         return (
                           <div
                             key={line.id}
                             data-testid={`expense-line-${line.id}`}
-                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 text-xs"
+                            className="flex flex-col gap-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 text-xs"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                                {line.itemName}
-                              </span>
-                              <span
-                                data-testid={`expense-line-qty-${line.id}`}
-                                className="px-1.5 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0"
-                              >
-                                {t('purchases:list.quantityBadge', {
-                                  quantity: qty,
-                                })}
-                              </span>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <button
+                                  type="button"
+                                  data-testid={`open-item-history-${line.id}`}
+                                  onClick={() => setHistoryItemId(line.itemId)}
+                                  title={t('purchases:list.viewItemHistory', {
+                                    name: line.itemName,
+                                  })}
+                                  className="font-bold text-slate-800 dark:text-slate-100 hover:text-emerald-600 dark:hover:text-emerald-400 truncate text-left transition cursor-pointer"
+                                >
+                                  {line.itemName}
+                                </button>
+                                <span
+                                  data-testid={`expense-line-qty-${line.id}`}
+                                  className="px-1.5 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0"
+                                >
+                                  {t('purchases:list.quantityBadge', {
+                                    quantity: qty,
+                                  })}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {line.amount !== undefined && (
+                                  <span
+                                    data-testid={`expense-line-amount-${line.id}`}
+                                    className="font-bold text-slate-700 dark:text-slate-300"
+                                  >
+                                    {formatBRL(line.amount)}
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setHistoryItemId(line.itemId)}
+                                  title={t('purchases:list.viewItemHistory', {
+                                    name: line.itemName,
+                                  })}
+                                  aria-label={t(
+                                    'purchases:list.viewItemHistory',
+                                    {
+                                      name: line.itemName,
+                                    },
+                                  )}
+                                  className="p-1 rounded-md text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition cursor-pointer"
+                                >
+                                  <History className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
 
-                            {line.amount !== undefined && (
-                              <span
-                                data-testid={`expense-line-amount-${line.id}`}
-                                className="font-bold text-slate-700 dark:text-slate-300 shrink-0"
-                              >
-                                {formatBRL(line.amount)}
-                              </span>
-                            )}
+                            {lastPurchase.lastPurchaseDate !== null &&
+                              lastPurchase.daysSinceLastPurchase !== null && (
+                                <span
+                                  data-testid={`expense-line-last-purchase-${line.id}`}
+                                  className="text-[10px] font-medium text-slate-500 dark:text-slate-400"
+                                >
+                                  {t('purchases:list.lastPurchaseInline', {
+                                    date: formatDisplayDate(
+                                      lastPurchase.lastPurchaseDate,
+                                      i18n.language,
+                                    ),
+                                    days: lastPurchase.daysSinceLastPurchase,
+                                  })}
+                                </span>
+                              )}
                           </div>
                         )
                       })}
@@ -582,6 +761,14 @@ export function PurchasesView() {
             setIsPurchaseFormOpen(false)
             setExpenseToEdit(undefined)
           }}
+        />
+      )}
+
+      {/* Item Maintenance Modal */}
+      {itemToMaintain && (
+        <ItemMaintenance
+          item={itemToMaintain}
+          onClose={() => setItemToMaintain(null)}
         />
       )}
 

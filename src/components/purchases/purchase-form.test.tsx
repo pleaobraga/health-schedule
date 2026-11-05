@@ -475,3 +475,4 @@ describe('PurchaseForm', () => {
     ).toBeDefined()
   })
 })
+
