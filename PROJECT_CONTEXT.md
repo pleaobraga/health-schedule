@@ -46,6 +46,15 @@
      - Portuguese: `escala-<month 1..12>-<year>.xlsx` (e.g., `escala-10-2026.xlsx`)
      - English: `schedule-<month 1..12>-<year>.xlsx` (e.g., `schedule-10-2026.xlsx`)
    - Full JSON Backup export, overwrite restore, and non-destructive merge restore (`BackupService`).
+8. **Versioned Medication Schedule (`/medicamentos`)**:
+   - Matrix schedule view with medications in columns and time slots (HH:mm) in rows, supporting free-text doses (e.g. "1 comprimido", "1.5 comprimidos", "2 gotas") without numeric coercion.
+   - Prescription versions with `effectiveDate`, `professional`, and `explanation`.
+   - Automatic version comparison and change summaries (`MedicationVersionChange`) in version history (`getMedicationVersionHistory`), listed newest to oldest.
+   - Lookup by date (`getMedicationVersionAt`) with alert when queried date precedes the initial version, and instant return to current version (`getCurrentMedicationVersion`).
+   - Grouping of medications by pharmacy/origin source (`groupMedicationsBySource`).
+   - Professional autocomplete suggestions (`searchMedicationProfessionals`) based on past recorded versions.
+   - Version creation, correction, and latest-version deletion (with confirmation).
+   - High-contrast print/PDF export (`#medication-print-sheet`) via `window.print()` with localized filename title swap (`getMedicationFileBaseName`: `medicamentos-DD-MM-YYYY` / `medications-MM-DD-YYYY`) and page break before prescription history.
 
 ---
 
@@ -78,6 +87,7 @@ src/
 │   ├── modals/                # FullScreenCalendarModal, MonthShiftConfigModal, MonthPaymentsModal,
 │   │                          # DayEventsModal, AddDayShiftModal, DayViolationsModal, ScheduleAuditModal,
 │   │                          # UnsavedChangesModal
+│   ├── medications/           # MedicationVersionForm
 │   ├── navigation/            # HoverSidebar (left rail) and MobileBottomNav (tab bar below 768px)
 │   ├── people-management/     # PeopleManagementView, GlobalPersonModal, DeactivatePersonModal, ConfirmDeleteModal
 │   ├── purchases/             # PurchaseForm, ItemHistory, ItemMaintenance
@@ -94,11 +104,12 @@ src/
 │   └── use-list-order.ts      # Drag-and-drop list order, stored per device and never synced
 ├── i18n.ts                    # i18next initialization & language persistence ('health-schedule:language')
 ├── locales/
-│   ├── pt-BR/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users, purchases
-│   └── en-US/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users, purchases
+│   ├── pt-BR/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users, purchases, medications
+│   └── en-US/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users, purchases, medications
 ├── pages/
 │   ├── address-management-view.tsx # Global Address CRUD
 │   ├── login-page.tsx              # Firebase Login + Guest Profile Login
+│   ├── medications-view.tsx        # Medication Schedule matrix, version history, date lookup, source groups & PDF export
 │   ├── purchases-view.tsx          # Monthly purchases, item filters, repurchase history & catalog maintenance
 │   └── user-management-view.tsx    # Admin user role management (Firestore 'users' collection)
 ├── router/
@@ -129,6 +140,7 @@ src/
     ├── expense-item-utils.ts  # Item normalization, fuzzy search, repurchase history, filters, line resolution & merge helpers
     ├── export-to-excel.ts     # Multi-sheet XLSX workbook generator & localized filename builder
     ├── list-order.ts          # Sorting and reordering by a saved id order
+    ├── medication-schedule-utils.ts # Medication ID generation, version sorting, lookup, validation, diffs, source grouping, search & PDF filename
     ├── month-registry.ts      # Month snapshot capture and per-month registry lookup
     ├── popover-position.ts    # Viewport-clamped fixed popover positioning utility (for React portals)
     ├── shift-rate-utils.ts    # Shift rate lookup, monthly payment calculations & expense summaries
@@ -172,6 +184,9 @@ All application state lives in `src/store/use-schedule-store.ts`:
   - Global catalog of purchased items, persisted in `localStorage` (`scale_manager_expense_items_v1`) and synced to `schedules/_master_expense_items`. Managed via `renameExpenseItem` (updates the catalog item and `ExpenseLine.itemName` in purchases from `getCurrentMonth()` onward, leaving past months untouched) and `mergeExpenseItems` (sets `mergedIntoId: targetId` on the source item without modifying any `DailyExpense`, combining their repurchase histories and filters).
 - `addresses: Address[]`
   - `{ id, name, street, number, complement?, neighborhood?, city? }`
+- `medicationVersions: MedicationScheduleVersion[]`
+  - `{ id, effectiveDate, professional, explanation, medications: MedicationColumn[], times: string[], doses: Record<medicationId, Record<time, string>>, createdAt, updatedAt }`
+  - Global prescription versions for the versioned medication schedule matrix, persisted in `localStorage` (`scale_manager_medication_versions_v1`) and synced to `schedules/_master_medication_versions`. Managed via `addMedicationVersion`, `updateMedicationVersion`, and `deleteLatestMedicationVersion`.
 - `monthSnapshots: Record<string, MonthRegistrySnapshot>`
   - Maps `'YYYY-MM'` -> `{ capturedAt, persons, shiftDefinitions, shiftRules, activeShiftIds, activeRuleIds }` for past months.
 
@@ -217,6 +232,7 @@ Firestore documents are stored under the `schedules` collection:
 - `schedules/_master_shifts` -> `{ shifts: ShiftDefinition[], updatedAt }`
 - `schedules/_master_rules` -> `{ rules: ShiftRule[], updatedAt }`
 - `schedules/_master_expense_items` -> `{ items: ExpenseItem[], updatedAt }`
+- `schedules/_master_medication_versions` -> `{ versions: MedicationScheduleVersion[], updatedAt }`
 - `schedules/{YYYY-MM}` -> `{ month, schemaVersion, assignments, monthParticipants, availabilities, events, expenses, dayShiftAssignments, monthDailyShifts, monthActiveShifts, monthActiveRules, monthSnapshots, updatedAt }`
 
 Each schema v2 month document holds only that month's data. Older v1 documents hold a full copy of the dataset, so `mergeMonthDocs` uses the newest v1 document as a base and replaces each month with its v2 slice.
@@ -244,6 +260,7 @@ Uses `HashRouter` with `<Routes>` (`#/...`):
   - `/regras` — Global validation rules management (`RulesManagementView`).
   - `/enderecos` — Global address registry (`AddressManagementView`).
   - `/compras` — Monthly purchases, itemized lines, repurchase history, and item catalog maintenance (`PurchasesView`).
+  - `/medicamentos` — Medication schedule matrix, version history, date lookup, source groups, and PDF export (`MedicationsView`).
   - `/configuracoes` — General settings, language, theme, cloud sync, local storage summary & clear, and Import tab (`?tab=importar`).
   - `/importar`, `/configuracoes/importar` — Redirect to `/configuracoes?tab=importar`.
   - `/configuracoes/turnos`, `/configuracoes/regras` — Redirect to `/turnos` and `/regras`.

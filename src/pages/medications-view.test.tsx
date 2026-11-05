@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MedicationsView } from './medications-view'
@@ -269,8 +269,11 @@ describe('MedicationsView', () => {
     const confirmBtn = screen.getByRole('button', { name: /Sim, excluir versão/i })
     fireEvent.click(confirmBtn)
 
-    // Now only version1 remains
-    expect(useScheduleStore.getState().medicationVersions).toEqual([version1])
+    // Now only version1 remains and dialog is closed
+    await waitFor(() => {
+      expect(useScheduleStore.getState().medicationVersions).toEqual([version1])
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
   })
 
   it('hides the delete button when viewing an older version', () => {

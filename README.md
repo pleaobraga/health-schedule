@@ -18,6 +18,7 @@ HealthSchedule streamlines the complexity of medical roster planning through an 
 - ⚙️ **Custom Shifts & Dynamic Rule Engine**: Define customizable shifts (12h, 24h, custom hours) with real-time compliance auditing (consecutive day limits, minimum rest, maximum weekly/monthly hours).
 - 💰 **Shift Rates & Financial Reports**: Configure base and surge rates per professional/day (weekends, holidays) and generate instant monthly payment summaries.
 - 🧾 **Purchases & Daily Expenses (`/compras`)**: Record daily expenses and multi-item purchases (as professional reimbursements or general operational costs), import item lines from `.xls` / `.xlsx` spreadsheets, track per-item restocking intervals and repurchase history, maintain the item catalog (rename/merge), and review totals in the monthly financial closing.
+- 💊 **Versioned Medication Schedule (`/medicamentos`)**: Track medication administration schedules with free-text dosages and time slots, source groupings, historical prescription versions with automatic diff change summaries, historical date lookup, and print/PDF export.
 - 👥 **Staff Registry & Referential Integrity**: Centralized staff management with custom color coding and soft-delete protection for historical allocations.
 - 💾 **Offline-First & Multi-Profile Guest Mode**: Works 100% offline via browser storage with instant dynamic demo seed data; supports multi-profile guest accounts and optional Firebase Cloud Sync for administrators.
 - 📊 **Export & Data Portability**: Multi-sheet formatted Excel reports (`.xlsx`), JSON snapshot backups, and cloud recovery.
@@ -53,6 +54,7 @@ graph TD
         RulesView[Rules Management View]
         AddressView[Address Management View]
         PurchasesView[Purchases & Item History View]
+        MedicationsView[Medications Schedule View]
         ImportView[Import / Cloud Pull View]
         SettingsView[Settings & Cloud Toggle]
         UsersView[User Management View]
@@ -93,6 +95,7 @@ graph TD
     Layout --> RulesView
     Layout --> AddressView
     Layout --> PurchasesView
+    Layout --> MedicationsView
     Layout --> ImportView
     Layout --> SettingsView
     Layout --> UsersView
@@ -103,6 +106,7 @@ graph TD
     RulesView --> Store
     AddressView --> Store
     PurchasesView --> Store
+    MedicationsView --> Store
     ImportView --> Store
     SettingsView --> Store
     UsersView --> Firestore
