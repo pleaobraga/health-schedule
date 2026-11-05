@@ -14,6 +14,7 @@ import {
   getCurrentMonth,
 } from '../utils/date-utils'
 import {
+  normalizeItemName,
   resolveExpenseLines,
   validateExpenseInput,
 } from '../utils/expense-item-utils'
@@ -55,6 +56,16 @@ export interface CloudPushResult {
 export type ExpenseActionResult =
   | { ok: true; expense: DailyExpense }
   | { ok: false; errors: ExpenseValidationError[] }
+
+export type ExpenseItemActionCode =
+  | 'ITEM_NOT_FOUND'
+  | 'NAME_REQUIRED'
+  | 'NAME_CONFLICT'
+  | 'SAME_ITEM'
+
+export type ExpenseItemActionResult =
+  | { ok: true }
+  | { ok: false; code: ExpenseItemActionCode }
 
 interface ScheduleStore {
   // Navigation & UI state
@@ -185,6 +196,8 @@ interface ScheduleStore {
   addExpense: (expense: ExpenseInput) => Promise<ExpenseActionResult>;
   updateExpense: (expenseId: string, updatedData: ExpenseUpdateInput) => Promise<ExpenseActionResult>;
   deleteExpense: (expenseId: string) => Promise<void>;
+  renameExpenseItem: (itemId: string, name: string) => Promise<ExpenseItemActionResult>;
+  mergeExpenseItems: (sourceId: string, targetId: string) => Promise<ExpenseItemActionResult>;
 
   // Address management
   addAddress: (address: Omit<Address, 'id'>) => Address;
@@ -1373,6 +1386,104 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     set({ expenses: updated })
 
     syncMonthScheduleIfEnabled(get(), month)
+  },
+
+  renameExpenseItem: async (itemId, name) => {
+    const cleanName = name.trim().replace(/\s+/g, ' ')
+    const normalizedName = normalizeItemName(cleanName)
+    if (!normalizedName) {
+      return { ok: false, code: 'NAME_REQUIRED' }
+    }
+
+    const items = get().expenseItems
+    const target = items.find((it) => it.id === itemId)
+    if (!target || target.mergedIntoId) {
+      return { ok: false, code: 'ITEM_NOT_FOUND' }
+    }
+
+    const hasConflict = items.some(
+      (it) =>
+        it.id !== itemId &&
+        (it.normalizedName || normalizeItemName(it.name)) === normalizedName,
+    )
+    if (hasConflict) {
+      return { ok: false, code: 'NAME_CONFLICT' }
+    }
+
+    const now = new Date().toISOString()
+    const nextItems = items.map((it) =>
+      it.id === itemId
+        ? { ...it, name: cleanName, normalizedName, updatedAt: now }
+        : it,
+    )
+
+    const currentMonth = getCurrentMonth()
+    const modifiedMonths = new Set<string>()
+    let expensesChanged = false
+    const nextExpenses = get().expenses.map((exp) => {
+      if (exp.date.slice(0, 7) < currentMonth) return exp
+      if (!exp.items.some((line) => line.itemId === itemId)) return exp
+
+      expensesChanged = true
+      modifiedMonths.add(exp.date.slice(0, 7))
+      return {
+        ...exp,
+        items: exp.items.map((line) =>
+          line.itemId === itemId ? { ...line, itemName: cleanName } : line,
+        ),
+        updatedAt: now,
+      }
+    })
+
+    StorageService.saveExpenseItems(nextItems)
+    if (expensesChanged) {
+      StorageService.saveExpenses(nextExpenses)
+    }
+
+    set({
+      expenseItems: nextItems,
+      ...(expensesChanged ? { expenses: nextExpenses } : {}),
+    })
+
+    if (CloudSyncService.isSyncEnabled()) {
+      CloudSyncService.saveExpenseItemsToCloud(nextItems).catch((err) => {
+        console.error('Failed to sync expense items to cloud:', err)
+      })
+      modifiedMonths.forEach((month) => {
+        syncMonthScheduleIfEnabled(get(), month)
+      })
+    }
+
+    return { ok: true }
+  },
+
+  mergeExpenseItems: async (sourceId, targetId) => {
+    if (sourceId === targetId) {
+      return { ok: false, code: 'SAME_ITEM' }
+    }
+
+    const items = get().expenseItems
+    const source = items.find((it) => it.id === sourceId)
+    const target = items.find((it) => it.id === targetId)
+    if (!source || source.mergedIntoId || !target || target.mergedIntoId) {
+      return { ok: false, code: 'ITEM_NOT_FOUND' }
+    }
+
+    const now = new Date().toISOString()
+    const nextItems = items.map((it) =>
+      it.id === sourceId ? { ...it, mergedIntoId: targetId, updatedAt: now } : it,
+    )
+
+    StorageService.saveExpenseItems(nextItems)
+    set({ expenseItems: nextItems })
+
+    if (CloudSyncService.isSyncEnabled()) {
+      CloudSyncService.saveExpenseItemsToCloud(nextItems).catch((err) => {
+        console.error('Failed to sync expense items to cloud:', err)
+      })
+    }
+
+    return { ok: true }
   },
 
   addAddress: (addressData) => {

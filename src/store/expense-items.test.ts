@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useScheduleStore } from './use-schedule-store'
 import { CloudSyncService } from '../services/cloud-sync-service'
 import { StorageService } from '../services/storage-service'
+import { getCurrentMonth } from '../utils/date-utils'
+import { searchExpenseItems } from '../utils/expense-item-utils'
 
 describe('useScheduleStore - expense purchases and items', () => {
   beforeEach(() => {
@@ -249,5 +251,192 @@ describe('useScheduleStore - expense purchases and items', () => {
       }),
     ])
     expect(StorageService.getExpenseItems()).toHaveLength(1)
+  })
+
+  describe('renameExpenseItem and mergeExpenseItems', () => {
+    it('renames an item in the registry and updates expenses in the current and future months, keeping past months untouched', async () => {
+      const currentMonth = getCurrentMonth()
+      await useScheduleStore.getState().addExpense({
+        date: '2020-01-10',
+        description: 'Compra Passada',
+        amount: 40,
+        items: [{ name: 'Fralda Antiga' }],
+      })
+      await useScheduleStore.getState().addExpense({
+        date: `${currentMonth}-10`,
+        description: 'Compra Atual',
+        amount: 45,
+        items: [{ name: 'Fralda Antiga' }],
+      })
+      await useScheduleStore.getState().addExpense({
+        date: '2099-05-10',
+        description: 'Compra Futura',
+        amount: 50,
+        items: [{ name: 'Fralda Antiga' }],
+      })
+
+      const itemId = useScheduleStore.getState().expenseItems[0].id
+      const res = await useScheduleStore
+        .getState()
+        .renameExpenseItem(itemId, '  Fralda   Nova  ')
+
+      expect(res).toEqual({ ok: true })
+      const { expenseItems, expenses } = useScheduleStore.getState()
+      expect(expenseItems[0].name).toBe('Fralda Nova')
+      expect(expenseItems[0].normalizedName).toBe('fralda nova')
+
+      const pastExp = expenses.find((e) => e.date === '2020-01-10')!
+      const currentExp = expenses.find((e) => e.date === `${currentMonth}-10`)!
+      const futureExp = expenses.find((e) => e.date === '2099-05-10')!
+
+      expect(pastExp.items[0].itemName).toBe('Fralda Antiga')
+      expect(currentExp.items[0].itemName).toBe('Fralda Nova')
+      expect(futureExp.items[0].itemName).toBe('Fralda Nova')
+
+      const suggestions = searchExpenseItems('nova', expenseItems, expenses, {
+        referenceDate: '2099-06-01',
+      })
+      expect(suggestions.map((s) => s.item.id)).toEqual([itemId])
+    })
+
+    it('Allows changing only casing or accents of the same item and validates NAME_REQUIRED, NAME_CONFLICT, ITEM_NOT_FOUND', async () => {
+      await useScheduleStore.getState().addExpense({
+        date: '2026-10-15',
+        description: 'Compra',
+        amount: 30,
+        items: [{ name: 'fralda' }, { name: 'Luva' }, { name: 'Lenço' }],
+      })
+
+      const [fralda, luva, lenco] = useScheduleStore.getState().expenseItems
+      await useScheduleStore.getState().mergeExpenseItems(lenco.id, luva.id)
+
+      expect(
+        await useScheduleStore.getState().renameExpenseItem(fralda.id, 'Fralda'),
+      ).toEqual({ ok: true })
+      expect(useScheduleStore.getState().expenseItems[0].name).toBe('Fralda')
+
+      expect(
+        await useScheduleStore.getState().renameExpenseItem(fralda.id, '   '),
+      ).toEqual({ ok: false, code: 'NAME_REQUIRED' })
+
+      expect(
+        await useScheduleStore.getState().renameExpenseItem(fralda.id, 'luva'),
+      ).toEqual({ ok: false, code: 'NAME_CONFLICT' })
+
+      // Conflict even against a merged item
+      expect(
+        await useScheduleStore.getState().renameExpenseItem(fralda.id, 'lenco'),
+      ).toEqual({ ok: false, code: 'NAME_CONFLICT' })
+
+      expect(
+        await useScheduleStore.getState().renameExpenseItem('missing', 'Outro'),
+      ).toEqual({ ok: false, code: 'ITEM_NOT_FOUND' })
+
+      // Cannot rename an already merged item
+      expect(
+        await useScheduleStore.getState().renameExpenseItem(lenco.id, 'Lenço Novo'),
+      ).toEqual({ ok: false, code: 'ITEM_NOT_FOUND' })
+    })
+
+    it('merges source item into target without altering existing expenses and validates SAME_ITEM and ITEM_NOT_FOUND', async () => {
+      await useScheduleStore.getState().addExpense({
+        date: '2020-01-10',
+        description: 'Compra Antiga com A e B',
+        amount: 80,
+        items: [{ name: 'Fraldas' }, { name: 'Fralda' }],
+      })
+
+      const [itemA, itemB] = useScheduleStore.getState().expenseItems
+      const expensesBefore = structuredClone(useScheduleStore.getState().expenses)
+
+      expect(
+        await useScheduleStore.getState().mergeExpenseItems(itemA.id, itemA.id),
+      ).toEqual({ ok: false, code: 'SAME_ITEM' })
+
+      expect(
+        await useScheduleStore.getState().mergeExpenseItems('missing', itemB.id),
+      ).toEqual({ ok: false, code: 'ITEM_NOT_FOUND' })
+
+      const mergeRes = await useScheduleStore
+        .getState()
+        .mergeExpenseItems(itemA.id, itemB.id)
+      expect(mergeRes).toEqual({ ok: true })
+
+      const updatedItemA = useScheduleStore
+        .getState()
+        .expenseItems.find((i) => i.id === itemA.id)!
+      expect(updatedItemA.mergedIntoId).toBe(itemB.id)
+      expect(useScheduleStore.getState().expenses).toEqual(expensesBefore)
+
+      // Cannot merge an already merged item or into a merged item
+      expect(
+        await useScheduleStore.getState().mergeExpenseItems(itemA.id, itemB.id),
+      ).toEqual({ ok: false, code: 'ITEM_NOT_FOUND' })
+      expect(
+        await useScheduleStore.getState().mergeExpenseItems(itemB.id, itemA.id),
+      ).toEqual({ ok: false, code: 'ITEM_NOT_FOUND' })
+
+      // New expense with name of A uses itemId and itemName of B
+      const newPurchase = await useScheduleStore.getState().addExpense({
+        date: '2026-11-05',
+        description: 'Compra Nova',
+        amount: 40,
+        items: [{ name: 'Fraldas' }],
+      })
+      expect(newPurchase.ok).toBe(true)
+      if (newPurchase.ok) {
+        expect(newPurchase.expense.items[0].itemId).toBe(itemB.id)
+        expect(newPurchase.expense.items[0].itemName).toBe('Fralda')
+      }
+
+      // Old purchase with lines of both A and B remains editable without DUPLICATE_ITEM
+      const oldExpense = expensesBefore[0]
+      const editOld = await useScheduleStore.getState().updateExpense(oldExpense.id, {
+        amount: 85,
+      })
+      expect(editOld.ok).toBe(true)
+      if (editOld.ok) {
+        expect(editOld.expense.items).toHaveLength(2)
+      }
+    })
+
+    it('syncs registry and modified months on rename, and only registry on merge', async () => {
+      const currentMonth = getCurrentMonth()
+      await useScheduleStore.getState().addExpense({
+        date: '2020-01-10',
+        description: 'Compra Passada',
+        amount: 40,
+        items: [{ name: 'Fralda' }],
+      })
+      await useScheduleStore.getState().addExpense({
+        date: `${currentMonth}-10`,
+        description: 'Compra Atual',
+        amount: 45,
+        items: [{ name: 'Fralda' }, { name: 'Pomada' }],
+      })
+
+      const [fralda, pomada] = useScheduleStore.getState().expenseItems
+
+      vi.spyOn(CloudSyncService, 'isSyncEnabled').mockReturnValue(true)
+      const saveItemsSpy = vi
+        .spyOn(CloudSyncService, 'saveExpenseItemsToCloud')
+        .mockResolvedValue(true)
+      const saveMonthSpy = vi
+        .spyOn(CloudSyncService, 'saveMonthToCloud')
+        .mockResolvedValue(true)
+
+      await useScheduleStore.getState().renameExpenseItem(fralda.id, 'Fralda G')
+
+      expect(saveItemsSpy).toHaveBeenCalledTimes(1)
+      expect(saveMonthSpy.mock.calls.map(([m]) => m)).toEqual([currentMonth])
+
+      saveItemsSpy.mockClear()
+      saveMonthSpy.mockClear()
+
+      await useScheduleStore.getState().mergeExpenseItems(pomada.id, fralda.id)
+
+      expect(saveItemsSpy).toHaveBeenCalledTimes(1)
+      expect(saveMonthSpy).not.toHaveBeenCalled()
+    })
   })
 })
