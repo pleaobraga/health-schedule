@@ -94,6 +94,31 @@ export interface DailyExpense {
   updatedAt: string
 }
 
+export interface MedicationColumn {
+  id: string // o mesmo em todas as versões
+  name: string
+  dosage?: string
+  source?: string
+  responsible?: string
+}
+
+export interface MedicationScheduleVersion {
+  id: string
+  effectiveDate: string // 'YYYY-MM-DD'
+  professional: string
+  explanation: string
+  medications: MedicationColumn[]
+  times: string[] // 'HH:mm', em ordem crescente
+  doses: Record<string, Record<string, string>> // medicationId -> time -> dose
+  createdAt: string
+  updatedAt: string
+}
+
+export type MedicationVersionInput = Omit<
+  MedicationScheduleVersion,
+  'id' | 'createdAt' | 'updatedAt'
+>
+
 /**
  * Registries as they were for a past month, saved before a registry change could alter them.
  */
