@@ -66,10 +66,10 @@
     "descriptionPlaceholder": "E.g.: Pharmacy, Supermarket, Ride...",
     "amount": "Total Amount (R$) *",
     "amountPlaceholder": "0.00",
-    "category": "Category (Optional)",
+    "category": "Category",
     "selectCategory": "No category",
-    "person": "Reimbursement for Professional (Optional)",
-    "noPersonOption": "No professional (General / Operational Expense)",
+    "person": "Reimbursement for Professional",
+    "noPersonOption": "No professional",
     "itemsSectionTitle": "Purchase Items",
     "itemsSectionSubtitle": "Optional — add items to track repurchase intervals",
     "addItemLine": "Add Item",
@@ -139,6 +139,21 @@
     "NAME_REQUIRED": "Please enter a valid item name.",
     "NAME_CONFLICT": "An item with this name already exists.",
     "SAME_ITEM": "Please select a different item to merge into."
+  },
+  "import": {
+    "button": "Import Spreadsheet",
+    "buttonTooltip": "Import items from an .xls or .xlsx spreadsheet",
+    "warningsTitle": "Import warnings",
+    "warnings": {
+      "INVALID_AMOUNT": "Row {{row}}: invalid or negative amount ignored.",
+      "INVALID_QUANTITY": "Row {{row}}: invalid quantity replaced with 1."
+    },
+    "errors": {
+      "FILE_TOO_LARGE": "The file exceeds the maximum allowed size of 5 MB.",
+      "TOO_MANY_ITEMS": "The spreadsheet contains more than 200 distinct items.",
+      "UNREADABLE_FILE": "Could not read the selected file. Please upload a valid .xls or .xlsx spreadsheet.",
+      "EMPTY_FILE": "No valid items were found in the spreadsheet."
+    }
   }
 }
 

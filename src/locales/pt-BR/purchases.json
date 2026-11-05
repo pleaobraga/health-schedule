@@ -66,10 +66,10 @@
     "descriptionPlaceholder": "Ex: Farmácia São Paulo, Supermercado, Uber...",
     "amount": "Valor Total (R$) *",
     "amountPlaceholder": "0,00",
-    "category": "Categoria (Opcional)",
+    "category": "Categoria",
     "selectCategory": "Sem categoria",
-    "person": "Reembolso para Profissional (Opcional)",
-    "noPersonOption": "Nenhum profissional (Gasto Geral / Operacional)",
+    "person": "Reembolso para Profissional",
+    "noPersonOption": "Nenhum profissional",
     "itemsSectionTitle": "Itens da Compra",
     "itemsSectionSubtitle": "Opcional — adicione itens para rastrear intervalos de recompra",
     "addItemLine": "Adicionar Item",
@@ -139,6 +139,21 @@
     "NAME_REQUIRED": "Informe um nome válido para o item.",
     "NAME_CONFLICT": "Já existe um item cadastrado com este nome.",
     "SAME_ITEM": "Selecione um item diferente para juntar."
+  },
+  "import": {
+    "button": "Importar Planilha",
+    "buttonTooltip": "Importar itens de planilha .xls ou .xlsx",
+    "warningsTitle": "Avisos da importação",
+    "warnings": {
+      "INVALID_AMOUNT": "Linha {{row}}: valor inválido ou negativo ignorado.",
+      "INVALID_QUANTITY": "Linha {{row}}: quantidade inválida substituída por 1."
+    },
+    "errors": {
+      "FILE_TOO_LARGE": "O arquivo excede o tamanho máximo permitido de 5 MB.",
+      "TOO_MANY_ITEMS": "A planilha contém mais de 200 itens diferentes.",
+      "UNREADABLE_FILE": "Não foi possível ler o arquivo selecionado. Envie uma planilha .xls ou .xlsx válida.",
+      "EMPTY_FILE": "Nenhum item válido foi encontrado na planilha."
+    }
   }
 }
 

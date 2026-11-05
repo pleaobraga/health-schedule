@@ -426,6 +426,7 @@ Comportamento:
 Requisitos de produto que a interface deve atender, com a forma definida pela IA executora:
 
 - Existe uma rota própria e nova, `/compras`, para cadastrar e consultar compras
+- Ao cadastrar uma compra, o usuário pode importar uma planilha com os itens (seção 14)
 - Em telas abaixo de 768px, a barra inferior mostra calendário, compras e medicamentos, além de "Mais". Pessoas, turnos e configurações ficam acessíveis por "Mais"
 - O dia com compra fica sinalizado no calendário
 - A visualização das compras do dia continua no modal do dia e agrupa os itens por compra
@@ -504,3 +505,73 @@ Fixtures de gastos precisam de `items: []` em:
 - A rota `/compras` existe, abre a funcionalidade de compras e tem teste em `src/router/router.test.tsx`
 - Todo texto novo tem chave em `pt-BR` e `en-US`, e todo componente novo tem story
 - `PROJECT_CONTEXT.md` e `CLAUDE.md` passam a descrever `ExpenseItem`, `items`, `itemName`, `personName` e o documento `_master_expense_items`
+
+## 14. Importação de itens por planilha
+
+Ao cadastrar ou editar uma compra, o usuário pode importar um arquivo `.xls` ou `.xlsx` para preencher os itens. A importação só altera o formulário: nada é salvo até o usuário salvar a compra.
+
+### Leitura
+
+- Lê apenas a primeira aba.
+- A primeira linha é cabeçalho quando alguma célula dela, normalizada, for um dos nomes abaixo.
+  - Nome: `nome`, `item`, `produto`, `descricao`
+  - Valor: `valor`, `preco`, `total`
+  - Quantidade: `quantidade`, `qtd`
+- Sem cabeçalho, a coluna A é o nome e a coluna B é o valor.
+- Valor numérico é usado direto, e valor em texto passa por `parseNumericRate`.
+- Quantidade ausente vale 1.
+
+### Regras
+
+- Linhas vazias ou sem nome são ignoradas.
+- Valor inválido ou negativo: o item entra sem valor, com aviso `INVALID_AMOUNT`.
+- Quantidade inválida, zero ou negativa: o item entra com quantidade 1, com aviso `INVALID_QUANTITY`.
+- Valor zero é aceito.
+- Avisos informam a linha da planilha, começando em 1.
+- Nomes iguais, comparados por `normalizeItemName`, viram uma linha só, somando quantidades e valores. Valor ausente conta como 0, e o resultado só fica ausente quando todos estiverem ausentes.
+- Item importado que já esteja no formulário é somado à linha existente, com a mesma regra.
+- Arquivo acima de 5 MB: `FILE_TOO_LARGE`.
+- Mais de 200 itens depois de agrupar: `TOO_MANY_ITEMS`.
+- Arquivo ilegível: `UNREADABLE_FILE`.
+- Arquivo sem nenhum item: `EMPTY_FILE`.
+- Com erro, o formulário não muda.
+
+### Total
+
+- Com o total vazio, ele recebe a soma dos valores importados, somada aos valores já presentes no formulário.
+- Com o total preenchido, ele não muda.
+- Sem nenhum valor, o total continua vazio.
+
+### Interface pública
+
+Arquivo novo: `src/utils/expense-item-import.ts`.
+
+```ts
+export const EXPENSE_IMPORT_MAX_BYTES = 5 * 1024 * 1024
+export const EXPENSE_IMPORT_MAX_ITEMS = 200
+
+export interface ImportedExpenseLine {
+  name: string
+  quantity: number
+  amount?: number
+}
+
+export interface ExpenseImportWarning {
+  row: number
+  code: 'INVALID_AMOUNT' | 'INVALID_QUANTITY'
+}
+
+export type ExpenseImportResult =
+  | { ok: true; lines: ImportedExpenseLine[]; warnings: ExpenseImportWarning[] }
+  | { ok: false; code: 'FILE_TOO_LARGE' | 'TOO_MANY_ITEMS' | 'UNREADABLE_FILE' | 'EMPTY_FILE' }
+
+export function parseExpenseItemsFile(file: File): Promise<ExpenseImportResult>
+export function mergeImportedLines(
+  current: ExpenseLineInput[],
+  imported: ImportedExpenseLine[],
+): ExpenseLineInput[]
+```
+
+### Segurança
+
+O `xlsx` 0.18.5 tem falhas conhecidas na leitura de arquivos (GHSA-4r6h-8v6p-xvw6 e GHSA-5pgg-2g8v-p4x9). A dependência é atualizada para a 0.20.3, distribuída pelo CDN oficial da SheetJS, pois a correção não existe no npm.

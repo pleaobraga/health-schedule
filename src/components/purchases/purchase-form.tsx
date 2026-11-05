@@ -1,9 +1,11 @@
 import { format } from 'date-fns'
 import {
   AlertCircle,
+  AlertTriangle,
   Calendar,
   Clock,
   DollarSign,
+  FileSpreadsheet,
   Package,
   Plus,
   ShoppingBag,
@@ -11,17 +13,22 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { useScheduleStore } from '../../store/use-schedule-store'
 import { formatDisplayDate } from '../../utils/date-utils'
 import {
+  mergeImportedLines,
+  parseExpenseItemsFile,
+} from '../../utils/expense-item-import'
+import {
   findExpenseItemByName,
   getExpenseLinesSummary,
   getItemLastPurchase,
   ITEM_SEARCH_MIN_LENGTH,
+  normalizeItemName,
   searchExpenseItems,
   validateExpenseInput,
 } from '../../utils/expense-item-utils'
@@ -34,6 +41,7 @@ import type {
   ExpenseLineInput,
   Person,
 } from '../../types'
+import type { ExpenseImportWarning } from '../../utils/expense-item-import'
 import type { ExpenseValidationError } from '../../utils/expense-item-utils'
 
 export interface PurchaseFormProps {
@@ -106,7 +114,14 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
     null,
   )
   const [errors, setErrors] = useState<ExpenseValidationError[]>([])
+  const [importError, setImportError] = useState<
+    'FILE_TOO_LARGE' | 'TOO_MANY_ITEMS' | 'UNREADABLE_FILE' | 'EMPTY_FILE' | null
+  >(null)
+  const [importWarnings, setImportWarnings] = useState<ExpenseImportWarning[]>(
+    [],
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -181,6 +196,89 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
       },
     ])
     setErrors([])
+  }
+
+  const handleImportSpreadsheet = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    const result = await parseExpenseItemsFile(file)
+    if (!result.ok) {
+      setImportError(result.code)
+      setImportWarnings([])
+      return
+    }
+
+    setImportError(null)
+    setImportWarnings(result.warnings)
+    setErrors([])
+
+    const currentInputs: ExpenseLineInput[] = lines.map((line) => {
+      const qtyTrimmed = line.quantity.trim()
+      const parsedQty =
+        qtyTrimmed === '' ? 1 : parseNumericRate(qtyTrimmed)
+      const amtTrimmed = line.amount.trim()
+      const parsedAmt =
+        amtTrimmed === '' ? undefined : parseNumericRate(amtTrimmed)
+      return {
+        id: line.lineId,
+        itemId: line.itemId,
+        name: line.name,
+        quantity: Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : 1,
+        amount:
+          parsedAmt !== undefined && Number.isFinite(parsedAmt) && parsedAmt >= 0
+            ? parsedAmt
+            : undefined,
+      }
+    })
+
+    const existingRowByNorm = new Map<string, DraftLine>()
+    lines.forEach((line) => {
+      const norm = normalizeItemName(line.name)
+      if (norm && !existingRowByNorm.has(norm)) {
+        existingRowByNorm.set(norm, line)
+      }
+    })
+
+    const mergedInputs = mergeImportedLines(currentInputs, result.lines)
+    const nextDraftLines: DraftLine[] = mergedInputs.map((mergedLine) => {
+      const cleanName = mergedLine.name ?? ''
+      const norm = normalizeItemName(cleanName)
+      const existingDraft = existingRowByNorm.get(norm)
+      const matchedCatalogItem = findExpenseItemByName(cleanName, expenseItems)
+
+      return {
+        rowId: existingDraft?.rowId ?? createRowId(),
+        lineId: mergedLine.id ?? existingDraft?.lineId,
+        itemId:
+          mergedLine.itemId ??
+          existingDraft?.itemId ??
+          matchedCatalogItem?.id,
+        name: cleanName,
+        quantity: String(mergedLine.quantity ?? 1),
+        amount:
+          mergedLine.amount !== undefined ? String(mergedLine.amount) : '',
+      }
+    })
+
+    setLines(nextDraftLines)
+
+    if (amount.trim() === '') {
+      const linesWithAmount = mergedInputs.filter(
+        (l): l is ExpenseLineInput & { amount: number } =>
+          typeof l.amount === 'number' && Number.isFinite(l.amount),
+      )
+      if (linesWithAmount.length > 0) {
+        const sum =
+          Math.round(
+            linesWithAmount.reduce((acc, curr) => acc + curr.amount, 0) * 100,
+          ) / 100
+        setAmount(String(sum))
+      }
+    }
   }
 
   const handleRemoveLine = (index: number) => {
@@ -512,16 +610,73 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  data-testid="purchase-add-line"
-                  onClick={handleAddLine}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer self-start sm:self-auto"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{t('purchases:form.addItemLine')}</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xls,.xlsx"
+                    data-testid="purchase-import-input"
+                    onChange={handleImportSpreadsheet}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    data-testid="purchase-import-button"
+                    onClick={() => fileInputRef.current?.click()}
+                    title={t('purchases:import.buttonTooltip')}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>{t('purchases:import.button')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-testid="purchase-add-line"
+                    onClick={handleAddLine}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t('purchases:form.addItemLine')}</span>
+                  </button>
+                </div>
               </div>
+
+              {importError && (
+                <div
+                  data-testid={`purchase-import-error-${importError}`}
+                  className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 flex items-center gap-2 text-xs font-semibold text-rose-700 dark:text-rose-300"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>
+                    {t(
+                      `purchases:import.errors.${importError}` as unknown as TemplateStringsArray,
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {importWarnings.length > 0 && (
+                <div
+                  data-testid="purchase-import-warnings"
+                  className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 space-y-1"
+                >
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{t('purchases:import.warningsTitle')}</span>
+                  </div>
+                  <ul className="space-y-0.5 pl-5 list-disc text-[11px] font-medium text-amber-700 dark:text-amber-300/90">
+                    {importWarnings.map((warn, idx) => (
+                      <li key={`${warn.code}-${warn.row}-${idx}`}>
+                        {t(
+                          `purchases:import.warnings.${warn.code}` as unknown as TemplateStringsArray,
+                          { row: warn.row },
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {lines.length > 0 && (
                 <div className="space-y-3">

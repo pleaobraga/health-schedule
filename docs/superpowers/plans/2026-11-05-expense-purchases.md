@@ -806,3 +806,124 @@ Abra `pnpm dev`, percorra `/compras` em tela estreita e larga e confirme os modo
 git add -A
 git commit -m "docs: describe purchases and the item registry"
 ```
+
+### Task 13: Importar itens de uma planilha
+
+Esta task entrou depois das demais. Execute-a mesmo que a Task 12 já esteja concluída. Comportamento: seção 14 da especificação.
+
+**Files:**
+- Modify: `package.json`, `pnpm-lock.yaml`
+- Create: `src/utils/expense-item-import.ts`, `src/utils/expense-item-import.test.ts`
+- Modify: `src/components/purchases/purchase-form.tsx`, `.test.tsx`, `.stories.tsx`
+- Modify: `src/locales/pt-BR/purchases.json`, `src/locales/en-US/purchases.json`
+- Modify: `PROJECT_CONTEXT.md`, `README.md`
+
+**Interfaces:**
+- Consumes: `normalizeItemName`, `parseNumericRate`, `ExpenseLineInput`.
+- Produces: tudo em "Interface pública", na seção 14 da especificação.
+
+- [ ] **Step 1: Atualize o `xlsx`**
+
+Run: `pnpm add https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`
+Run: `pnpm test:run src/utils/export-to-excel.test.ts && pnpm audit --prod`
+Expected: exportação continua passando, e o audit não lista mais `xlsx`.
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add package.json pnpm-lock.yaml
+git commit -m "fix(deps): update xlsx to patched release"
+```
+
+- [ ] **Step 3: Escreva os testes de `expense-item-import.test.ts`**
+
+Gere as planilhas no teste, com um helper:
+
+```ts
+const workbookFile = (rows: unknown[][], bookType: 'xlsx' | 'xls' = 'xlsx') => {
+  const book = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(rows), 'Lista')
+  const data = XLSX.write(book, { type: 'array', bookType })
+  return new File([data], `lista.${bookType}`)
+}
+```
+
+| Linhas da planilha | Esperado |
+| :--- | :--- |
+| `[['Nome','Valor'],['Fralda',30],['Lenço',12.5]]` | Duas linhas, com quantidade 1 |
+| O mesmo arquivo em `xls` | Mesmo resultado |
+| `[['Fralda',30],['Lenço',12.5]]`, sem cabeçalho | Coluna A é nome, coluna B é valor |
+| `[['Produto','Qtd','Preço'],['Fralda',2,30]]` | Colunas pelo nome: quantidade 2, valor 30 |
+| `[['Nome'],['Fralda']]` | Item sem `amount` |
+| `[['Nome','Valor'],['Fralda','R$ 10,50']]` | `amount: 10.5` |
+| `[['Nome','Valor'],['Fralda','abc']]` | Sem `amount`, aviso `{ row: 2, code: 'INVALID_AMOUNT' }` |
+| `[['Nome','Valor'],['Fralda',-5]]` | Sem `amount`, aviso `INVALID_AMOUNT` |
+| `[['Nome','Valor'],['Brinde',0]]` | `amount: 0`, sem aviso |
+| `[['Nome','Qtd'],['Fralda',0]]` | Quantidade 1, aviso `{ row: 2, code: 'INVALID_QUANTITY' }` |
+| `[['Nome','Valor'],['Fralda',10],[null,5],['',1],['Lenço',2]]` | Linhas sem nome ignoradas |
+| `[['Nome','Qtd','Valor'],['Fralda',1,10],[' fralda ',2,20]]` | Uma linha: `quantity: 3`, `amount: 30` |
+| `[['Nome','Valor'],['Fralda',0.1],['fralda',0.2]]` | `amount: 0.3` |
+| 201 nomes diferentes | `{ ok: false, code: 'TOO_MANY_ITEMS' }` |
+| 300 linhas com 2 nomes | `ok: true`, 2 linhas |
+| Só cabeçalho | `{ ok: false, code: 'EMPTY_FILE' }` |
+| `new File(['abc'], 'lista.xlsx')` | `ok: false`, com `UNREADABLE_FILE` ou `EMPTY_FILE` |
+| Arquivo com 5 MB + 1 byte | `FILE_TOO_LARGE`, sem ler o conteúdo |
+| Item chamado `__proto__` | Tratado como nome comum; `({} as Record<string, unknown>).polluted` indefinido |
+
+Testes de `mergeImportedLines`:
+- Item novo vai para o fim, e a ordem das linhas atuais se mantém.
+- Item igual à linha atual, por `name`, soma quantidade e valor.
+- A comparação usa `name`, normalizado, inclusive em linhas com `itemId`: o formulário envia as duas informações, e uma linha somada mantém o `itemId`.
+- Valores ausentes dos dois lados continuam ausentes.
+
+- [ ] **Step 4: Rode e confirme a falha**
+
+Run: `pnpm vitest run src/utils/expense-item-import.test.ts`
+Expected: FAIL, porque o módulo não existe.
+
+- [ ] **Step 5: Implemente `src/utils/expense-item-import.ts`**
+
+Carregue a biblioteca sob demanda, com `await import('xlsx')`. Leia com `XLSX.read(data, { type: 'array', cellFormula: false, cellHTML: false })` e `sheet_to_json(sheet, { header: 1, raw: true, blankrows: true })`, para preservar o número das linhas. Agrupe com `Map`, nunca com objeto simples. Arredonde somas a centavos. Capture exceções da leitura como `UNREADABLE_FILE`.
+
+- [ ] **Step 6: Rode e confirme que passa**
+
+Run: `pnpm vitest run src/utils/expense-item-import.test.ts`
+Expected: PASS.
+
+- [ ] **Step 7: Escreva os testes do formulário**
+
+- Importar preenche os itens, e `expenses` continua igual até salvar.
+- Depois de salvar, itens novos aparecem na busca.
+- Item importado com nome já cadastrado mostra a última compra e os dias decorridos.
+- Com total vazio, ele recebe a soma. Com total preenchido, ele não muda.
+- Sem valores na planilha, o total continua vazio.
+- Avisos aparecem com o número da linha.
+- Cada código de erro aparece traduzido, e o formulário não muda.
+- Importar duas vezes o mesmo arquivo soma os itens, e o seletor aceita o mesmo arquivo de novo.
+- O controle aceita apenas `.xls` e `.xlsx`.
+
+- [ ] **Step 8: Rode e confirme a falha**
+
+Run: `pnpm vitest run src/components/purchases/purchase-form.test.tsx`
+Expected: FAIL nos testes novos.
+
+- [ ] **Step 9: Ligue a importação ao formulário**
+
+Limpe o valor do `input` de arquivo depois de cada leitura. Mostre erros e avisos com chaves em `purchases.import.*`. A aparência do controle fica a seu critério.
+
+- [ ] **Step 10: Atualize a documentação**
+
+Em `PROJECT_CONTEXT.md`, mencione `expense-item-import.ts` e a leitura de planilhas. Em `README.md`, mencione a importação de itens.
+
+- [ ] **Step 11: Rode a verificação completa, sem filtro de logs**
+
+Run: `pnpm typecheck && pnpm lint && pnpm vitest run --silent=false && pnpm build`
+Expected: sem erros, todos os testes passando, nenhum aviso `not wrapped in act` e build com exit 0.
+
+- [ ] **Step 12: Commit**
+
+```bash
+git add -A
+git commit -m "feat(purchases): import items from a spreadsheet"
+```
+

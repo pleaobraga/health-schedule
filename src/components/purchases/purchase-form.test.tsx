@@ -1,9 +1,22 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as XLSX from 'xlsx'
 
 import { PurchaseForm } from './purchase-form'
 import { useScheduleStore } from '../../store/use-schedule-store'
+import { EXPENSE_IMPORT_MAX_BYTES } from '../../utils/expense-item-import'
+import { searchExpenseItems } from '../../utils/expense-item-utils'
 import { calculateMonthExpensesSummary } from '../../utils/shift-rate-utils'
+
+const workbookFile = (
+  rows: unknown[][],
+  bookType: 'xlsx' | 'xls' = 'xlsx',
+) => {
+  const book = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(rows), 'Lista')
+  const data = XLSX.write(book, { type: 'array', bookType })
+  return new File([data], `lista.${bookType}`)
+}
 
 describe('PurchaseForm', () => {
   beforeEach(() => {
@@ -510,6 +523,203 @@ describe('PurchaseForm', () => {
     expect(
       useScheduleStore.getState().expenseItems.find((i) => i.id === 'item-1'),
     ).toBeDefined()
+  })
+
+  describe('spreadsheet item import', () => {
+    it('populates item lines from a spreadsheet without modifying expenses until saved, shows last purchase for existing items, and creates new items in search after saving', async () => {
+      const onClose = vi.fn()
+      render(<PurchaseForm onClose={onClose} />)
+
+      const fileInput = screen.getByTestId(
+        'purchase-import-input',
+      ) as HTMLInputElement
+      expect(fileInput.getAttribute('accept')).toBe('.xls,.xlsx')
+
+      fireEvent.change(screen.getByTestId('purchase-date-input'), {
+        target: { value: '2026-10-15' },
+      })
+      fireEvent.change(screen.getByTestId('purchase-description-input'), {
+        target: { value: 'Compra Planilha' },
+      })
+
+      const initialExpensesCount = useScheduleStore.getState().expenses.length
+
+      const file = workbookFile([
+        ['Nome', 'Qtd', 'Valor'],
+        ['Fralda Geriátrica', 2, 120],
+        ['Algodão Hidrófilo', 1, 15],
+      ])
+
+      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('purchase-line-name-0')).toHaveValue(
+          'Fralda Geriátrica',
+        )
+      })
+      expect(screen.getByTestId('purchase-line-qty-0')).toHaveValue('2')
+      expect(screen.getByTestId('purchase-line-amount-0')).toHaveValue('120')
+      expect(screen.getByTestId('purchase-line-name-1')).toHaveValue(
+        'Algodão Hidrófilo',
+      )
+      expect(screen.getByTestId('purchase-line-qty-1')).toHaveValue('1')
+      expect(screen.getByTestId('purchase-line-amount-1')).toHaveValue('15')
+
+      // Total was empty, so it receives the sum (120 + 15 = 135)
+      expect(screen.getByTestId('purchase-amount-input')).toHaveValue('135')
+
+      // Existing item shows last purchase date (01/10/2026) and elapsed days (14)
+      const lastPurchaseBadge = screen.getByTestId('line-last-purchase-0')
+      expect(lastPurchaseBadge).toHaveTextContent('01/10/2026')
+      expect(lastPurchaseBadge).toHaveTextContent('14')
+
+      // Store expenses have not changed before saving
+      expect(useScheduleStore.getState().expenses).toHaveLength(
+        initialExpensesCount,
+      )
+
+      // Save the purchase
+      fireEvent.click(screen.getByTestId('purchase-submit'))
+
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalledTimes(1)
+      })
+
+      expect(useScheduleStore.getState().expenses).toHaveLength(
+        initialExpensesCount + 1,
+      )
+
+      const searchResults = searchExpenseItems(
+        'Algod',
+        useScheduleStore.getState().expenseItems,
+        useScheduleStore.getState().expenses,
+        { referenceDate: '2026-11-01' },
+      )
+      expect(searchResults.map((s) => s.item.name)).toContain(
+        'Algodão Hidrófilo',
+      )
+    })
+
+    it('keeps a pre-filled total unchanged when importing items, and leaves total empty when spreadsheet has no amounts', async () => {
+      const { unmount } = render(<PurchaseForm onClose={vi.fn()} />)
+
+      fireEvent.change(screen.getByTestId('purchase-amount-input'), {
+        target: { value: '250,00' },
+      })
+
+      const fileWithAmounts = workbookFile([
+        ['Nome', 'Valor'],
+        ['Fralda Geriátrica', 100],
+      ])
+      fireEvent.change(screen.getByTestId('purchase-import-input'), {
+        target: { files: [fileWithAmounts] },
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('purchase-line-name-0')).toHaveValue(
+          'Fralda Geriátrica',
+        )
+      })
+      expect(screen.getByTestId('purchase-amount-input')).toHaveValue('250,00')
+
+      unmount()
+
+      // Render fresh form with empty total and import spreadsheet without amounts
+      render(<PurchaseForm onClose={vi.fn()} />)
+      const fileWithoutAmounts = workbookFile([['Nome'], ['Gaze Estéril']])
+      fireEvent.change(screen.getByTestId('purchase-import-input'), {
+        target: { files: [fileWithoutAmounts] },
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('purchase-line-name-0')).toHaveValue(
+          'Gaze Estéril',
+        )
+      })
+      expect(screen.getByTestId('purchase-amount-input')).toHaveValue('')
+    })
+
+    it('displays import warnings with row numbers and allows importing the same file twice to sum items', async () => {
+      render(<PurchaseForm onClose={vi.fn()} />)
+
+      const file = workbookFile([
+        ['Nome', 'Qtd', 'Valor'],
+        ['Sabonete Líquido', 0, 10],
+        ['Luva Descartável', 2, 'invalido'],
+      ])
+
+      const fileInput = screen.getByTestId(
+        'purchase-import-input',
+      ) as HTMLInputElement
+
+      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('purchase-line-name-0')).toHaveValue(
+          'Sabonete Líquido',
+        )
+      })
+      expect(fileInput.value).toBe('')
+
+      const warningsBox = screen.getByTestId('purchase-import-warnings')
+      expect(warningsBox).toHaveTextContent('2')
+      expect(warningsBox).toHaveTextContent('3')
+
+      // Import the exact same file a second time -> quantities and amounts sum
+      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('purchase-line-qty-0')).toHaveValue('2')
+      })
+      expect(screen.getByTestId('purchase-line-amount-0')).toHaveValue('20')
+      expect(screen.getByTestId('purchase-line-qty-1')).toHaveValue('4')
+    })
+
+    it('shows translated error messages for each import error code without modifying the form', async () => {
+      render(<PurchaseForm onClose={vi.fn()} />)
+
+      const fileInput = screen.getByTestId('purchase-import-input')
+
+      // 1. EMPTY_FILE
+      fireEvent.change(fileInput, {
+        target: { files: [workbookFile([['Nome', 'Valor']])] },
+      })
+      expect(
+        await screen.findByTestId('purchase-import-error-EMPTY_FILE'),
+      ).toBeInTheDocument()
+      expect(screen.queryByTestId('purchase-line-name-0')).not.toBeInTheDocument()
+
+      // 2. UNREADABLE_FILE
+      fireEvent.change(fileInput, {
+        target: { files: [new File(['abc'], 'corrompido.xlsx')] },
+      })
+      expect(
+        await screen.findByTestId('purchase-import-error-UNREADABLE_FILE'),
+      ).toBeInTheDocument()
+
+      // 3. FILE_TOO_LARGE
+      const hugeFile = new File(
+        [new Uint8Array(EXPENSE_IMPORT_MAX_BYTES + 1)],
+        'enorme.xlsx',
+      )
+      fireEvent.change(fileInput, { target: { files: [hugeFile] } })
+      expect(
+        await screen.findByTestId('purchase-import-error-FILE_TOO_LARGE'),
+      ).toBeInTheDocument()
+
+      // 4. TOO_MANY_ITEMS
+      const manyRows: unknown[][] = [['Nome', 'Valor']]
+      for (let i = 1; i <= 201; i++) {
+        manyRows.push([`Item ${i}`, 1])
+      }
+      fireEvent.change(fileInput, {
+        target: { files: [workbookFile(manyRows)] },
+      })
+      expect(
+        await screen.findByTestId('purchase-import-error-TOO_MANY_ITEMS'),
+      ).toBeInTheDocument()
+      expect(screen.queryByTestId('purchase-line-name-0')).not.toBeInTheDocument()
+    })
   })
 })
 

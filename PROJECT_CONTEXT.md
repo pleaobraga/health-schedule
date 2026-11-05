@@ -36,7 +36,7 @@
 5. **Financial Calculation, Shift Rates & Purchases (`/compras`)**:
    - Per-person, per-shift, per-day rates (`shiftRates[shiftId][dayNumber] = rateInBRL`).
    - Monthly financial closing modal (`MonthPaymentsModal`) and dedicated financial sheet in Excel exports.
-   - Daily expenses and multi-item purchases (`DailyExpense`) registered in `/compras` (`PurchasesView`) or in the expenses tab of `DayEventsModal`: an expense with a `personId` (and snapshot `personName`) is a reimbursement for that professional, and one without is a general operational expense. Each purchase can include itemized lines (`items: ExpenseLine[]`, storing a historical `itemName` snapshot alongside `itemId`, `quantity`, and optional line `amount`) backed by a global item catalog (`expenseItems: ExpenseItem[]`) with repurchase interval history (`ItemHistory`) and catalog maintenance (`ItemMaintenance`: rename and merge). `calculateMonthExpensesSummary` aggregates `expense.amount` for `MonthPaymentsModal`. Expenses are not part of the Excel export.
+   - Daily expenses and multi-item purchases (`DailyExpense`) registered in `/compras` (`PurchasesView`) or in the expenses tab of `DayEventsModal`: an expense with a `personId` (and snapshot `personName`) is a reimbursement for that professional, and one without is a general operational expense. Each purchase can include itemized lines (`items: ExpenseLine[]`, storing a historical `itemName` snapshot alongside `itemId`, `quantity`, and optional line `amount`) entered manually or imported from a `.xls` / `.xlsx` spreadsheet (`parseExpenseItemsFile`, `mergeImportedLines`), backed by a global item catalog (`expenseItems: ExpenseItem[]`) with repurchase interval history (`ItemHistory`) and catalog maintenance (`ItemMaintenance`: rename and merge). `calculateMonthExpensesSummary` aggregates `expense.amount` for `MonthPaymentsModal`. Expenses are not part of the Excel export.
 6. **Offline-First Storage, Multi-Profile Guest Mode & Firebase Cloud Sync**:
    - 100% functional offline via `StorageService` (`localStorage`) with dataset isolation per authenticated user (`scale_manager_user_data_v1_<uid>`) and per guest profile (`scale_manager_guest_data_v1_<guestId>`).
    - Dynamic demo seed loader (`guestSeedLoader.ts`) for new guest sessions.
@@ -125,6 +125,7 @@ src/
     ├── clipboard-utils.ts     # Clipboard copy with execCommand fallback
     ├── cloud-feedback.ts      # Toasts for cloud push and pull results
     ├── date-utils.ts          # Month navigation, calendar 42-day grid generation, past-event checks
+    ├── expense-item-import.ts # Spreadsheet (.xls / .xlsx) parser & line merge helpers for purchase items
     ├── expense-item-utils.ts  # Item normalization, fuzzy search, repurchase history, filters, line resolution & merge helpers
     ├── export-to-excel.ts     # Multi-sheet XLSX workbook generator & localized filename builder
     ├── list-order.ts          # Sorting and reordering by a saved id order
