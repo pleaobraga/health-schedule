@@ -12,6 +12,7 @@ export const routeConfig: RouteItemConfig[] = [
   { path: '/', label: 'Calendário de Escalas' },
   { path: '/calendario', label: 'Calendário de Escalas (Alias)' },
   { path: '/compras', label: 'Compras e Gastos' },
+  { path: '/medicamentos', label: 'Quadro de Medicamentos' },
   { path: '/pessoas', label: 'Gerenciar Pessoas' },
   { path: '/turnos', label: 'Turnos de Trabalho' },
   { path: '/regras', label: 'Regras de Validação' },

@@ -10,6 +10,7 @@ import {
   LogOut,
   MapPin,
   Moon,
+  Pill,
   Settings,
   ShieldCheck,
   ShoppingBag,
@@ -85,6 +86,13 @@ export function HoverSidebar({ isProdOverride }: HoverSidebarProps = {}) {
       path: '/compras',
       label: t('nav.purchases', { defaultValue: 'Compras e Gastos' }),
       icon: ShoppingBag,
+      end: false,
+    },
+    {
+      id: 'medications',
+      path: '/medicamentos',
+      label: t('nav.medications', { defaultValue: 'Medicamentos' }),
+      icon: Pill,
       end: false,
     },
     {
@@ -194,6 +202,12 @@ export function HoverSidebar({ isProdOverride }: HoverSidebarProps = {}) {
       path: '/compras',
       label: t('common:navShort.purchases'),
       icon: ShoppingBag,
+    },
+    {
+      id: 'medications' as const,
+      path: '/medicamentos',
+      label: t('common:navShort.medications'),
+      icon: Pill,
     },
   ]
 

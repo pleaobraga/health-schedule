@@ -27,6 +27,8 @@ export function RootLayout() {
       setCurrentView('calendar')
     } else if (path.startsWith('/compras')) {
       setCurrentView('purchases')
+    } else if (path.startsWith('/medicamentos')) {
+      setCurrentView('medications')
     } else if (path.startsWith('/pessoas')) {
       setCurrentView('people')
     } else if (path.startsWith('/turnos')) {

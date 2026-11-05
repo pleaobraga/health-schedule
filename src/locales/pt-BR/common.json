@@ -13,6 +13,7 @@
   "nav": {
     "calendar": "Calendário de Escalas",
     "purchases": "Compras e Gastos",
+    "medications": "Medicamentos",
     "people": "Gerenciar Pessoas",
     "shifts": "Turnos de Trabalho",
     "rules": "Regras de Validação",
@@ -24,6 +25,7 @@
   "navShort": {
     "calendar": "Escala",
     "purchases": "Compras",
+    "medications": "Medicamentos",
     "people": "Pessoas",
     "shifts": "Turnos",
     "settings": "Ajustes",

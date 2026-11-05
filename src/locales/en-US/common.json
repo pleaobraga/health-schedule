@@ -13,6 +13,7 @@
   "nav": {
     "calendar": "Schedule Calendar",
     "purchases": "Purchases & Expenses",
+    "medications": "Medications",
     "people": "Manage People",
     "shifts": "Work Shifts",
     "rules": "Validation Rules",
@@ -24,6 +25,7 @@
   "navShort": {
     "calendar": "Schedule",
     "purchases": "Purchases",
+    "medications": "Medications",
     "people": "People",
     "shifts": "Shifts",
     "settings": "Settings",

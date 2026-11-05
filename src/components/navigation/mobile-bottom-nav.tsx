@@ -54,7 +54,7 @@ export function MobileBottomNav({
     <nav
       data-testid="mobile-bottom-nav"
       aria-label={t('common:appName')}
-      className="grid md:hidden fixed bottom-0 inset-x-0 z-40 grid-cols-3 h-[calc(4rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-2px_12px_rgba(15,23,42,0.06)] select-none print:hidden transition-colors"
+      className="grid md:hidden fixed bottom-0 inset-x-0 z-40 grid-cols-4 h-[calc(4rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-[0_-2px_12px_rgba(15,23,42,0.06)] select-none print:hidden transition-colors"
     >
       {items.map((item) => {
         const Icon = item.icon

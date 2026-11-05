@@ -147,6 +147,7 @@ export type MonthParticipants = Record<string, string[]>; // 'YYYY-MM' -> person
 export type NavigationTab =
   | 'calendar'
   | 'purchases'
+  | 'medications'
   | 'people'
   | 'shifts'
   | 'rules'

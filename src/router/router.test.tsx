@@ -48,6 +48,15 @@ describe('Application router (HashRouter & route mapping)', () => {
     expect(useScheduleStore.getState().currentView).toBe('purchases')
   })
 
+  it('renders the medications screen on "/medicamentos"', async () => {
+    vi.spyOn(backupService, 'hasExistingLocalData').mockResolvedValue(true)
+
+    render(<TestAppRouter initialEntries={['/medicamentos']} />)
+
+    expect(screen.getByTestId('medications-view')).toBeInTheDocument()
+    expect(useScheduleStore.getState().currentView).toBe('medications')
+  })
+
   it('renders the import screen on "/importar"', async () => {
     vi.spyOn(backupService, 'hasExistingLocalData').mockResolvedValue(true)
 

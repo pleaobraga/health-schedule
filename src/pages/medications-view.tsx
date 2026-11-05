@@ -1,0 +1,616 @@
+import { format, parseISO } from 'date-fns'
+import {
+  Calendar,
+  ChevronRight,
+  Clock,
+  History,
+  Pill,
+  Plus,
+  Printer,
+  RotateCcw,
+  Sparkles,
+  User as UserIcon,
+  X,
+} from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { useScheduleStore } from '../store/use-schedule-store'
+import {
+  getCurrentMedicationVersion,
+  getMedicationVersionAt,
+  getMedicationVersionHistory,
+  groupMedicationsBySource,
+  sortMedicationVersions,
+} from '../utils/medication-schedule-utils'
+
+import type { MedicationScheduleVersion } from '../types'
+import type { MedicationVersionChange } from '../utils/medication-schedule-utils'
+
+const DATE_FORMAT_PT = 'dd/MM/yyyy'
+const DATE_FORMAT_EN = 'MM/dd/yyyy'
+
+function formatDisplayDate(dateStr: string, language: string): string {
+  try {
+    const isEn = language?.toLowerCase().startsWith('en')
+    const date = parseISO(dateStr)
+    return format(date, isEn ? DATE_FORMAT_EN : DATE_FORMAT_PT)
+  } catch {
+    return dateStr
+  }
+}
+
+export function MedicationsView() {
+  const { t, i18n } = useTranslation(['medications', 'common'])
+  const { medicationVersions } = useScheduleStore()
+
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
+  const [queryDate, setQueryDate] = useState<string>('')
+
+  const today = useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
+
+  const currentVersion = useMemo(
+    () => getCurrentMedicationVersion(medicationVersions, today),
+    [medicationVersions, today],
+  )
+
+  const sortedVersions = useMemo(
+    () => sortMedicationVersions(medicationVersions),
+    [medicationVersions],
+  )
+
+  const firstVersion = sortedVersions[0]
+
+  const queriedVersion = useMemo(() => {
+    if (!queryDate) return undefined
+    return getMedicationVersionAt(medicationVersions, queryDate)
+  }, [medicationVersions, queryDate])
+
+  const displayedVersion: MedicationScheduleVersion | undefined = useMemo(() => {
+    if (queryDate) {
+      return queriedVersion
+    }
+    if (selectedVersionId) {
+      return medicationVersions.find((v) => v.id === selectedVersionId)
+    }
+    return currentVersion
+  }, [queryDate, queriedVersion, selectedVersionId, medicationVersions, currentVersion])
+
+  const isViewingHistorical = Boolean(
+    displayedVersion && currentVersion && displayedVersion.id !== currentVersion.id,
+  )
+
+  const hasNoVersionAtDate = Boolean(
+    queryDate && queriedVersion === undefined && medicationVersions.length > 0,
+  )
+
+  const sourceGroups = useMemo(
+    () => (displayedVersion ? groupMedicationsBySource(displayedVersion) : []),
+    [displayedVersion],
+  )
+
+  const history = useMemo(
+    () => getMedicationVersionHistory(medicationVersions),
+    [medicationVersions],
+  )
+
+  const handleBackToCurrent = () => {
+    setQueryDate('')
+    setSelectedVersionId(null)
+  }
+
+  const renderChangeSummary = (change: MedicationVersionChange): string => {
+    switch (change.type) {
+      case 'MEDICATION_ADDED':
+        return t('medications:changes.MEDICATION_ADDED', {
+          medicationName: change.name,
+        })
+      case 'MEDICATION_REMOVED':
+        return t('medications:changes.MEDICATION_REMOVED', {
+          medicationName: change.name,
+        })
+      case 'MEDICATION_RENAMED':
+        return t('medications:changes.MEDICATION_RENAMED', {
+          before: change.from,
+          after: change.to,
+        })
+      case 'DOSAGE_CHANGED':
+        return t('medications:changes.DOSAGE_CHANGED', {
+          medicationName: change.name,
+          before: change.from || '—',
+          after: change.to || '—',
+        })
+      case 'SOURCE_CHANGED':
+        return t('medications:changes.SOURCE_CHANGED', {
+          medicationName: change.name,
+          before: change.from || '—',
+          after: change.to || '—',
+        })
+      case 'RESPONSIBLE_CHANGED':
+        return t('medications:changes.RESPONSIBLE_CHANGED', {
+          medicationName: change.name,
+          before: change.from || '—',
+          after: change.to || '—',
+        })
+      case 'TIME_ADDED':
+        return t('medications:changes.TIME_ADDED', { time: change.time })
+      case 'TIME_REMOVED':
+        return t('medications:changes.TIME_REMOVED', { time: change.time })
+      case 'DOSE_CHANGED':
+        if (!change.from && change.to) {
+          return t('medications:changes.DOSE_ADDED', {
+            time: change.time,
+            medicationName: change.name,
+            after: change.to,
+          })
+        }
+        if (change.from && !change.to) {
+          return t('medications:changes.DOSE_REMOVED', {
+            time: change.time,
+            medicationName: change.name,
+            before: change.from,
+          })
+        }
+        return t('medications:changes.DOSE_CHANGED', {
+          time: change.time,
+          medicationName: change.name,
+          before: change.from || '—',
+          after: change.to || '—',
+        })
+      default:
+        return ''
+    }
+  }
+
+  return (
+    <div
+      data-testid="medications-view"
+      className="flex-1 h-full overflow-y-auto p-4 sm:p-6 md:p-8 flex flex-col gap-6 max-w-[1500px] w-full mx-auto custom-scrollbar"
+    >
+      {/* 1. Header Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs transition-colors">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-xs">
+            <Pill className="w-6 h-6 stroke-[2.2]" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate">
+              {t('medications:title')}
+            </h1>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+              {t('medications:subtitle')}
+            </p>
+          </div>
+        </div>
+
+        {medicationVersions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              data-testid="medications-print-button"
+              onClick={() => window.print()}
+              className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition cursor-pointer shrink-0"
+            >
+              <Printer className="w-4 h-4" />
+              <span>{t('medications:printSchedule')}</span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="medications-new-version-button"
+              onClick={() => {}}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-xs transition cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>{t('medications:newVersion')}</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Empty State */}
+      {medicationVersions.length === 0 && (
+        <div
+          data-testid="medications-empty-state"
+          className="flex flex-col items-center justify-center text-center p-8 sm:p-12 bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-3xl"
+        >
+          <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4">
+            <Pill className="w-8 h-8" />
+          </div>
+          <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+            {t('medications:emptyTitle')}
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mt-1.5 mb-6">
+            {t('medications:emptyDescription')}
+          </p>
+          <button
+            type="button"
+            data-testid="medications-create-first-button"
+            onClick={() => {}}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-md transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>{t('medications:createFirstVersion')}</span>
+          </button>
+        </div>
+      )}
+
+      {/* 3. Version Controls & Metadata */}
+      {medicationVersions.length > 0 && (
+        <>
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              {isViewingHistorical ? (
+                <span
+                  data-testid="medications-viewing-historical-badge"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  {t('medications:viewingHistoricalBadge')}
+                </span>
+              ) : (
+                <span
+                  data-testid="medications-current-badge"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {t('medications:currentVersionBadge')}
+                </span>
+              )}
+
+              {(isViewingHistorical || queryDate) && (
+                <button
+                  type="button"
+                  data-testid="medications-back-to-current"
+                  onClick={handleBackToCurrent}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>{t('medications:backToCurrent')}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Date Lookup */}
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="medications-lookup-date-input"
+                className="text-xs font-bold text-slate-600 dark:text-slate-400 shrink-0"
+              >
+                {t('medications:lookupByDateLabel')}:
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  id="medications-lookup-date-input"
+                  data-testid="medications-lookup-date-input"
+                  type="date"
+                  value={queryDate}
+                  onChange={(e) => {
+                    setQueryDate(e.target.value)
+                    setSelectedVersionId(null)
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                />
+                {queryDate && (
+                  <button
+                    type="button"
+                    onClick={() => setQueryDate('')}
+                    title={t('medications:clearDateLookup')}
+                    aria-label={t('medications:clearDateLookup')}
+                    className="ml-1 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 3b. No version at requested date alert */}
+          {hasNoVersionAtDate && (
+            <div
+              data-testid="medications-no-version-at-date"
+              className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 flex flex-col gap-2"
+            >
+              <h3 className="text-sm font-bold">
+                {t('medications:noVersionAtDateTitle', {
+                  date: formatDisplayDate(queryDate, i18n.language),
+                })}
+              </h3>
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                {t('medications:noVersionAtDateDescription', {
+                  firstDate: firstVersion
+                    ? formatDisplayDate(firstVersion.effectiveDate, i18n.language)
+                    : '',
+                })}
+              </p>
+              <div>
+                <button
+                  type="button"
+                  onClick={handleBackToCurrent}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-950 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 transition cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>{t('medications:backToCurrent')}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 4. Displayed Version Summary Banner */}
+          {displayedVersion && (
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex flex-wrap items-center gap-4 text-xs">
+                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                    <Calendar className="w-4 h-4 text-indigo-500" />
+                    {t('medications:effectiveSince', {
+                      date: formatDisplayDate(displayedVersion.effectiveDate, i18n.language),
+                    })}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                    <UserIcon className="w-4 h-4 text-indigo-500" />
+                    {t('medications:prescribedBy', {
+                      professional: displayedVersion.professional,
+                    })}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-0.5">
+                  {t('medications:explanationLabel')}
+                </span>
+                <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+                  {displayedVersion.explanation}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 5. Schedule Table */}
+          {displayedVersion && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden flex flex-col">
+              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                    {t('medications:scheduleTableTitle')}
+                  </h2>
+                </div>
+              </div>
+
+              <div
+                data-testid="medications-table-scroll-container"
+                className="overflow-x-auto custom-scrollbar"
+              >
+                <table
+                  data-testid="medications-schedule-table"
+                  className="w-full text-left border-collapse"
+                >
+                  <thead>
+                    <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <th className="p-3.5 sm:p-4 min-w-[100px] sticky left-0 z-10 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-800">
+                        {t('medications:timeColumn')}
+                      </th>
+                      {displayedVersion.medications.map((med) => (
+                        <th
+                          key={med.id}
+                          data-testid={`medication-col-header-${med.id}`}
+                          className="p-3.5 sm:p-4 min-w-[180px] max-w-[240px] border-r border-slate-200/70 dark:border-slate-800 last:border-r-0 align-top"
+                        >
+                          <div className="flex flex-col gap-1">
+                            <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                              {med.name}
+                            </span>
+                            {med.dosage && (
+                              <span
+                                data-testid={`medication-col-dosage-${med.id}`}
+                                className="inline-block text-[11px] font-semibold text-indigo-600 dark:text-indigo-400"
+                              >
+                                {med.dosage}
+                              </span>
+                            )}
+                            {med.responsible && (
+                              <span
+                                data-testid={`medication-col-responsible-${med.id}`}
+                                className="text-[10px] text-slate-500 dark:text-slate-400 font-medium"
+                              >
+                                {med.responsible}
+                              </span>
+                            )}
+                            {med.source && (
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
+                                {med.source}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs sm:text-sm">
+                    {displayedVersion.times.map((time) => (
+                      <tr
+                        key={time}
+                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                      >
+                        <td className="p-3.5 sm:p-4 font-bold text-slate-900 dark:text-white sticky left-0 z-10 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
+                          {time}
+                        </td>
+                        {displayedVersion.medications.map((med) => {
+                          const dose = displayedVersion.doses[med.id]?.[time]
+                          return (
+                            <td
+                              key={med.id}
+                              className="p-3.5 sm:p-4 border-r border-slate-100 dark:border-slate-800/80 last:border-r-0 font-medium text-slate-700 dark:text-slate-300 align-middle"
+                            >
+                              {dose && dose.trim().length > 0 ? (
+                                <span className="px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-semibold inline-block">
+                                  {dose}
+                                </span>
+                              ) : (
+                                <span className="text-slate-300 dark:text-slate-600 select-none">
+                                  {t('medications:emptyDose')}
+                                </span>
+                              )}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 6. Medications Grouped by Source */}
+          {displayedVersion && (
+            <div
+              data-testid="medications-by-source"
+              className="bg-white dark:bg-slate-900 p-5 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-4"
+            >
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                  {t('medications:bySourceTitle')}
+                </h3>
+                <span className="text-xs text-slate-400 font-normal">
+                  ({t('medications:bySourceSubtitle')})
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {sourceGroups.map((group, groupIdx) => (
+                  <div
+                    key={`${group.source || 'nosource'}-${groupIdx}`}
+                    className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col gap-2.5"
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                        {group.source || t('medications:noSourceGroup')}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                        {group.medications.length}
+                      </span>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {group.medications.map((m) => (
+                        <li
+                          key={m.id}
+                          className="text-xs text-slate-700 dark:text-slate-300 flex items-center justify-between gap-2"
+                        >
+                          <span className="font-semibold text-slate-900 dark:text-white">
+                            {m.name}
+                          </span>
+                          {m.dosage && (
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium shrink-0">
+                              {m.dosage}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 7. Version History */}
+          <div
+            data-testid="medications-version-history"
+            className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-4"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                  {t('medications:historyTitle')}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {t('medications:historySubtitle')}
+                </p>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {history.map((entry) => {
+                const isSelected = displayedVersion?.id === entry.version.id
+                return (
+                  <div
+                    key={entry.version.id}
+                    data-testid={`medication-history-item-${entry.version.id}`}
+                    className={`py-4 first:pt-0 last:pb-0 flex flex-col md:flex-row md:items-center justify-between gap-3.5 transition-colors ${
+                      isSelected ? 'bg-indigo-50/40 dark:bg-indigo-950/20 px-3 rounded-xl' : ''
+                    }`}
+                  >
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="font-extrabold text-slate-900 dark:text-white">
+                          {formatDisplayDate(entry.version.effectiveDate, i18n.language)}
+                        </span>
+                        <span className="text-slate-400">•</span>
+                        <span className="font-semibold text-indigo-700 dark:text-indigo-400">
+                          {entry.version.professional}
+                        </span>
+                        {entry.version.id === currentVersion?.id && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                            {t('medications:currentVersionBadge')}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-slate-600 dark:text-slate-400">
+                        {entry.version.explanation}
+                      </p>
+
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {entry.changes.length === 0 ? (
+                          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 italic">
+                            {t('medications:initialVersionSummary')}
+                          </span>
+                        ) : (
+                          entry.changes.map((change, chIdx) => (
+                            <span
+                              key={`${change.type}-${chIdx}`}
+                              className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                            >
+                              {renderChangeSummary(change)}
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-2">
+                      <button
+                        type="button"
+                        data-testid={`medication-select-version-${entry.version.id}`}
+                        onClick={() => {
+                          setSelectedVersionId(entry.version.id)
+                          setQueryDate('')
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <span>
+                          {isSelected
+                            ? t('medications:viewingNow')
+                            : t('medications:viewThisVersion')}
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

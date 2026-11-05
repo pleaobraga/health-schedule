@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -111,12 +111,13 @@ describe('HoverSidebar', () => {
     expect(bottomNav).toHaveClass('md:hidden')
     expect(screen.queryByTestId('mobile-header')).not.toBeInTheDocument()
 
-    // Bottom bar shows Escala, Compras and Mais, without Pessoas, Turnos and Ajustes
-    expect(screen.getByRole('link', { name: 'Escala' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Compras' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Pessoas' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Turnos' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Ajustes' })).not.toBeInTheDocument()
+    // Bottom bar shows Escala, Compras, Medicamentos and Mais, without Pessoas, Turnos and Ajustes
+    expect(within(bottomNav).getByRole('link', { name: 'Escala' })).toBeInTheDocument()
+    expect(within(bottomNav).getByRole('link', { name: 'Compras' })).toBeInTheDocument()
+    expect(within(bottomNav).getByRole('link', { name: 'Medicamentos' })).toBeInTheDocument()
+    expect(within(bottomNav).queryByRole('link', { name: 'Pessoas' })).not.toBeInTheDocument()
+    expect(within(bottomNav).queryByRole('link', { name: 'Turnos' })).not.toBeInTheDocument()
+    expect(within(bottomNav).queryByRole('link', { name: 'Ajustes' })).not.toBeInTheDocument()
 
     const menuBtn = screen.getByTestId('mobile-bottom-nav-more')
 

@@ -1,0 +1,253 @@
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
+
+import { MedicationsView } from './medications-view'
+import { i18n } from '../i18n'
+import { useScheduleStore } from '../store/use-schedule-store'
+
+import type { MedicationScheduleVersion } from '../types'
+
+const version1: MedicationScheduleVersion = {
+  id: 'medver_1',
+  effectiveDate: '2026-03-01',
+  professional: 'Dra. Marina',
+  explanation: 'Início do tratamento',
+  medications: [
+    {
+      id: 'med_lamo',
+      name: 'Lamotrigina',
+      dosage: '100 mg',
+      source: 'Farmácia Popular',
+      responsible: 'Dra. Marina',
+    },
+    {
+      id: 'med_vitd',
+      name: 'Vitamina D',
+      source: ' Drogaria Central ',
+    },
+  ],
+  times: ['08:00', '20:00'],
+  doses: {
+    med_lamo: {
+      '08:00': '1 comprimido',
+      '20:00': '1 comprimido',
+    },
+    med_vitd: {
+      '08:00': '2 gotas',
+    },
+  },
+  createdAt: '2026-03-01T10:00:00.000Z',
+  updatedAt: '2026-03-01T10:00:00.000Z',
+}
+
+const version2: MedicationScheduleVersion = {
+  id: 'medver_2',
+  effectiveDate: '2026-03-13',
+  professional: 'Dr. Carlos',
+  explanation: 'Ajuste da dose matinal e inclusão de melatonina',
+  medications: [
+    {
+      id: 'med_lamo',
+      name: 'Lamotrigina',
+      dosage: '100 mg',
+      source: 'Farmácia Popular',
+      responsible: 'Dra. Marina',
+    },
+    {
+      id: 'med_vitd',
+      name: 'Vitamina D',
+    },
+    {
+      id: 'med_mela',
+      name: 'Melatonina',
+      dosage: '3 mg',
+      source: 'Manipulação',
+      responsible: 'Dr. Carlos',
+    },
+  ],
+  times: ['08:00', '20:00', '22:00'],
+  doses: {
+    med_lamo: {
+      '08:00': '1.5 comprimidos',
+      '20:00': '1 comprimido',
+    },
+    med_vitd: {
+      '08:00': '2 gotas',
+    },
+    med_mela: {
+      '22:00': '1 cápsula',
+    },
+  },
+  createdAt: '2026-03-13T10:00:00.000Z',
+  updatedAt: '2026-03-13T10:00:00.000Z',
+}
+
+describe('MedicationsView', () => {
+  beforeEach(async () => {
+    localStorage.clear()
+    await i18n.changeLanguage('pt-BR')
+    useScheduleStore.setState({ medicationVersions: [] })
+  })
+
+  it('opens without error when there are no versions and offers to create the first one', () => {
+    render(<MedicationsView />)
+
+    expect(screen.getByTestId('medications-view')).toBeInTheDocument()
+    expect(screen.getByTestId('medications-empty-state')).toBeInTheDocument()
+    expect(
+      screen.getByTestId('medications-create-first-button'),
+    ).toBeInTheDocument()
+  })
+
+  it('opens on the current version with medications, dosages, responsible doctors, times and free-text doses', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    const table = screen.getByTestId('medications-schedule-table')
+    expect(within(table).getByText('Lamotrigina')).toBeInTheDocument()
+    expect(within(table).getByText('100 mg')).toBeInTheDocument()
+    expect(within(table).getByText('Dra. Marina')).toBeInTheDocument()
+    expect(within(table).getByText('Vitamina D')).toBeInTheDocument()
+    expect(within(table).getByText('Melatonina')).toBeInTheDocument()
+    expect(within(table).getByText('3 mg')).toBeInTheDocument()
+    expect(within(table).getByText('Dr. Carlos')).toBeInTheDocument()
+    expect(within(table).getByText('08:00')).toBeInTheDocument()
+    expect(within(table).getByText('20:00')).toBeInTheDocument()
+    expect(within(table).getByText('22:00')).toBeInTheDocument()
+    expect(within(table).getByText('1.5 comprimidos')).toBeInTheDocument()
+    expect(within(table).getByText('2 gotas')).toBeInTheDocument()
+    expect(within(table).getByText('1 cápsula')).toBeInTheDocument()
+
+    // Vitamin D has no dosage or responsible doctor on version2
+    const vitdHeader = screen.getByTestId('medication-col-header-med_vitd')
+    expect(within(vitdHeader).getByText('Vitamina D')).toBeInTheDocument()
+    expect(
+      within(vitdHeader).queryByTestId('medication-col-dosage-med_vitd'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(vitdHeader).queryByTestId('medication-col-responsible-med_vitd'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('lists versions from newest to oldest with date, professional, explanation and change summaries', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    const historyItems = screen.getAllByTestId(/^medication-history-item-/)
+    expect(historyItems).toHaveLength(2)
+    expect(historyItems[0]).toHaveAttribute(
+      'data-testid',
+      'medication-history-item-medver_2',
+    )
+    expect(historyItems[1]).toHaveAttribute(
+      'data-testid',
+      'medication-history-item-medver_1',
+    )
+
+    expect(within(historyItems[0]).getByText(/Dr\. Carlos/)).toBeInTheDocument()
+    expect(
+      within(historyItems[0]).getByText(
+        /Ajuste da dose matinal e inclusão de melatonina/,
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(historyItems[0]).getByText(/Medicamento incluído: Melatonina/),
+    ).toBeInTheDocument()
+
+    expect(within(historyItems[1]).getByText(/Dra\. Marina/)).toBeInTheDocument()
+    expect(
+      within(historyItems[1]).getByText(/Início do tratamento/),
+    ).toBeInTheDocument()
+  })
+
+  it('displays a selected older version, offers a direct way back to current, and does not mutate medicationVersions', () => {
+    const initialVersions = structuredClone([version1, version2])
+    useScheduleStore.setState({ medicationVersions: initialVersions })
+
+    render(<MedicationsView />)
+
+    fireEvent.click(screen.getByTestId('medication-select-version-medver_1'))
+
+    const table = screen.getByTestId('medications-schedule-table')
+    expect(within(table).queryByText('Melatonina')).not.toBeInTheDocument()
+    expect(
+      within(table).queryByText('1.5 comprimidos'),
+    ).not.toBeInTheDocument()
+    expect(within(table).getAllByText('1 comprimido')).toHaveLength(2)
+
+    // Source grouping follows the displayed version (version1 has Drogaria Central, no Manipulação)
+    const sourceSection = screen.getByTestId('medications-by-source')
+    expect(
+      within(sourceSection).getByText('Drogaria Central'),
+    ).toBeInTheDocument()
+    expect(
+      within(sourceSection).queryByText('Manipulação'),
+    ).not.toBeInTheDocument()
+
+    // Direct path back to current version
+    const backBtn = screen.getByTestId('medications-back-to-current')
+    fireEvent.click(backBtn)
+
+    expect(
+      within(screen.getByTestId('medications-schedule-table')).getByText(
+        'Melatonina',
+      ),
+    ).toBeInTheDocument()
+    expect(useScheduleStore.getState().medicationVersions).toEqual(
+      initialVersions,
+    )
+  })
+
+  it('looks up the version active on a queried date, or shows that no schedule existed before the first version', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    const dateInput = screen.getByTestId('medications-lookup-date-input')
+
+    // Date between version1 (2026-03-01) and version2 (2026-03-13) shows version1
+    fireEvent.change(dateInput, { target: { value: '2026-03-05' } })
+    expect(
+      within(screen.getByTestId('medications-schedule-table')).queryByText(
+        'Melatonina',
+      ),
+    ).not.toBeInTheDocument()
+
+    // Date before version1 shows that no schedule existed on that date
+    fireEvent.change(dateInput, { target: { value: '2026-02-15' } })
+    expect(
+      screen.getByTestId('medications-no-version-at-date'),
+    ).toBeInTheDocument()
+
+    // Back to current version
+    fireEvent.click(screen.getByTestId('medications-back-to-current'))
+    expect(
+      within(screen.getByTestId('medications-schedule-table')).getByText(
+        'Melatonina',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps a 10-medication schedule inside its own horizontally scrollable container', () => {
+    const tenMedsVersion: MedicationScheduleVersion = {
+      ...version1,
+      medications: Array.from({ length: 10 }, (_, idx) => ({
+        id: `med_${idx + 1}`,
+        name: `Medicamento ${idx + 1}`,
+        dosage: `${(idx + 1) * 10} mg`,
+      })),
+    }
+    useScheduleStore.setState({ medicationVersions: [tenMedsVersion] })
+
+    render(<MedicationsView />)
+
+    const scrollContainer = screen.getByTestId(
+      'medications-table-scroll-container',
+    )
+    expect(scrollContainer.className).toContain('overflow-x-auto')
+    expect(within(scrollContainer).getByText('Medicamento 10')).toBeInTheDocument()
+  })
+})
+
