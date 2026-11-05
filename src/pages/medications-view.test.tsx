@@ -249,5 +249,41 @@ describe('MedicationsView', () => {
     expect(scrollContainer.className).toContain('overflow-x-auto')
     expect(within(scrollContainer).getByText('Medicamento 10')).toBeInTheDocument()
   })
+
+  it('shows the edit and delete actions on the latest version and confirms deletion with ConfirmDialog', async () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    // On version2 (current and latest), both edit and delete buttons are present
+    expect(screen.getByTestId('medications-edit-version-button')).toBeInTheDocument()
+    const deleteBtn = screen.getByTestId('medications-delete-version-button')
+    expect(deleteBtn).toBeInTheDocument()
+
+    // Clicking delete opens ConfirmDialog
+    fireEvent.click(deleteBtn)
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText(/Excluir versão mais recente\?/i)).toBeInTheDocument()
+
+    // Confirm deletion
+    const confirmBtn = screen.getByRole('button', { name: /Sim, excluir versão/i })
+    fireEvent.click(confirmBtn)
+
+    // Now only version1 remains
+    expect(useScheduleStore.getState().medicationVersions).toEqual([version1])
+  })
+
+  it('hides the delete button when viewing an older version', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    // Select older version1
+    fireEvent.click(screen.getByTestId('medication-select-version-medver_1'))
+
+    // Edit is available to correct that historical version, but delete is not
+    expect(screen.getByTestId('medications-edit-version-button')).toBeInTheDocument()
+    expect(screen.queryByTestId('medications-delete-version-button')).not.toBeInTheDocument()
+  })
 })
 

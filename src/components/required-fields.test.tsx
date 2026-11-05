@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
+import { MedicationVersionForm } from './medications/medication-version-form'
 import { DayEventsModal } from './modals/day-events-modal'
 import { MonthShiftConfigModal } from './modals/month-shift-config-modal'
 import { GlobalPersonModal } from './people-management/global-person-modal'
@@ -14,9 +15,11 @@ import { CreateUserModal } from './users/create-user-modal'
 import { AuthProvider } from '../context/auth-context'
 import enAddresses from '../locales/en-US/addresses.json'
 import enCalendar from '../locales/en-US/calendar.json'
+import enMedications from '../locales/en-US/medications.json'
 import enPurchases from '../locales/en-US/purchases.json'
 import ptAddresses from '../locales/pt-BR/addresses.json'
 import ptCalendar from '../locales/pt-BR/calendar.json'
+import ptMedications from '../locales/pt-BR/medications.json'
 import ptPurchases from '../locales/pt-BR/purchases.json'
 import { AddressManagementView } from '../pages/address-management-view'
 import { LoginPage } from '../pages/login-page'
@@ -94,6 +97,14 @@ describe('required field labels', () => {
     expect(document.querySelector('label[for="item-maintenance-rename-input"]')?.textContent).toMatch(/\*$/)
     expect(document.querySelector('label[for="item-maintenance-merge-select"]')?.textContent).toMatch(/\*$/)
   })
+
+  it('marks the required fields in MedicationVersionForm', () => {
+    render(<MedicationVersionForm mode="NEW" onClose={vi.fn()} />)
+
+    expect(document.querySelector('label[for="medication-form-effective-date-input"]')?.textContent).toMatch(/\*$/)
+    expect(document.querySelector('label[for="medication-form-professional-input"]')?.textContent).toMatch(/\*$/)
+    expect(document.querySelector('label[for="medication-form-explanation-input"]')?.textContent).toMatch(/\*$/)
+  })
 })
 
 describe('optional wording', () => {
@@ -104,8 +115,8 @@ describe('optional wording', () => {
   }
 
   it.each([
-    ['pt-BR', [ptAddresses, ptCalendar, ptPurchases]],
-    ['en-US', [enAddresses, enCalendar, enPurchases]],
+    ['pt-BR', [ptAddresses, ptCalendar, ptPurchases, ptMedications]],
+    ['en-US', [enAddresses, enCalendar, enPurchases, enMedications]],
   ])('has no optional wording in %s form texts', (_, files) => {
     files.flatMap(collectStrings).forEach((text) => {
       expect(text).not.toMatch(/opcional|optional/i)
