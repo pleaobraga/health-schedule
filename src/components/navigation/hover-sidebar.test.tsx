@@ -107,8 +107,16 @@ describe('HoverSidebar', () => {
     renderWithRouter()
 
     // Below 768px the bottom tab bar replaces the old top header
-    expect(screen.getByTestId('mobile-bottom-nav')).toHaveClass('md:hidden')
+    const bottomNav = screen.getByTestId('mobile-bottom-nav')
+    expect(bottomNav).toHaveClass('md:hidden')
     expect(screen.queryByTestId('mobile-header')).not.toBeInTheDocument()
+
+    // Bottom bar shows Escala, Compras and Mais, without Pessoas, Turnos and Ajustes
+    expect(screen.getByRole('link', { name: 'Escala' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Compras' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Pessoas' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Turnos' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Ajustes' })).not.toBeInTheDocument()
 
     const menuBtn = screen.getByTestId('mobile-bottom-nav-more')
 
@@ -119,7 +127,11 @@ describe('HoverSidebar', () => {
 
     // Click to open fullscreen menu
     fireEvent.click(menuBtn)
-    expect(screen.getByTestId('mobile-fullscreen-menu')).toBeInTheDocument()
+    const fullscreenMenu = screen.getByTestId('mobile-fullscreen-menu')
+    expect(fullscreenMenu).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /gerenciar pessoas/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /turnos de trabalho/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: /configurações/i }).length).toBeGreaterThan(0)
 
     // Click to close menu
     const closeBtn = screen.getByTestId('mobile-menu-close')

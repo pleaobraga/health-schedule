@@ -12,6 +12,7 @@
   },
   "nav": {
     "calendar": "Calendário de Escalas",
+    "purchases": "Compras e Gastos",
     "people": "Gerenciar Pessoas",
     "shifts": "Turnos de Trabalho",
     "rules": "Regras de Validação",
@@ -22,6 +23,7 @@
   },
   "navShort": {
     "calendar": "Escala",
+    "purchases": "Compras",
     "people": "Pessoas",
     "shifts": "Turnos",
     "settings": "Ajustes",

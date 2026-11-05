@@ -121,6 +121,7 @@ export interface ValidationError {
 export type MonthParticipants = Record<string, string[]>; // 'YYYY-MM' -> personId[]
 export type NavigationTab =
   | 'calendar'
+  | 'purchases'
   | 'people'
   | 'shifts'
   | 'rules'

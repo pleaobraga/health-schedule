@@ -12,6 +12,7 @@ import {
   Moon,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   Sun,
   User as UserIcon,
   UserCog,
@@ -78,6 +79,13 @@ export function HoverSidebar({ isProdOverride }: HoverSidebarProps = {}) {
       label: t('nav.calendar', { defaultValue: 'Calendário de Escalas' }),
       icon: CalendarDays,
       end: true,
+    },
+    {
+      id: 'purchases',
+      path: '/compras',
+      label: t('nav.purchases', { defaultValue: 'Compras e Gastos' }),
+      icon: ShoppingBag,
+      end: false,
     },
     {
       id: 'people',
@@ -182,22 +190,10 @@ export function HoverSidebar({ isProdOverride }: HoverSidebarProps = {}) {
       end: true,
     },
     {
-      id: 'people' as const,
-      path: '/pessoas',
-      label: t('common:navShort.people'),
-      icon: Users,
-    },
-    {
-      id: 'shifts' as const,
-      path: '/turnos',
-      label: t('common:navShort.shifts'),
-      icon: Clock,
-    },
-    {
-      id: 'settings' as const,
-      path: '/configuracoes',
-      label: t('common:navShort.settings'),
-      icon: Settings,
+      id: 'purchases' as const,
+      path: '/compras',
+      label: t('common:navShort.purchases'),
+      icon: ShoppingBag,
     },
   ]
 

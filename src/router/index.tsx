@@ -12,6 +12,7 @@ import { ShiftsManagementView } from '../components/settings/shifts-management-v
 import { AuthProvider } from '../context/auth-context'
 import { AddressManagementView } from '../pages/address-management-view'
 import { LoginPage } from '../pages/login-page'
+import { PurchasesView } from '../pages/purchases-view'
 import { UserManagementView } from '../pages/user-management-view'
 
 import type { AuthContextType } from '../context/auth-context'
@@ -33,6 +34,8 @@ export function AppRoutes() {
           <Route index element={<CalendarView />} />
           {/* Alias route /calendario */}
           <Route path="calendario" element={<CalendarView />} />
+          {/* Purchases & Expenses Route */}
+          <Route path="compras" element={<PurchasesView />} />
           {/* Global People Management Route */}
           <Route path="pessoas" element={<PeopleManagementView />} />
           {/* Work Shifts Management Route */}

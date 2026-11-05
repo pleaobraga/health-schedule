@@ -8,6 +8,7 @@ import enCalendar from './locales/en-US/calendar.json'
 import enCommon from './locales/en-US/common.json'
 import enImport from './locales/en-US/import.json'
 import enPeople from './locales/en-US/people.json'
+import enPurchases from './locales/en-US/purchases.json'
 import enSettings from './locales/en-US/settings.json'
 import enUsers from './locales/en-US/users.json'
 import ptAddresses from './locales/pt-BR/addresses.json'
@@ -16,6 +17,7 @@ import ptCalendar from './locales/pt-BR/calendar.json'
 import ptCommon from './locales/pt-BR/common.json'
 import ptImport from './locales/pt-BR/import.json'
 import ptPeople from './locales/pt-BR/people.json'
+import ptPurchases from './locales/pt-BR/purchases.json'
 import ptSettings from './locales/pt-BR/settings.json'
 import ptUsers from './locales/pt-BR/users.json'
 
@@ -81,6 +83,7 @@ export const resources = {
     auth: ptAuth,
     calendar: ptCalendar,
     people: ptPeople,
+    purchases: ptPurchases,
     settings: ptSettings,
     addresses: ptAddresses,
     users: ptUsers,
@@ -91,6 +94,7 @@ export const resources = {
     auth: enAuth,
     calendar: enCalendar,
     people: enPeople,
+    purchases: enPurchases,
     settings: enSettings,
     addresses: enAddresses,
     users: enUsers,

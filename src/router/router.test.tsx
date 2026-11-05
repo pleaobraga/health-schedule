@@ -39,6 +39,15 @@ describe('Application router (HashRouter & route mapping)', () => {
     expect(useScheduleStore.getState().currentView).toBe('people')
   })
 
+  it('renders the purchases screen on "/compras"', async () => {
+    vi.spyOn(backupService, 'hasExistingLocalData').mockResolvedValue(true)
+
+    render(<TestAppRouter initialEntries={['/compras']} />)
+
+    expect(screen.getByTestId('purchases-view')).toBeInTheDocument()
+    expect(useScheduleStore.getState().currentView).toBe('purchases')
+  })
+
   it('renders the import screen on "/importar"', async () => {
     vi.spyOn(backupService, 'hasExistingLocalData').mockResolvedValue(true)
 

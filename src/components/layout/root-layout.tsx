@@ -25,6 +25,8 @@ export function RootLayout() {
     const path = location.pathname
     if (path === '/' || path === '/calendario') {
       setCurrentView('calendar')
+    } else if (path.startsWith('/compras')) {
+      setCurrentView('purchases')
     } else if (path.startsWith('/pessoas')) {
       setCurrentView('people')
     } else if (path.startsWith('/turnos')) {

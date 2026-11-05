@@ -426,6 +426,7 @@ Comportamento:
 Requisitos de produto que a interface deve atender, com a forma definida pela IA executora:
 
 - Existe uma rota própria e nova, `/compras`, para cadastrar e consultar compras
+- Em telas abaixo de 768px, a barra inferior mostra calendário, compras e medicamentos, além de "Mais". Pessoas, turnos e configurações ficam acessíveis por "Mais"
 - O dia com compra fica sinalizado no calendário
 - A visualização das compras do dia continua no modal do dia e agrupa os itens por compra
 - O filtro de mês começa no mês atual
