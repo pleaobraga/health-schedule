@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 import { DayEventsModal } from './day-events-modal'
@@ -723,7 +723,9 @@ describe('DayEventsModal', () => {
       )
 
       // Submit
-      fireEvent.click(screen.getByTestId('submit-expense-btn'))
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('submit-expense-btn'))
+      })
 
       // Verify expense added to store
       const updatedExpenses = useScheduleStore.getState().expenses
@@ -772,7 +774,9 @@ describe('DayEventsModal', () => {
       // Save
       const saveBtn = screen.getByTestId('submit-expense-btn')
       expect(saveBtn).toHaveTextContent('Salvar Gasto')
-      fireEvent.click(saveBtn)
+      await act(async () => {
+        fireEvent.click(saveBtn)
+      })
 
       const updatedExpenses = useScheduleStore.getState().expenses
       expect(updatedExpenses).toHaveLength(1)

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -11,7 +11,14 @@ import { useToastStore } from '../../store/use-toast-store'
 import type { AuthContextType } from '../../context/auth-context'
 import type { User } from 'firebase/auth'
 
-const renderSettings = (authValue?: Partial<AuthContextType>) => {
+const signedOutAuth: Partial<AuthContextType> = {
+  user: null,
+  role: null,
+  isGuest: false,
+  loading: false,
+}
+
+const renderSettings = (authValue: Partial<AuthContextType> = signedOutAuth) => {
   return render(
     <AuthProvider value={authValue}>
       <MemoryRouter>
@@ -151,11 +158,13 @@ describe('SettingsView - clear local data', () => {
     expect(screen.getByTestId('clear-local-data-card')).toBeInTheDocument()
   })
 
-  it('opens the import tab from Importar ou Restaurar', () => {
+  it('opens the import tab from Importar ou Restaurar', async () => {
     renderSettings()
 
     const importButton = screen.getByRole('button', { name: /importar ou restaurar/i })
-    fireEvent.click(importButton)
+    await act(async () => {
+      fireEvent.click(importButton)
+    })
 
     expect(screen.getByText(/Selecione o arquivo de backup/i)).toBeInTheDocument()
   })
@@ -176,7 +185,9 @@ describe('SettingsView - enable cloud sync', () => {
   })
 
   afterEach(() => {
-    useScheduleStore.setState({ pullCloudData, forcePushCloudData })
+    act(() => {
+      useScheduleStore.setState({ pullCloudData, forcePushCloudData })
+    })
     vi.restoreAllMocks()
   })
 

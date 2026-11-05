@@ -246,7 +246,9 @@ describe('CalendarGrid', () => {
     expect(screen.getByTestId('edit-notice')).toHaveClass('mobile:hidden')
     expect(screen.queryByTestId('edit-notice-save-button')).not.toBeInTheDocument()
 
-    useScheduleStore.setState({ hasUnsavedChanges: true })
+    act(() => {
+      useScheduleStore.setState({ hasUnsavedChanges: true })
+    })
     rerender(
       <AuthProvider value={mockAdminAuth}>
         <CalendarGrid />

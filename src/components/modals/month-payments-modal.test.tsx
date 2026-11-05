@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { MonthPaymentsModal } from './month-payments-modal'
 import { i18n } from '../../i18n'
@@ -56,10 +56,6 @@ describe('MonthPaymentsModal', () => {
         '2026-10-03': { shift_d12: 'p2' },
       },
     })
-  })
-
-  afterEach(async () => {
-    await i18n.changeLanguage('pt-BR')
   })
 
   it('exibe o total geral e os valores calculados por profissional', () => {
