@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PurchaseForm } from './purchase-form'
 import { useScheduleStore } from '../../store/use-schedule-store'
+import { calculateMonthExpensesSummary } from '../../utils/shift-rate-utils'
 
 describe('PurchaseForm', () => {
   beforeEach(() => {
@@ -170,6 +171,42 @@ describe('PurchaseForm', () => {
     expect(saved).toBeDefined()
     expect(saved?.amount).toBe(38.5)
     expect(saved?.items).toEqual([])
+  })
+
+  it('saves without professional and category so the purchase has no personId, personName or category and enters monthly closing as a general expense', async () => {
+    const onClose = vi.fn()
+    render(<PurchaseForm onClose={onClose} />)
+
+    fireEvent.change(screen.getByTestId('purchase-date-input'), {
+      target: { value: '2026-11-05' },
+    })
+    fireEvent.change(screen.getByTestId('purchase-description-input'), {
+      target: { value: 'Mercado Bairro' },
+    })
+    fireEvent.change(screen.getByTestId('purchase-amount-input'), {
+      target: { value: '75,00' },
+    })
+
+    fireEvent.click(screen.getByTestId('purchase-submit'))
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    const saved = useScheduleStore
+      .getState()
+      .expenses.find((e) => e.description === 'Mercado Bairro')
+    expect(saved).toBeDefined()
+    expect(saved?.personId).toBeUndefined()
+    expect(saved?.personName).toBeUndefined()
+    expect(saved?.category).toBeUndefined()
+
+    const closingSummary = calculateMonthExpensesSummary(
+      useScheduleStore.getState().expenses,
+      '2026-11',
+    )
+    expect(closingSummary.generalExpensesTotal).toBe(75)
+    expect(closingSummary.generalExpenses.map((e) => e.id)).toContain(saved?.id)
   })
 
   it('shows no suggestions for 2 characters, shows suggestions for 3 characters, and caps at 4 results', () => {

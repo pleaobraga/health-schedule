@@ -33,10 +33,10 @@
      - `MAX_PEOPLE_PER_SHIFT`
      - `DAILY_SHIFT_HOURS` (`EXACT` | `MAX` | `MIN` hours per day on `ALL` | `WEEKDAYS` | `WEEKENDS` | `SPECIFIC_DAYS`)
    - Real-time validation errors (`ERROR` / `WARNING`) displayed per day cell and in `ScheduleAuditModal`.
-5. **Financial Calculation & Shift Rates**:
+5. **Financial Calculation, Shift Rates & Purchases (`/compras`)**:
    - Per-person, per-shift, per-day rates (`shiftRates[shiftId][dayNumber] = rateInBRL`).
    - Monthly financial closing modal (`MonthPaymentsModal`) and dedicated financial sheet in Excel exports.
-   - Daily expenses (`DailyExpense`) registered in the expenses tab of `DayEventsModal`: an expense with a `personId` is a reimbursement for that professional, and one without is a general operational expense. `calculateMonthExpensesSummary` aggregates them for `MonthPaymentsModal`. Expenses are not part of the Excel export.
+   - Daily expenses and multi-item purchases (`DailyExpense`) registered in `/compras` (`PurchasesView`) or in the expenses tab of `DayEventsModal`: an expense with a `personId` (and snapshot `personName`) is a reimbursement for that professional, and one without is a general operational expense. Each purchase can include itemized lines (`items: ExpenseLine[]`, storing a historical `itemName` snapshot alongside `itemId`, `quantity`, and optional line `amount`) backed by a global item catalog (`expenseItems: ExpenseItem[]`) with repurchase interval history (`ItemHistory`) and catalog maintenance (`ItemMaintenance`: rename and merge). `calculateMonthExpensesSummary` aggregates `expense.amount` for `MonthPaymentsModal`. Expenses are not part of the Excel export.
 6. **Offline-First Storage, Multi-Profile Guest Mode & Firebase Cloud Sync**:
    - 100% functional offline via `StorageService` (`localStorage`) with dataset isolation per authenticated user (`scale_manager_user_data_v1_<uid>`) and per guest profile (`scale_manager_guest_data_v1_<guestId>`).
    - Dynamic demo seed loader (`guestSeedLoader.ts`) for new guest sessions.
@@ -80,6 +80,7 @@ src/
 │   │                          # UnsavedChangesModal
 │   ├── navigation/            # HoverSidebar (left rail) and MobileBottomNav (tab bar below 768px)
 │   ├── people-management/     # PeopleManagementView, GlobalPersonModal, DeactivatePersonModal, ConfirmDeleteModal
+│   ├── purchases/             # PurchaseForm, ItemHistory, ItemMaintenance
 │   ├── settings/              # SettingsView, ShiftsManagementView, RulesManagementView,
 │   │                          # ConfirmClearLocalDataModal, EnableCloudSyncModal
 │   ├── sidebar/               # Sidebar (Month panel: Daily Shifts, Month People, Validation Rules),
@@ -93,11 +94,12 @@ src/
 │   └── use-list-order.ts      # Drag-and-drop list order, stored per device and never synced
 ├── i18n.ts                    # i18next initialization & language persistence ('health-schedule:language')
 ├── locales/
-│   ├── pt-BR/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users
-│   └── en-US/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users
+│   ├── pt-BR/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users, purchases
+│   └── en-US/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users, purchases
 ├── pages/
 │   ├── address-management-view.tsx # Global Address CRUD
 │   ├── login-page.tsx              # Firebase Login + Guest Profile Login
+│   ├── purchases-view.tsx          # Monthly purchases, item filters, repurchase history & catalog maintenance
 │   └── user-management-view.tsx    # Admin user role management (Firestore 'users' collection)
 ├── router/
 │   ├── index.tsx              # AppRoutes, AppRouter (HashRouter), TestAppRouter (MemoryRouter)
@@ -123,6 +125,7 @@ src/
     ├── clipboard-utils.ts     # Clipboard copy with execCommand fallback
     ├── cloud-feedback.ts      # Toasts for cloud push and pull results
     ├── date-utils.ts          # Month navigation, calendar 42-day grid generation, past-event checks
+    ├── expense-item-utils.ts  # Item normalization, fuzzy search, repurchase history, filters, line resolution & merge helpers
     ├── export-to-excel.ts     # Multi-sheet XLSX workbook generator & localized filename builder
     ├── list-order.ts          # Sorting and reordering by a saved id order
     ├── month-registry.ts      # Month snapshot capture and per-month registry lookup
@@ -160,8 +163,12 @@ All application state lives in `src/store/use-schedule-store.ts`:
 - `events: CalendarEvent[]`
   - `{ id, date: 'YYYY-MM-DD', title, time?: 'HH:mm', description?, address?, addressId?, personId? }`
 - `expenses: DailyExpense[]`
-  - `{ id, date: 'YYYY-MM-DD', description, amount, personId?, category?: 'MEDICATION' | 'TRANSPORT' | 'SUPPLIES' | 'OTHER', createdAt, updatedAt }`
+  - `{ id, date: 'YYYY-MM-DD', description, amount, personId?, personName?, category?: 'MEDICATION' | 'TRANSPORT' | 'SUPPLIES' | 'OTHER', items: ExpenseLine[], createdAt, updatedAt }`
+  - Each `ExpenseLine` has `{ id?, itemId, itemName, quantity, amount? }`, preserving `itemName` as a snapshot on the purchase so past months (`month < getCurrentMonth()`) never change when the catalog changes.
   - Managed by `addExpense`, `updateExpense`, and `deleteExpense`. Like events, expenses persist immediately, independent of the edit-mode draft.
+- `expenseItems: ExpenseItem[]`
+  - `{ id, name, mergedIntoId?, normalizedName?, defaultCategory?, createdAt, updatedAt }`
+  - Global catalog of purchased items, persisted in `localStorage` (`scale_manager_expense_items_v1`) and synced to `schedules/_master_expense_items`. Managed via `renameExpenseItem` (updates the catalog item and `ExpenseLine.itemName` in purchases from `getCurrentMonth()` onward, leaving past months untouched) and `mergeExpenseItems` (sets `mergedIntoId: targetId` on the source item without modifying any `DailyExpense`, combining their repurchase histories and filters).
 - `addresses: Address[]`
   - `{ id, name, street, number, complement?, neighborhood?, city? }`
 - `monthSnapshots: Record<string, MonthRegistrySnapshot>`
@@ -184,9 +191,9 @@ All application state lives in `src/store/use-schedule-store.ts`:
 2. **Address Update/Delete Cascade**:
    - Updating or deleting an `Address` cascades to **future** `CalendarEvent` records (`!isEventInPast(ev.date, ev.time)`), while **past** events preserve their historical address text untouched.
 3. **Staff Deletion vs. Deactivation**:
-   - `deletePerson(id)` checks `canDeletePerson(id)`. If the person has any assignments in `assignments`, deletion is blocked and the UI prompts to deactivate (`deactivatePerson(id)`) instead. The check looks only at `assignments`, so expenses do not block deletion. A deleted person's expenses are intentionally kept to preserve financial history. In the current month their `personId` no longer resolves, so the UI shows `calendar:removedProfessional` in place of the name; past months with a snapshot keep the name. Amounts stay in the monthly totals. Deletion removes availabilities, participation, and assignments only from the current month on.
+   - `deletePerson(id)` checks `canDeletePerson(id)`. If the person has any assignments in `assignments`, deletion is blocked and the UI prompts to deactivate (`deactivatePerson(id)`) instead. The check looks only at `assignments`, so expenses do not block deletion. A deleted person's expenses are intentionally kept to preserve financial history. When an expense is saved with a `personId`, its `personName` snapshot is stored on the `DailyExpense`; if the person is later deleted, the UI displays `expense.personName` (falling back to `calendar:removedProfessional` only for legacy records without `personName`), and past months with a snapshot also keep the name. Amounts stay in the monthly totals. Deletion removes availabilities, participation, and assignments only from the current month on.
 4. **Clear All Local Data**:
-   - `clearAllLocalData()` in `useScheduleStore` and `StorageService.clearAllLocalData()` wipes **all** local data—including `persons`, `monthParticipants`, `availabilities`, `assignments`, `dayShiftAssignments`, `events`, `expenses`, `addresses`, `shiftDefinitions` (set to `[]`), `shiftRules` (set to `[]`), `monthActiveShifts`, `monthActiveRules`, and `monthDailyShifts`—as well as the active user/guest snapshot.
+   - `clearAllLocalData()` in `useScheduleStore` and `StorageService.clearAllLocalData()` wipes **all** local data—including `persons`, `monthParticipants`, `availabilities`, `assignments`, `dayShiftAssignments`, `events`, `expenses`, `expenseItems`, `addresses`, `shiftDefinitions` (set to `[]`), `shiftRules` (set to `[]`), `monthActiveShifts`, `monthActiveRules`, and `monthDailyShifts`—as well as the active user/guest snapshot.
 5. **Export & Print Filenames**:
    - `getScheduleFileBaseName(month, language)` in `src/utils/export-to-excel.ts` formats the filename as:
      - `escala-<1..12>-<YYYY>` when language is Portuguese (`pt*`)
@@ -208,6 +215,7 @@ Firestore documents are stored under the `schedules` collection:
 - `schedules/_master_addresses` -> `{ addresses: Address[], updatedAt }`
 - `schedules/_master_shifts` -> `{ shifts: ShiftDefinition[], updatedAt }`
 - `schedules/_master_rules` -> `{ rules: ShiftRule[], updatedAt }`
+- `schedules/_master_expense_items` -> `{ items: ExpenseItem[], updatedAt }`
 - `schedules/{YYYY-MM}` -> `{ month, schemaVersion, assignments, monthParticipants, availabilities, events, expenses, dayShiftAssignments, monthDailyShifts, monthActiveShifts, monthActiveRules, monthSnapshots, updatedAt }`
 
 Each schema v2 month document holds only that month's data. Older v1 documents hold a full copy of the dataset, so `mergeMonthDocs` uses the newest v1 document as a base and replaces each month with its v2 slice.
@@ -234,6 +242,7 @@ Uses `HashRouter` with `<Routes>` (`#/...`):
   - `/turnos` — Global shift definitions management (`ShiftsManagementView`).
   - `/regras` — Global validation rules management (`RulesManagementView`).
   - `/enderecos` — Global address registry (`AddressManagementView`).
+  - `/compras` — Monthly purchases, itemized lines, repurchase history, and item catalog maintenance (`PurchasesView`).
   - `/configuracoes` — General settings, language, theme, cloud sync, local storage summary & clear, and Import tab (`?tab=importar`).
   - `/importar`, `/configuracoes/importar` — Redirect to `/configuracoes?tab=importar`.
   - `/configuracoes/turnos`, `/configuracoes/regras` — Redirect to `/turnos` and `/regras`.

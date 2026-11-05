@@ -40,7 +40,7 @@ The app runs in guest mode without Firebase credentials. `pre-commit` runs lint-
 
 **Isolated datasets.** Each user and guest profile has a snapshot in `localStorage`. `auth-context.tsx` swaps them with `StorageService.restoreDataset` followed by `reloadFromStorage()`, so data missing from the snapshot is lost on account switch.
 
-**Cloud documents.** `schedules/{YYYY-MM}` (schema v2) holds only that month. Older v1 docs hold a full dataset copy, so `mergeMonthDocs` uses the newest one as a base and applies v2 slices on top. Global data lives in `schedules/_master_{people,addresses,shifts,rules}`. A pull fetches every doc and replaces the local schedule, including any draft. `firestore.rules` lets any authenticated user read and write `schedules`; the admin restriction is enforced only in the client.
+**Cloud documents.** `schedules/{YYYY-MM}` (schema v2) holds only that month. Older v1 docs hold a full dataset copy, so `mergeMonthDocs` uses the newest one as a base and applies v2 slices on top. Global data lives in `schedules/_master_{people,addresses,shifts,rules,expense_items}`. A pull fetches every doc and replaces the local schedule, including any draft. `firestore.rules` lets any authenticated user read and write `schedules`; the admin restriction is enforced only in the client.
 
 **History rule.** A registry change (people, shifts, rules, expense items, addresses) must never change what a past month shows; a past month is any month before `getCurrentMonth()`. Directly editing a past month stays allowed. Before any change to people, shifts, or rules, the store's `freezePastMonths` saves them per past month in `monthSnapshots`. Screens showing a month must read `getRegistryForMonth(month)`, not `persons`, `shiftDefinitions`, or `shiftRules`, and any new registry-changing action must call `freezePastMonths` first. Registry screens and pick lists use the live data.
 
@@ -48,7 +48,7 @@ The app runs in guest mode without Firebase credentials. `pre-commit` runs lint-
 
 - `DayEventsModal`, `FullScreenCalendarModal`, and `UnsavedChangesModal` are mounted once in `RootLayout` and driven by store state.
 - `FullScreenCalendarModal` renders its own cells and does not use `DayCell`. Calendar cell changes must be made in both places.
-- `HoverSidebar` renders the desktop rail and `MobileBottomNav`.
+- `HoverSidebar` renders the desktop rail and `MobileBottomNav` (including `/compras` for `PurchasesView`).
 - Routes are in [src/router/index.tsx](src/router/index.tsx) with `HashRouter`, which GitHub Pages requires. `route-config.ts` is metadata only.
 
 **Testing.** Vitest uses jsdom and globals. `src/test/setup.ts` forces `pt-BR` and clears `localStorage` after each test. Use `TestAppRouter` for routed tests; it defaults to an authenticated admin. Both `.test` and `.spec` suffixes exist.
