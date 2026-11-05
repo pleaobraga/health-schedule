@@ -45,6 +45,7 @@
     "DOSAGE_CHANGED": "Dosagem de {{medicationName}}: {{before}} → {{after}}",
     "SOURCE_CHANGED": "Origem de {{medicationName}}: {{before}} → {{after}}",
     "RESPONSIBLE_CHANGED": "Médico de {{medicationName}}: {{before}} → {{after}}",
+    "SPECIALTY_CHANGED": "Especialidade de {{medicationName}}: {{before}} → {{after}}",
     "TIME_ADDED": "Horário incluído: {{time}}",
     "TIME_REMOVED": "Horário removido: {{time}}",
     "DOSE_ADDED": "Dose incluída em {{time}} para {{medicationName}}: {{after}}",
@@ -53,16 +54,24 @@
   },
   "form": {
     "newTitle": "Nova Versão da Tabela",
-    "newSubtitle": "Parta da tabela vigente, ajuste o que mudou e registre quem orientou a alteração.",
+    "newSubtitle": "Parta da tabela vigente e ajuste o que mudou.",
     "correctionTitle": "Corrigir Versão",
     "correctionSubtitle": "Atualize os dados desta versão sem criar um novo registro no histórico.",
     "effectiveDate": "Data da mudança *",
     "effectiveDatePlaceholder": "Selecione a data",
-    "professional": "Profissional que orientou *",
+    "professional": "Profissional que orientou",
     "professionalPlaceholder": "Ex: Dra. Marina",
     "professionalSuggestions": "Profissionais anteriores",
     "explanation": "Explicação da mudança *",
     "explanationPlaceholder": "Descreva o que foi alterado nesta prescrição...",
+    "notesSection": "Informações adicionais",
+    "addNote": "Incluir Informação",
+    "removeNote": "Remover informação",
+    "noteDate": "Data",
+    "noteDatePlaceholder": "Selecione a data",
+    "noteProfessional": "Profissional",
+    "noteText": "Explicação *",
+    "noteTextPlaceholder": "Ex: Dose reduzida após a consulta",
     "medicationsSection": "Medicamentos (Colunas)",
     "addMedication": "Incluir Medicamento",
     "removeMedication": "Remover medicamento {{name}}",
@@ -74,6 +83,8 @@
     "medicationSourcePlaceholder": "Ex: Farmácia Popular",
     "medicationResponsible": "Médico responsável",
     "medicationResponsiblePlaceholder": "Ex: Dra. Marina",
+    "medicationSpecialty": "Especialidade",
+    "medicationSpecialtyPlaceholder": "Ex: Psiquiatra",
     "timesSection": "Horários (Linhas)",
     "addTime": "Incluir Horário",
     "removeTime": "Remover horário {{time}}",
@@ -89,6 +100,7 @@
   "deleteConfirm": {
     "title": "Excluir versão mais recente?",
     "message": "A versão de {{date}} ({{professional}}) será removida e a versão anterior voltará a ser a vigente.",
+    "messageNoProfessional": "A versão de {{date}} será removida e a versão anterior voltará a ser a vigente.",
     "confirm": "Sim, excluir versão",
     "cancel": "Cancelar"
   },
@@ -97,8 +109,8 @@
     "DATE_IN_FUTURE": "A data da mudança não pode estar no futuro.",
     "DATE_BEFORE_LATEST": "A nova versão precisa ter data igual ou posterior à última versão.",
     "DATE_OUT_OF_RANGE": "A data corrigida precisa ficar entre a versão anterior e a versão seguinte.",
-    "PROFESSIONAL_REQUIRED": "Informe o profissional que orientou a mudança.",
     "EXPLANATION_REQUIRED": "Explique o que mudou nesta versão.",
+    "NOTE_TEXT_REQUIRED": "Escreva a explicação de cada informação adicional.",
     "MEDICATION_REQUIRED": "Inclua pelo menos um medicamento na tabela.",
     "MEDICATION_NAME_REQUIRED": "Informe o nome de todos os medicamentos.",
     "DUPLICATE_MEDICATION": "Existe medicamento repetido com o mesmo nome e dosagem.",
@@ -106,6 +118,6 @@
     "TIME_INVALID": "Informe todos os horários no formato HH:mm (00:00 a 23:59).",
     "DUPLICATE_TIME": "Não repita o mesmo horário na tabela.",
     "VERSION_NOT_FOUND": "Versão não encontrada."
-  }
+  },
+  "notesTitle": "Informações adicionais"
 }
-

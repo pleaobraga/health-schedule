@@ -102,8 +102,13 @@ describe('required field labels', () => {
     render(<MedicationVersionForm mode="NEW" onClose={vi.fn()} />)
 
     expect(document.querySelector('label[for="medication-form-effective-date-input"]')?.textContent).toMatch(/\*$/)
-    expect(document.querySelector('label[for="medication-form-professional-input"]')?.textContent).toMatch(/\*$/)
+    expect(document.querySelector('label[for="medication-form-professional-input"]')?.textContent).not.toMatch(/\*$/)
     expect(document.querySelector('label[for="medication-form-explanation-input"]')?.textContent).toMatch(/\*$/)
+
+    fireEvent.click(screen.getByTestId('medication-add-note-button'))
+    expect(document.querySelector('label[for="medication-note-text-input-0"]')?.textContent).toMatch(/\*$/)
+    expect(document.querySelector('label[for="medication-note-date-input-0"]')?.textContent).not.toMatch(/\*$/)
+    expect(document.querySelector('label[for="medication-note-professional-input-0"]')?.textContent).not.toMatch(/\*$/)
   })
 })
 

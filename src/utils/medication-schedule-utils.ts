@@ -6,6 +6,7 @@ import type {
   MedicationColumn,
   MedicationScheduleVersion,
   MedicationVersionInput,
+  MedicationVersionNote,
 } from '../types'
 
 export const PROFESSIONAL_SEARCH_MIN_LENGTH = 3
@@ -16,8 +17,8 @@ export type MedicationValidationCode =
   | 'DATE_IN_FUTURE'
   | 'DATE_BEFORE_LATEST'
   | 'DATE_OUT_OF_RANGE'
-  | 'PROFESSIONAL_REQUIRED'
   | 'EXPLANATION_REQUIRED'
+  | 'NOTE_TEXT_REQUIRED'
   | 'MEDICATION_REQUIRED'
   | 'MEDICATION_NAME_REQUIRED'
   | 'DUPLICATE_MEDICATION'
@@ -30,6 +31,7 @@ export interface MedicationValidationError {
   code: MedicationValidationCode
   medicationId?: string
   time?: string
+  noteId?: string
 }
 
 export type MedicationVersionChange =
@@ -72,6 +74,13 @@ export type MedicationVersionChange =
       from?: string
       to?: string
     }
+  | {
+      type: 'SPECIALTY_CHANGED'
+      medicationId: string
+      name: string
+      from?: string
+      to?: string
+    }
   | { type: 'TIME_ADDED'; time: string }
   | { type: 'TIME_REMOVED'; time: string }
   | {
@@ -98,6 +107,11 @@ export function createMedicationId(): string {
   return `med_${Date.now()}_${random}`
 }
 
+export function createMedicationNoteId(): string {
+  const random = Math.random().toString(36).slice(2, 9)
+  return `mednote_${Date.now()}_${random}`
+}
+
 function isValidIsoDateString(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const parsed = parseISO(value)
@@ -108,7 +122,7 @@ export function normalizeMedicationVersionInput(
   input: MedicationVersionInput,
 ): MedicationVersionInput {
   const effectiveDate = (input.effectiveDate ?? '').trim()
-  const professional = (input.professional ?? '').trim()
+  const professional = input.professional?.trim()
   const explanation = (input.explanation ?? '').trim()
 
   const medications: MedicationColumn[] = (input.medications ?? []).map(
@@ -128,6 +142,10 @@ export function normalizeMedicationVersionInput(
       const responsible = med.responsible?.trim()
       if (responsible) {
         normalizedMed.responsible = responsible
+      }
+      const specialty = med.specialty?.trim()
+      if (specialty) {
+        normalizedMed.specialty = specialty
       }
       return normalizedMed
     },
@@ -160,14 +178,40 @@ export function normalizeMedicationVersionInput(
     }
   }
 
+  const notes = normalizeMedicationNotes(input.notes)
+
   return {
     effectiveDate,
-    professional,
+    ...(professional ? { professional } : {}),
     explanation,
+    ...(notes.length > 0 ? { notes } : {}),
     medications,
     times,
     doses,
   }
+}
+
+function normalizeMedicationNotes(
+  notes: MedicationVersionNote[] | undefined,
+): MedicationVersionNote[] {
+  const normalized: MedicationVersionNote[] = []
+
+  for (const note of notes ?? []) {
+    const date = note.date?.trim()
+    const professional = note.professional?.trim()
+    const text = (note.text ?? '').trim()
+    if (!date && !professional && !text) continue
+
+    normalized.push({
+      id: note.id,
+      ...(date ? { date } : {}),
+      ...(professional ? { professional } : {}),
+      text,
+    })
+  }
+
+  // Newest first, matching the version history; undated notes go last.
+  return normalized.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 }
 
 export function validateMedicationVersionInput(
@@ -206,12 +250,16 @@ export function validateMedicationVersionInput(
     }
   }
 
-  if (!(input.professional ?? '').trim()) {
-    errors.push({ code: 'PROFESSIONAL_REQUIRED' })
-  }
-
   if (!(input.explanation ?? '').trim()) {
     errors.push({ code: 'EXPLANATION_REQUIRED' })
+  }
+
+  for (const note of input.notes ?? []) {
+    const isBlank =
+      !note.date?.trim() && !note.professional?.trim() && !note.text?.trim()
+    if (!isBlank && !note.text?.trim()) {
+      errors.push({ code: 'NOTE_TEXT_REQUIRED', noteId: note.id })
+    }
   }
 
   const medications = input.medications ?? []
@@ -382,6 +430,16 @@ export function getMedicationVersionChanges(
         name: nextMed.name,
         from: prevMed.responsible || undefined,
         to: nextMed.responsible || undefined,
+      })
+    }
+
+    if ((prevMed.specialty || undefined) !== (nextMed.specialty || undefined)) {
+      changes.push({
+        type: 'SPECIALTY_CHANGED',
+        medicationId: nextMed.id,
+        name: nextMed.name,
+        from: prevMed.specialty || undefined,
+        to: nextMed.specialty || undefined,
       })
     }
   }

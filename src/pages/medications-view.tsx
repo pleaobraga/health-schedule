@@ -15,10 +15,13 @@ import {
   X,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { ConfirmDialog } from '../components/common/confirm-dialog'
 import { MedicationVersionForm } from '../components/medications/medication-version-form'
+import { MedicationVersionNotes } from '../components/medications/medication-version-notes'
+import { DatePicker } from '../components/ui/date-picker'
 import { useScheduleStore } from '../store/use-schedule-store'
 import {
   getCurrentMedicationVersion,
@@ -163,6 +166,12 @@ export function MedicationsView() {
           before: change.from || '—',
           after: change.to || '—',
         })
+      case 'SPECIALTY_CHANGED':
+        return t('medications:changes.SPECIALTY_CHANGED', {
+          medicationName: change.name,
+          before: change.from || '—',
+          after: change.to || '—',
+        })
       case 'TIME_ADDED':
         return t('medications:changes.TIME_ADDED', { time: change.time })
       case 'TIME_REMOVED':
@@ -273,109 +282,197 @@ export function MedicationsView() {
         </div>
       )}
 
-      {/* 3. Version Controls & Metadata */}
+      {/* Version content */}
       {medicationVersions.length > 0 && (
         <>
-          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {isViewingHistorical ? (
-                <span
-                  data-testid="medications-viewing-historical-badge"
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                >
-                  <History className="w-3.5 h-3.5" />
-                  {t('medications:viewingHistoricalBadge')}
-                </span>
-              ) : (
-                <span
-                  data-testid="medications-current-badge"
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {t('medications:currentVersionBadge')}
-                </span>
-              )}
+          {/* 3. Schedule: version status, date lookup and table */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden flex flex-col">
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                    {t('medications:scheduleTableTitle')}
+                  </h2>
+                </div>
+                {isViewingHistorical ? (
+                  <span
+                    data-testid="medications-viewing-historical-badge"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    {t('medications:viewingHistoricalBadge')}
+                  </span>
+                ) : (
+                  <span
+                    data-testid="medications-current-badge"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {t('medications:currentVersionBadge')}
+                  </span>
+                )}
 
-              {(isViewingHistorical || queryDate) && (
-                <button
-                  type="button"
-                  data-testid="medications-back-to-current"
-                  onClick={handleBackToCurrent}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>{t('medications:backToCurrent')}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Date Lookup */}
-            <div className="flex items-center gap-2">
-              <label
-                htmlFor="medications-lookup-date-input"
-                className="text-xs font-bold text-slate-600 dark:text-slate-400 shrink-0"
-              >
-                {t('medications:lookupByDateLabel')}:
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  id="medications-lookup-date-input"
-                  data-testid="medications-lookup-date-input"
-                  type="date"
-                  value={queryDate}
-                  onChange={(e) => {
-                    setQueryDate(e.target.value)
-                    setSelectedVersionId(null)
-                  }}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                />
-                {queryDate && (
+                {(isViewingHistorical || queryDate) && (
                   <button
                     type="button"
-                    onClick={() => setQueryDate('')}
-                    title={t('medications:clearDateLookup')}
-                    aria-label={t('medications:clearDateLookup')}
-                    className="ml-1 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    data-testid="medications-back-to-current"
+                    onClick={handleBackToCurrent}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>{t('medications:backToCurrent')}</span>
                   </button>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* 3b. No version at requested date alert */}
-          {hasNoVersionAtDate && (
-            <div
-              data-testid="medications-no-version-at-date"
-              className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 flex flex-col gap-2"
-            >
-              <h3 className="text-sm font-bold">
-                {t('medications:noVersionAtDateTitle', {
-                  date: formatDisplayDate(queryDate, i18n.language),
-                })}
-              </h3>
-              <p className="text-xs text-amber-800 dark:text-amber-300">
-                {t('medications:noVersionAtDateDescription', {
-                  firstDate: firstVersion
-                    ? formatDisplayDate(firstVersion.effectiveDate, i18n.language)
-                    : '',
-                })}
-              </p>
-              <div>
-                <button
-                  type="button"
-                  onClick={handleBackToCurrent}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-950 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 transition cursor-pointer"
+              {/* Date Lookup */}
+              <div className="flex items-center gap-2 mobile:flex-col mobile:items-stretch">
+                <label
+                  htmlFor="medications-lookup-date-input"
+                  className="text-xs font-bold text-slate-600 dark:text-slate-400 shrink-0"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>{t('medications:backToCurrent')}</span>
-                </button>
+                  {t('medications:lookupByDateLabel')}:
+                </label>
+                <div className="relative flex items-center">
+                  <DatePicker
+                    id="medications-lookup-date-input"
+                    data-testid="medications-lookup-date-input"
+                    value={queryDate}
+                    placeholder={t('medications:lookupByDatePlaceholder')}
+                    className="w-52 mobile:w-full"
+                    onChange={(val) => {
+                      setQueryDate(val)
+                      setSelectedVersionId(null)
+                    }}
+                  />
+                  {queryDate && (
+                    <button
+                      type="button"
+                      onClick={() => setQueryDate('')}
+                      title={t('medications:clearDateLookup')}
+                      aria-label={t('medications:clearDateLookup')}
+                      className="ml-1 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          )}
 
-          {/* 4. Displayed Version Summary Banner */}
+            {hasNoVersionAtDate && (
+              <div
+                data-testid="medications-no-version-at-date"
+                className="m-4 p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 flex flex-col gap-2"
+              >
+                <h3 className="text-sm font-bold">
+                  {t('medications:noVersionAtDateTitle', {
+                    date: formatDisplayDate(queryDate, i18n.language),
+                  })}
+                </h3>
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  {t('medications:noVersionAtDateDescription', {
+                    firstDate: firstVersion
+                      ? formatDisplayDate(firstVersion.effectiveDate, i18n.language)
+                      : '',
+                  })}
+                </p>
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleBackToCurrent}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-950 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 transition cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>{t('medications:backToCurrent')}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {displayedVersion && (
+                  <div
+                    data-testid="medications-table-scroll-container"
+                    className="overflow-x-auto custom-scrollbar"
+                  >
+                    <table
+                      data-testid="medications-schedule-table"
+                      className="w-full text-left border-collapse"
+                    >
+                      <thead>
+                        <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
+                          <th className="p-3.5 sm:p-4 min-w-[100px] sticky left-0 z-10 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-800">
+                            {t('medications:timeColumn')}
+                          </th>
+                          {displayedVersion.medications.map((med) => (
+                            <th
+                              key={med.id}
+                              data-testid={`medication-col-header-${med.id}`}
+                              className="p-3.5 sm:p-4 min-w-[180px] max-w-[240px] border-r border-slate-200/70 dark:border-slate-800 last:border-r-0 align-top"
+                            >
+                              <div className="flex flex-col items-start gap-1.5">
+                                <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                                  {med.name}
+                                  {med.dosage && (
+                                    <span
+                                      data-testid={`medication-col-dosage-${med.id}`}
+                                      className="ml-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400"
+                                    >
+                                      {med.dosage}
+                                    </span>
+                                  )}
+                                </span>
+                                {med.specialty && (
+                                  <span
+                                    data-testid={`medication-col-specialty-${med.id}`}
+                                    className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                                  >
+                                    {med.specialty}
+                                  </span>
+                                )}
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs sm:text-sm">
+                        {displayedVersion.times.map((time) => (
+                          <tr
+                            key={time}
+                            className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                          >
+                            <td className="p-3.5 sm:p-4 font-bold text-slate-900 dark:text-white sticky left-0 z-10 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
+                              {time}
+                            </td>
+                            {displayedVersion.medications.map((med) => {
+                              const dose = displayedVersion.doses[med.id]?.[time]
+                              return (
+                                <td
+                                  key={med.id}
+                                  className="p-3.5 sm:p-4 border-r border-slate-100 dark:border-slate-800/80 last:border-r-0 font-medium text-slate-700 dark:text-slate-300 align-middle"
+                                >
+                                  {dose && dose.trim().length > 0 ? (
+                                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-semibold inline-block">
+                                      {dose}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-600 select-none">
+                                      {t('medications:emptyDose')}
+                                    </span>
+                                  )}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+            )}
+          </div>
+
+          {/* 4. Displayed Version Summary */}
           {displayedVersion && (
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3">
               <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -386,12 +483,14 @@ export function MedicationsView() {
                       date: formatDisplayDate(displayedVersion.effectiveDate, i18n.language),
                     })}
                   </span>
-                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
-                    <UserIcon className="w-4 h-4 text-indigo-500" />
-                    {t('medications:prescribedBy', {
-                      professional: displayedVersion.professional,
-                    })}
-                  </span>
+                  {displayedVersion.professional && (
+                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                      <UserIcon className="w-4 h-4 text-indigo-500" />
+                      {t('medications:prescribedBy', {
+                        professional: displayedVersion.professional,
+                      })}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -429,103 +528,6 @@ export function MedicationsView() {
                 <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">
                   {displayedVersion.explanation}
                 </p>
-              </div>
-            </div>
-          )}
-
-          {/* 5. Schedule Table */}
-          {displayedVersion && (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden flex flex-col">
-              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                    {t('medications:scheduleTableTitle')}
-                  </h2>
-                </div>
-              </div>
-
-              <div
-                data-testid="medications-table-scroll-container"
-                className="overflow-x-auto custom-scrollbar"
-              >
-                <table
-                  data-testid="medications-schedule-table"
-                  className="w-full text-left border-collapse"
-                >
-                  <thead>
-                    <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
-                      <th className="p-3.5 sm:p-4 min-w-[100px] sticky left-0 z-10 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-800">
-                        {t('medications:timeColumn')}
-                      </th>
-                      {displayedVersion.medications.map((med) => (
-                        <th
-                          key={med.id}
-                          data-testid={`medication-col-header-${med.id}`}
-                          className="p-3.5 sm:p-4 min-w-[180px] max-w-[240px] border-r border-slate-200/70 dark:border-slate-800 last:border-r-0 align-top"
-                        >
-                          <div className="flex flex-col gap-1">
-                            <span className="font-extrabold text-sm text-slate-900 dark:text-white">
-                              {med.name}
-                            </span>
-                            {med.dosage && (
-                              <span
-                                data-testid={`medication-col-dosage-${med.id}`}
-                                className="inline-block text-[11px] font-semibold text-indigo-600 dark:text-indigo-400"
-                              >
-                                {med.dosage}
-                              </span>
-                            )}
-                            {med.responsible && (
-                              <span
-                                data-testid={`medication-col-responsible-${med.id}`}
-                                className="text-[10px] text-slate-500 dark:text-slate-400 font-medium"
-                              >
-                                {med.responsible}
-                              </span>
-                            )}
-                            {med.source && (
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
-                                {med.source}
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs sm:text-sm">
-                    {displayedVersion.times.map((time) => (
-                      <tr
-                        key={time}
-                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
-                      >
-                        <td className="p-3.5 sm:p-4 font-bold text-slate-900 dark:text-white sticky left-0 z-10 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
-                          {time}
-                        </td>
-                        {displayedVersion.medications.map((med) => {
-                          const dose = displayedVersion.doses[med.id]?.[time]
-                          return (
-                            <td
-                              key={med.id}
-                              className="p-3.5 sm:p-4 border-r border-slate-100 dark:border-slate-800/80 last:border-r-0 font-medium text-slate-700 dark:text-slate-300 align-middle"
-                            >
-                              {dose && dose.trim().length > 0 ? (
-                                <span className="px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-semibold inline-block">
-                                  {dose}
-                                </span>
-                              ) : (
-                                <span className="text-slate-300 dark:text-slate-600 select-none">
-                                  {t('medications:emptyDose')}
-                                </span>
-                              )}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           )}
@@ -614,10 +616,14 @@ export function MedicationsView() {
                         <span className="font-extrabold text-slate-900 dark:text-white">
                           {formatDisplayDate(entry.version.effectiveDate, i18n.language)}
                         </span>
-                        <span className="text-slate-400">•</span>
-                        <span className="font-semibold text-indigo-700 dark:text-indigo-400">
-                          {entry.version.professional}
-                        </span>
+                        {entry.version.professional && (
+                          <>
+                            <span className="text-slate-400">•</span>
+                            <span className="font-semibold text-indigo-700 dark:text-indigo-400">
+                              {entry.version.professional}
+                            </span>
+                          </>
+                        )}
                         {entry.version.id === currentVersion?.id && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
                             {t('medications:currentVersionBadge')}
@@ -628,6 +634,8 @@ export function MedicationsView() {
                       <p className="text-xs text-slate-600 dark:text-slate-400">
                         {entry.version.explanation}
                       </p>
+
+                      <MedicationVersionNotes notes={entry.version.notes} />
 
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         {entry.changes.length === 0 ? (
@@ -679,7 +687,7 @@ export function MedicationsView() {
       </div>
 
       {/* 8. Print Sheet (Rendered only for window.print, hidden on screen) */}
-      {displayedVersion && (
+      {displayedVersion && createPortal(
         <div
           id="medication-print-sheet"
           data-testid="medication-print-sheet"
@@ -712,23 +720,18 @@ export function MedicationsView() {
                       key={med.id}
                       className="p-3 border border-slate-300 align-top"
                     >
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex flex-col items-start gap-1">
                         <span className="font-extrabold text-sm text-slate-900">
                           {med.name}
+                          {med.dosage && (
+                            <span className="ml-1.5 text-[11px] font-semibold text-slate-700">
+                              {med.dosage}
+                            </span>
+                          )}
                         </span>
-                        {med.dosage && (
-                          <span className="text-[11px] font-semibold text-slate-700">
-                            {med.dosage}
-                          </span>
-                        )}
-                        {med.responsible && (
-                          <span className="text-[10px] text-slate-600 font-medium">
-                            {med.responsible}
-                          </span>
-                        )}
-                        {med.source && (
-                          <span className="text-[10px] text-slate-500 font-normal">
-                            {med.source}
+                        {med.specialty && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-slate-700 border border-slate-400">
+                            {med.specialty}
                           </span>
                         )}
                       </div>
@@ -765,61 +768,106 @@ export function MedicationsView() {
             </table>
           </div>
 
-          {/* Page 2: Changes Section (Page break before) */}
+          {/* Page 2: Sources and Changes (Page break before) */}
           <div
-            data-testid="medication-print-changes"
-            className="print-page-break-before mt-8 pt-6 border-t border-slate-300"
+            data-testid="medication-print-page-2"
+            className="print-page-break-before mt-8 pt-6 border-t border-slate-300 space-y-6"
           >
-            <div className="mb-4">
-              <h2 className="text-xl font-black text-slate-900">
-                {t('medications:print.changesTitle')}
+            <div data-testid="medication-print-sources">
+              <h2 className="text-xl font-black text-slate-900 mb-3">
+                {t('medications:bySourceTitle')}
               </h2>
-              <p className="text-xs text-slate-600 mt-0.5">
-                {t('medications:print.changesSubtitle')}
-              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {sourceGroups.map((group, groupIdx) => (
+                  <div
+                    key={`${group.source || 'nosource'}-${groupIdx}`}
+                    className="break-inside-avoid p-3 rounded-lg border border-slate-300 text-xs"
+                  >
+                    <h3 className="font-extrabold text-slate-900 pb-1.5 mb-1.5 border-b border-slate-200">
+                      {group.source || t('medications:noSourceGroup')}
+                    </h3>
+                    <ul className="space-y-1">
+                      {group.medications.map((m) => (
+                        <li
+                          key={m.id}
+                          className="flex items-center justify-between gap-2 text-slate-800"
+                        >
+                          <span className="font-semibold">{m.name}</span>
+                          {m.dosage && (
+                            <span className="text-[11px] text-slate-600 shrink-0">
+                              {m.dosage}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="divide-y divide-slate-200 space-y-3">
-              {printHistory.map((entry) => (
-                <div
-                  key={entry.version.id}
-                  className="pt-3 first:pt-0 flex flex-col gap-1 text-xs"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-extrabold text-slate-900">
-                      {formatDisplayDate(entry.version.effectiveDate, i18n.language)}
-                    </span>
-                    <span className="text-slate-400">•</span>
-                    <span className="font-semibold text-slate-800">
-                      {entry.version.professional}
-                    </span>
-                  </div>
+            <div data-testid="medication-print-changes">
+              <div className="mb-4">
+                <h2 className="text-xl font-black text-slate-900">
+                  {t('medications:print.changesTitle')}
+                </h2>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  {t('medications:print.changesSubtitle')}
+                </p>
+              </div>
 
-                  <p className="text-slate-700 italic">
-                    {entry.version.explanation}
-                  </p>
-
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {entry.changes.length === 0 ? (
-                      <span className="text-[11px] font-medium text-slate-500">
-                        {t('medications:initialVersionSummary')}
+              <div className="divide-y divide-slate-200 space-y-3">
+                {printHistory.map((entry) => (
+                  <div
+                    key={entry.version.id}
+                    className="pt-3 first:pt-0 flex flex-col gap-1 text-xs"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-extrabold text-slate-900">
+                        {formatDisplayDate(entry.version.effectiveDate, i18n.language)}
                       </span>
-                    ) : (
-                      entry.changes.map((change, chIdx) => (
-                        <span
-                          key={`${change.type}-${chIdx}`}
-                          className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200"
-                        >
-                          {renderChangeSummary(change)}
+                      {entry.version.professional && (
+                        <>
+                          <span className="text-slate-400">•</span>
+                          <span className="font-semibold text-slate-800">
+                            {entry.version.professional}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    <p className="text-slate-700 italic">
+                      {entry.version.explanation}
+                    </p>
+
+                    <MedicationVersionNotes
+                      notes={entry.version.notes}
+                      printable
+                    />
+
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {entry.changes.length === 0 ? (
+                        <span className="text-[11px] font-medium text-slate-500">
+                          {t('medications:initialVersionSummary')}
                         </span>
-                      ))
-                    )}
+                      ) : (
+                        entry.changes.map((change, chIdx) => (
+                          <span
+                            key={`${change.type}-${chIdx}`}
+                            className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200"
+                          >
+                            {renderChangeSummary(change)}
+                          </span>
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {isFormOpen && (
@@ -836,10 +884,15 @@ export function MedicationsView() {
         title={t('medications:deleteConfirm.title')}
         description={
           displayedVersion
-            ? t('medications:deleteConfirm.message', {
-                date: formatDisplayDate(displayedVersion.effectiveDate, i18n.language),
-                professional: displayedVersion.professional,
-              })
+            ? t(
+                displayedVersion.professional
+                  ? 'medications:deleteConfirm.message'
+                  : 'medications:deleteConfirm.messageNoProfessional',
+                {
+                  date: formatDisplayDate(displayedVersion.effectiveDate, i18n.language),
+                  professional: displayedVersion.professional,
+                },
+              )
             : ''
         }
         confirmLabel={t('medications:deleteConfirm.confirm')}

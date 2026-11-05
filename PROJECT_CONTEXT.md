@@ -48,12 +48,15 @@
    - Full JSON Backup export, overwrite restore, and non-destructive merge restore (`BackupService`).
 8. **Versioned Medication Schedule (`/medicamentos`)**:
    - Matrix schedule view with medications in columns and time slots (HH:mm) in rows, supporting free-text doses (e.g. "1 comprimido", "1.5 comprimidos", "2 gotas") without numeric coercion.
-   - Prescription versions with `effectiveDate`, `professional`, and `explanation`.
+   - Prescription versions with a required `effectiveDate` and `explanation`, and an optional `professional`.
+   - Each version can hold any number of additional information entries (`notes`), with a required text and optional date and professional. They hold history from before the first version, may be dated before it, and are not copied into new versions.
+   - Each medication can record the responsible doctor (`responsible`) and their specialty (`specialty`). The table shows the dosage beside the name and only the specialty as a tag; the doctor's name and the source stay out of it.
    - Automatic version comparison and change summaries (`MedicationVersionChange`) in version history (`getMedicationVersionHistory`), listed newest to oldest.
    - Lookup by date (`getMedicationVersionAt`) with alert when queried date precedes the initial version, and instant return to current version (`getCurrentMedicationVersion`).
    - Grouping of medications by pharmacy/origin source (`groupMedicationsBySource`).
    - Professional autocomplete suggestions (`searchMedicationProfessionals`) based on past recorded versions.
    - Version creation, correction, and latest-version deletion (with confirmation).
+   - The print sheet is portaled to `document.body`, because the app shell's scroll containers would clip it to one page. Page 1 holds the schedule, and page 2 holds the medications by source, then the changes.
    - High-contrast print/PDF export (`#medication-print-sheet`) via `window.print()` with localized filename title swap (`getMedicationFileBaseName`: `medicamentos-DD-MM-YYYY` / `medications-MM-DD-YYYY`) and page break before prescription history.
 
 ---
@@ -64,7 +67,7 @@
 | :--- | :--- |
 | **Runtime & Package Manager** | Node.js `>= 24.22.0`, `pnpm >= 12.14.0` |
 | **Framework & Language** | React 19, TypeScript 5.9 (strict mode), Vite 8 |
-| **Styling & Icons** | Tailwind CSS 4 (`dark` class strategy), `lucide-react` |
+| **Styling & Icons** | Tailwind CSS 4 (`dark` class strategy), `lucide-react`, shadcn/ui date picker (`radix-ui`, `react-day-picker`) |
 | **State Management** | Zustand 5 (`useScheduleStore`) |
 | **Routing** | React Router DOM 7 (`HashRouter` + `<Routes>` for GitHub Pages compatibility) |
 | **Backend / Cloud** | Firebase 13 (Firebase Auth + Cloud Firestore) |
@@ -285,6 +288,9 @@ Uses `HashRouter` with `<Routes>` (`#/...`):
    - Select options contain only the name, without explanations in parentheses.
    - A violated required field turns red through one shared style in `src/index.css`: `:user-invalid` for native `required`, and `aria-invalid` for app validation, set from the same condition as the error message. `DatePicker` takes `invalid`, and `Select` forwards `aria-invalid` to its visible trigger.
    - `src/components/required-fields.test.tsx` covers these rules.
+   - Date fields always use `DatePicker` from `src/components/ui/date-picker.tsx`, the shadcn date picker (`Popover` + `Calendar`, built on `radix-ui` and `react-day-picker`). Never use a native `type="date"` or write another calendar; ESLint blocks native date inputs everywhere except that file.
+   - Time fields use the native `<input type="time">` with the same classes as the day events field in `day-events-modal.tsx`.
+   - shadcn components are copied by hand into `src/components/ui/`, following this project's conventions. Their tokens (`--popover`, `--primary`, and so on) live in `src/index.css`, mapped to the slate and emerald palette. There is no `components.json`, so the shadcn CLI is not used.
 6. **Calendar Cell Parity**:
    - `FullScreenCalendarModal` renders its own day cells instead of reusing `DayCell`, so calendar cell changes must be applied to both.
 

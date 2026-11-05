@@ -73,6 +73,19 @@ export default tseslint.config(
       }
     },
     {
+      files: ['src/**/*.tsx'],
+      ignores: ['src/components/ui/date-picker.tsx'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: "JSXAttribute[name.name='type'][value.value=/^(date|datetime-local)$/]",
+            message: 'Use DatePicker from src/components/ui/date-picker (shadcn) for date fields.'
+          }
+        ]
+      }
+    },
+    {
       files: [
         '**/*.stories.{ts,tsx}',
         '**/*.spec.{ts,tsx}',

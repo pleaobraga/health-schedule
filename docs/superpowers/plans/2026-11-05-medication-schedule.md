@@ -12,6 +12,8 @@
 
 ## Global Constraints
 
+- Date fields always use `DatePicker` from `src/components/ui/date-picker.tsx`, the shadcn date picker (`Popover` + `Calendar`, built on `radix-ui` and `react-day-picker`). Never use a native `type="date"` or write another calendar; ESLint blocks native date inputs everywhere except that file.
+- Time fields use the native `<input type="time">` with the same classes as the day events field in `day-events-modal.tsx`.
 - **Pré-requisito:** o plano `docs/superpowers/plans/2026-11-05-expense-purchases.md` precisa estar concluído. Confirme que `normalizeItemName` existe em `src/utils/expense-item-utils.ts` antes de começar.
 - Trabalhe na branch `main`, sem criar branch nova, com um commit por task. Não faça push: o usuário fará o push no final.
 - Antes de cada commit, `pnpm typecheck` e os testes tocados precisam passar.

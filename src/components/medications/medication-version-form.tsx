@@ -1,6 +1,7 @@
 import {
   AlertCircle,
   Clock,
+  FileText,
   Pill,
   Plus,
   Trash2,
@@ -14,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useScheduleStore } from '../../store/use-schedule-store'
 import {
   createMedicationId,
+  createMedicationNoteId,
   searchMedicationProfessionals,
 } from '../../utils/medication-schedule-utils'
 import { DatePicker } from '../ui/date-picker'
@@ -22,6 +24,7 @@ import type {
   MedicationColumn,
   MedicationScheduleVersion,
   MedicationVersionInput,
+  MedicationVersionNote,
 } from '../../types'
 import type { MedicationValidationError } from '../../utils/medication-schedule-utils'
 
@@ -30,6 +33,19 @@ export interface MedicationVersionFormProps {
   baseVersion?: MedicationScheduleVersion
   version?: MedicationScheduleVersion
   onClose: () => void
+}
+
+// Doses stay keyed by row id while editing, so changing a time keeps them attached.
+interface TimeRow {
+  id: string
+  time: string
+}
+
+function sortTimeRows(rows: TimeRow[]): TimeRow[] {
+  return [...rows].sort((a, b) => {
+    if (!a.time || !b.time) return Number(!a.time) - Number(!b.time)
+    return a.time.localeCompare(b.time)
+  })
 }
 
 export function MedicationVersionForm({
@@ -46,7 +62,7 @@ export function MedicationVersionForm({
     mode === 'CORRECTION' && version ? version.effectiveDate : '',
   )
   const [professional, setProfessional] = useState<string>(() =>
-    mode === 'CORRECTION' && version ? version.professional : '',
+    mode === 'CORRECTION' && version ? (version.professional ?? '') : '',
   )
   const [explanation, setExplanation] = useState<string>(() =>
     mode === 'CORRECTION' && version ? version.explanation : '',
@@ -63,14 +79,9 @@ export function MedicationVersionForm({
     return []
   })
 
-  const [times, setTimes] = useState<string[]>(() => {
-    if (mode === 'CORRECTION' && version) {
-      return [...version.times]
-    }
-    if (mode === 'NEW' && baseVersion) {
-      return [...baseVersion.times]
-    }
-    return []
+  const [timeRows, setTimeRows] = useState<TimeRow[]>(() => {
+    const source = mode === 'CORRECTION' ? version : baseVersion
+    return (source?.times ?? []).map((time) => ({ id: time, time }))
   })
 
   const [doses, setDoses] = useState<Record<string, Record<string, string>>>(
@@ -83,6 +94,12 @@ export function MedicationVersionForm({
       }
       return {}
     },
+  )
+
+  const [notes, setNotes] = useState<MedicationVersionNote[]>(() =>
+    mode === 'CORRECTION' && version?.notes
+      ? structuredClone(version.notes)
+      : [],
   )
 
   const [errors, setErrors] = useState<MedicationValidationError[]>([])
@@ -106,6 +123,7 @@ export function MedicationVersionForm({
       dosage: '',
       source: '',
       responsible: '',
+      specialty: '',
     }
     setMedications((prev) => [...prev, newMed])
     clearErrors()
@@ -133,52 +151,81 @@ export function MedicationVersionForm({
   }
 
   const handleAddTime = () => {
-    setTimes((prev) => [...prev, ''])
+    setTimeRows((prev) => [...prev, { id: createMedicationId(), time: '' }])
     clearErrors()
   }
 
-  const handleRemoveTime = (timeToRemove: string) => {
-    setTimes((prev) => prev.filter((t) => t !== timeToRemove))
+  const handleRemoveTime = (rowId: string) => {
+    setTimeRows((prev) => prev.filter((row) => row.id !== rowId))
     setDoses((prev) => {
       const next: Record<string, Record<string, string>> = {}
-      for (const [medId, timeMap] of Object.entries(prev)) {
-        next[medId] = { ...timeMap }
-        delete next[medId][timeToRemove]
+      for (const [medId, doseByRow] of Object.entries(prev)) {
+        next[medId] = { ...doseByRow }
+        delete next[medId][rowId]
       }
       return next
     })
     clearErrors()
   }
 
-  const handleUpdateTime = (index: number, newTime: string) => {
-    const oldTime = times[index]
-    setTimes((prev) => prev.map((t, idx) => (idx === index ? newTime : t)))
-
-    if (oldTime && oldTime !== newTime) {
-      setDoses((prev) => {
-        const next: Record<string, Record<string, string>> = {}
-        for (const [medId, timeMap] of Object.entries(prev)) {
-          next[medId] = { ...timeMap }
-          if (oldTime in next[medId]) {
-            next[medId][newTime] = next[medId][oldTime]
-            delete next[medId][oldTime]
-          }
-        }
-        return next
-      })
-    }
+  const handleUpdateTime = (rowId: string, time: string) => {
+    setTimeRows((prev) =>
+      prev.map((row) => (row.id === rowId ? { ...row, time } : row)),
+    )
     clearErrors()
   }
 
-  const handleUpdateDose = (medId: string, time: string, doseText: string) => {
+  // Sorting on blur keeps the row in place while its time is being typed.
+  const handleTimeBlur = () => {
+    setTimeRows(sortTimeRows)
+  }
+
+  const handleUpdateDose = (medId: string, rowId: string, doseText: string) => {
     setDoses((prev) => ({
       ...prev,
       [medId]: {
         ...(prev[medId] || {}),
-        [time]: doseText,
+        [rowId]: doseText,
       },
     }))
     clearErrors()
+  }
+
+  const handleAddNote = () => {
+    setNotes((prev) => [...prev, { id: createMedicationNoteId(), text: '' }])
+    clearErrors()
+  }
+
+  const handleRemoveNote = (noteId: string) => {
+    setNotes((prev) => prev.filter((note) => note.id !== noteId))
+    clearErrors()
+  }
+
+  const handleUpdateNote = (
+    noteId: string,
+    field: 'date' | 'professional' | 'text',
+    value: string,
+  ) => {
+    setNotes((prev) =>
+      prev.map((note) =>
+        note.id === noteId ? { ...note, [field]: value } : note,
+      ),
+    )
+    clearErrors()
+  }
+
+  const getDosesByTime = () => {
+    const dosesByTime: Record<string, Record<string, string>> = {}
+    for (const [medId, doseByRow] of Object.entries(doses)) {
+      dosesByTime[medId] = {}
+      for (const row of timeRows) {
+        const dose = doseByRow[row.id]
+        if (dose !== undefined) {
+          dosesByTime[medId][row.time] = dose
+        }
+      }
+    }
+    return dosesByTime
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -189,9 +236,10 @@ export function MedicationVersionForm({
       effectiveDate,
       professional,
       explanation,
+      notes,
       medications,
-      times,
-      doses,
+      times: timeRows.map((row) => row.time),
+      doses: getDosesByTime(),
     }
 
     setIsSubmitting(true)
@@ -218,9 +266,6 @@ export function MedicationVersionForm({
   }
 
   const hasDateError = Boolean(errors.find((e) => e.code.startsWith('DATE_')))
-  const hasProfError = Boolean(
-    errors.find((e) => e.code === 'PROFESSIONAL_REQUIRED'),
-  )
   const hasExplError = Boolean(
     errors.find((e) => e.code === 'EXPLANATION_REQUIRED'),
   )
@@ -233,6 +278,11 @@ export function MedicationVersionForm({
             e.code === 'DUPLICATE_MEDICATION') &&
           (!e.medicationId || e.medicationId === medId),
       ),
+    )
+
+  const isNoteInvalid = (noteId: string) =>
+    errors.some(
+      (e) => e.code === 'NOTE_TEXT_REQUIRED' && e.noteId === noteId,
     )
 
   const isTimeInvalid = (timeStr: string) =>
@@ -352,8 +402,6 @@ export function MedicationVersionForm({
                     id="medication-form-professional-input"
                     data-testid="medication-form-professional-input"
                     type="text"
-                    required
-                    aria-invalid={hasProfError}
                     value={professional}
                     onChange={(e) => {
                       setProfessional(e.target.value)
@@ -419,6 +467,118 @@ export function MedicationVersionForm({
               />
             </div>
 
+            {/* Additional Information Section */}
+            <div
+              data-testid="medication-notes-section"
+              className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {t('medications:form.notesSection')}
+                </h4>
+                <button
+                  type="button"
+                  data-testid="medication-add-note-button"
+                  onClick={handleAddNote}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{t('medications:form.addNote')}</span>
+                </button>
+              </div>
+
+              {notes.map((note, idx) => (
+                <div
+                  key={note.id}
+                  data-testid={`medication-note-row-${idx}`}
+                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 flex gap-3 items-start"
+                >
+                  <FileText className="w-4 h-4 text-slate-400 shrink-0 mt-1 mobile:hidden" />
+                  <div className="flex-1 min-w-0 space-y-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label
+                          htmlFor={`medication-note-date-input-${idx}`}
+                          className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1"
+                        >
+                          {t('medications:form.noteDate')}
+                        </label>
+                        <DatePicker
+                          id={`medication-note-date-input-${idx}`}
+                          data-testid={`medication-note-date-input-${idx}`}
+                          value={note.date ?? ''}
+                          placeholder={t(
+                            'medications:form.noteDatePlaceholder',
+                          )}
+                          onChange={(val) =>
+                            handleUpdateNote(note.id, 'date', val)
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`medication-note-professional-input-${idx}`}
+                          className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1"
+                        >
+                          {t('medications:form.noteProfessional')}
+                        </label>
+                        <input
+                          id={`medication-note-professional-input-${idx}`}
+                          data-testid={`medication-note-professional-input-${idx}`}
+                          type="text"
+                          value={note.professional ?? ''}
+                          onChange={(e) =>
+                            handleUpdateNote(
+                              note.id,
+                              'professional',
+                              e.target.value,
+                            )
+                          }
+                          placeholder={t(
+                            'medications:form.professionalPlaceholder',
+                          )}
+                          className="w-full px-3 py-2 text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor={`medication-note-text-input-${idx}`}
+                        className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1"
+                      >
+                        {t('medications:form.noteText')}
+                      </label>
+                      <textarea
+                        id={`medication-note-text-input-${idx}`}
+                        data-testid={`medication-note-text-input-${idx}`}
+                        rows={2}
+                        required
+                        aria-invalid={isNoteInvalid(note.id)}
+                        value={note.text}
+                        onChange={(e) =>
+                          handleUpdateNote(note.id, 'text', e.target.value)
+                        }
+                        placeholder={t(
+                          'medications:form.noteTextPlaceholder',
+                        )}
+                        className="w-full px-3 py-2 text-xs sm:text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    data-testid={`medication-remove-note-${idx}`}
+                    onClick={() => handleRemoveNote(note.id)}
+                    title={t('medications:form.removeNote')}
+                    aria-label={t('medications:form.removeNote')}
+                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
             {/* 2. Medications Columns Section */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
@@ -448,7 +608,7 @@ export function MedicationVersionForm({
                       data-testid={`medication-column-row-${idx}`}
                       className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 flex flex-col md:flex-row gap-3 items-start md:items-center justify-between"
                     >
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 flex-1 w-full">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 flex-1 w-full">
                         <div>
                           <label
                             htmlFor={`medication-name-input-${idx}`}
@@ -554,6 +714,32 @@ export function MedicationVersionForm({
                             className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30"
                           />
                         </div>
+
+                        <div>
+                          <label
+                            htmlFor={`medication-specialty-input-${idx}`}
+                            className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1"
+                          >
+                            {t('medications:form.medicationSpecialty')}
+                          </label>
+                          <input
+                            id={`medication-specialty-input-${idx}`}
+                            data-testid={`medication-specialty-input-${idx}`}
+                            type="text"
+                            value={med.specialty ?? ''}
+                            onChange={(e) =>
+                              handleUpdateMedication(
+                                med.id,
+                                'specialty',
+                                e.target.value,
+                              )
+                            }
+                            placeholder={t(
+                              'medications:form.medicationSpecialtyPlaceholder',
+                            )}
+                            className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30"
+                          />
+                        </div>
                       </div>
 
                       <button
@@ -593,45 +779,53 @@ export function MedicationVersionForm({
                 </button>
               </div>
 
-              {times.length === 0 ? (
+              {timeRows.length === 0 ? (
                 <p className="text-xs text-slate-400 italic">
                   {t('medications:errors.TIME_REQUIRED')}
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-2.5">
-                  {times.map((time, idx) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                  {timeRows.map((row, idx) => (
                     <div
-                      key={`time-chip-${idx}`}
-                      className="flex items-center gap-1.5 p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                      key={row.id}
+                      className="space-y-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                     >
-                      <label
-                        htmlFor={`medication-time-input-${idx}`}
-                        className="sr-only"
-                      >
-                        {t('medications:form.timeInputLabel')}
-                      </label>
-                      <Clock className="w-3.5 h-3.5 text-slate-400 ml-1" />
+                      <div className="flex items-center justify-between gap-1">
+                        <label
+                          htmlFor={`medication-time-input-${idx}`}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300"
+                        >
+                          <Clock className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                          <span>{t('medications:form.timeInputLabel')}</span>
+                        </label>
+                        <button
+                          type="button"
+                          data-testid={`medication-remove-time-${idx}`}
+                          onClick={() => handleRemoveTime(row.id)}
+                          title={t('medications:form.removeTime', {
+                            time: row.time,
+                          })}
+                          aria-label={t('medications:form.removeTime', {
+                            time: row.time,
+                          })}
+                          className="p-1 text-slate-400 hover:text-rose-500 rounded-md transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                       <input
                         id={`medication-time-input-${idx}`}
                         data-testid={`medication-time-input-${idx}`}
-                        type="text"
+                        type="time"
                         required
-                        aria-invalid={isTimeInvalid(time)}
-                        value={time}
-                        onChange={(e) => handleUpdateTime(idx, e.target.value)}
-                        placeholder={t('medications:form.timePlaceholder')}
-                        className="w-16 px-1.5 py-1 text-xs font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30"
+                        aria-invalid={isTimeInvalid(row.time)}
+                        value={row.time}
+                        onChange={(e) =>
+                          handleUpdateTime(row.id, e.target.value)
+                        }
+                        onBlur={handleTimeBlur}
+                        className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-slate-800 dark:text-slate-100 dark:scheme-dark"
                       />
-                      <button
-                        type="button"
-                        data-testid={`medication-remove-time-${idx}`}
-                        onClick={() => handleRemoveTime(time)}
-                        title={t('medications:form.removeTime', { time })}
-                        aria-label={t('medications:form.removeTime', { time })}
-                        className="p-1 text-slate-400 hover:text-rose-500 rounded-md transition"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -639,7 +833,7 @@ export function MedicationVersionForm({
             </div>
 
             {/* 4. Doses Grid Section */}
-            {medications.length > 0 && times.length > 0 && (
+            {medications.length > 0 && timeRows.length > 0 && (
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                   {t('medications:form.dosesSection')}
@@ -667,23 +861,27 @@ export function MedicationVersionForm({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {times.map((time) => (
-                        <tr key={time} className="hover:bg-slate-50/50">
+                      {timeRows.map((row) => (
+                        <tr key={row.id} className="hover:bg-slate-50/50">
                           <td className="p-2.5 font-bold text-slate-900 dark:text-white">
-                            {time || '—'}
+                            {row.time || '—'}
                           </td>
                           {medications.map((med) => (
                             <td key={med.id} className="p-1.5">
                               <input
-                                data-testid={`medication-dose-input-${med.id}-${time}`}
+                                data-testid={`medication-dose-input-${med.id}-${row.time}`}
                                 type="text"
                                 aria-label={t('medications:form.doseInputAria', {
                                   medication: med.name || '',
-                                  time,
+                                  time: row.time,
                                 })}
-                                value={doses[med.id]?.[time] ?? ''}
+                                value={doses[med.id]?.[row.id] ?? ''}
                                 onChange={(e) =>
-                                  handleUpdateDose(med.id, time, e.target.value)
+                                  handleUpdateDose(
+                                    med.id,
+                                    row.id,
+                                    e.target.value,
+                                  )
                                 }
                                 placeholder={t(
                                   'medications:form.dosePlaceholder',

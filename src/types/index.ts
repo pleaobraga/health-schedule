@@ -100,13 +100,22 @@ export interface MedicationColumn {
   dosage?: string
   source?: string
   responsible?: string
+  specialty?: string
+}
+
+export interface MedicationVersionNote {
+  id: string
+  date?: string // 'YYYY-MM-DD'
+  professional?: string
+  text: string
 }
 
 export interface MedicationScheduleVersion {
   id: string
   effectiveDate: string // 'YYYY-MM-DD'
-  professional: string
+  professional?: string
   explanation: string
+  notes?: MedicationVersionNote[]
   medications: MedicationColumn[]
   times: string[] // 'HH:mm', em ordem crescente
   doses: Record<string, Record<string, string>> // medicationId -> time -> dose

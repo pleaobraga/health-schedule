@@ -73,7 +73,11 @@ Not enforced by tooling:
   - Select options carry only the name, with no explanation in parentheses. Names like "Português (Brasil)" and units like "(R$)" in labels are fine.
   - A violated required field turns red. Native `required` gets this from `:user-invalid`. App validation sets `aria-invalid` on the input from the same condition as the error message, `invalid` on `DatePicker`, and `aria-invalid` on `Select`. The style lives once in `src/index.css`; don't add red border classes per field.
   - `src/components/required-fields.test.tsx` covers these rules; add new forms to it.
-- Popovers inside scrollable or `overflow-hidden` containers use `createPortal` to `document.body` with `computePopoverPosition` ([src/utils/popover-position.ts](src/utils/popover-position.ts)).
+- Date and time fields:
+  - Date fields always use `DatePicker` from `src/components/ui/date-picker.tsx`, the shadcn date picker (`Popover` + `Calendar`, built on `radix-ui` and `react-day-picker`). Never use a native `type="date"` or write another calendar; ESLint blocks native date inputs everywhere except that file.
+  - Time fields use the native `<input type="time">` with the same classes as the day events field in `day-events-modal.tsx`.
+  - shadcn components are copied by hand into `src/components/ui/`, following this project's conventions. Their tokens (`--popover`, `--primary`, and so on) live in `src/index.css`, mapped to the slate and emerald palette. There is no `components.json`, so the shadcn CLI is not used.
+- Popovers inside scrollable or `overflow-hidden` containers use `createPortal` to `document.body` with `computePopoverPosition` ([src/utils/popover-position.ts](src/utils/popover-position.ts)). The shadcn `Popover` in `src/components/ui/popover.tsx` already portals and positions itself.
 - Keep Firestore usage within the free Spark plan: no audit logs or telemetry, and rewrite only the month an action touched (`syncMonthScheduleIfEnabled`).
 - `.ai-rules.md` holds the full local rules but is gitignored, so it may be missing on a fresh clone.
 

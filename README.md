@@ -30,7 +30,7 @@ HealthSchedule streamlines the complexity of medical roster planning through an 
 
 | Layer | Technologies |
 | :--- | :--- |
-| **Frontend** | React 19, TypeScript, Tailwind CSS, Lucide Icons |
+| **Frontend** | React 19, TypeScript, Tailwind CSS, shadcn/ui date picker, Lucide Icons |
 | **State & Storage** | Zustand, Browser LocalStorage (Firestore offline cache in IndexedDB) |
 | **Cloud & Auth** | Firebase 13 (Auth, Firestore Cloud Sync) |
 | **Reporting & i18n** | SheetJS (XLSX), i18next & react-i18next |

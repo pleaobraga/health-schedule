@@ -221,23 +221,17 @@ describe('MedicationVersionForm', () => {
       />,
     )
 
-    // Submit with empty date, professional and explanation
+    // Submit with empty date and explanation
     fireEvent.click(screen.getByTestId('medication-form-submit-button'))
 
     await waitFor(() => {
       expect(screen.getByTestId('medication-form-errors')).toBeInTheDocument()
       expect(screen.getByTestId('medication-error-DATE_INVALID')).toBeInTheDocument()
       expect(
-        screen.getByTestId('medication-error-PROFESSIONAL_REQUIRED'),
-      ).toBeInTheDocument()
-      expect(
         screen.getByTestId('medication-error-EXPLANATION_REQUIRED'),
       ).toBeInTheDocument()
     })
 
-    expect(
-      screen.getByTestId('medication-form-professional-input'),
-    ).toHaveAttribute('aria-invalid', 'true')
     expect(
       screen.getByTestId('medication-form-explanation-input'),
     ).toHaveAttribute('aria-invalid', 'true')
@@ -326,5 +320,200 @@ describe('MedicationVersionForm', () => {
       )
       expect(onClose).toHaveBeenCalled()
     })
+  })
+
+  const openWithVersion = () =>
+    render(
+      <MedicationVersionForm
+        mode="NEW"
+        baseVersion={baseVersion}
+        onClose={vi.fn()}
+      />,
+    )
+
+  const fillRequiredAndSubmit = async () => {
+    fireEvent.change(
+      screen.getByTestId('medication-form-effective-date-input'),
+      { target: { value: '2026-03-15' } },
+    )
+    fireEvent.change(screen.getByTestId('medication-form-explanation-input'), {
+      target: { value: 'Ajuste' },
+    })
+    fireEvent.click(screen.getByTestId('medication-form-submit-button'))
+    await waitFor(() =>
+      expect(useScheduleStore.getState().medicationVersions.length).toBeGreaterThan(0),
+    )
+    const { medicationVersions } = useScheduleStore.getState()
+    return medicationVersions[medicationVersions.length - 1]
+  }
+
+  it('saves a version without a professional', async () => {
+    useScheduleStore.setState({ medicationVersions: [] })
+    openWithVersion()
+
+    const saved = await fillRequiredAndSubmit()
+
+    expect(saved?.professional).toBeUndefined()
+  })
+
+  it('uses the native time field, like day events, and keeps the row until the field loses focus', () => {
+    openWithVersion()
+
+    const first = screen.getByTestId('medication-time-input-0')
+    expect(first).toHaveAttribute('type', 'time')
+
+    fireEvent.change(first, { target: { value: '22:00' } })
+    expect(screen.getByTestId('medication-time-input-0')).toHaveValue('22:00')
+
+    fireEvent.blur(first)
+    expect(screen.getByTestId('medication-time-input-0')).toHaveValue('20:00')
+    expect(screen.getByTestId('medication-time-input-1')).toHaveValue('22:00')
+  })
+
+  it('sorts a newly added time into place and keeps blank rows last', () => {
+    openWithVersion()
+
+    fireEvent.click(screen.getByTestId('medication-add-time-button'))
+    fireEvent.click(screen.getByTestId('medication-add-time-button'))
+    const added = screen.getByTestId('medication-time-input-2')
+    fireEvent.change(added, { target: { value: '06:30' } })
+    fireEvent.blur(added)
+
+    expect(screen.getByTestId('medication-time-input-0')).toHaveValue('06:30')
+    expect(screen.getByTestId('medication-time-input-1')).toHaveValue('08:00')
+    expect(screen.getByTestId('medication-time-input-2')).toHaveValue('20:00')
+    expect(screen.getByTestId('medication-time-input-3')).toHaveValue('')
+  })
+
+  it('keeps the doses of a row when its time changes', async () => {
+    useScheduleStore.setState({ medicationVersions: [] })
+    openWithVersion()
+
+    const dose = screen.getByTestId<HTMLInputElement>(
+      'medication-dose-input-med_lamo-08:00',
+    ).value
+    const time = screen.getByTestId('medication-time-input-0')
+    fireEvent.change(time, { target: { value: '07:15' } })
+    fireEvent.blur(time)
+
+    expect(
+      screen.getByTestId('medication-dose-input-med_lamo-07:15'),
+    ).toHaveValue(dose)
+
+    const saved = await fillRequiredAndSubmit()
+    expect(saved?.doses.med_lamo['07:15']).toBe(dose)
+    expect(saved?.doses.med_lamo['08:00']).toBeUndefined()
+  })
+
+  it('removing one blank time row leaves the other blank row', () => {
+    openWithVersion()
+
+    fireEvent.click(screen.getByTestId('medication-add-time-button'))
+    fireEvent.click(screen.getByTestId('medication-add-time-button'))
+    fireEvent.click(screen.getByTestId('medication-remove-time-3'))
+
+    expect(screen.getByTestId('medication-time-input-2')).toBeInTheDocument()
+    expect(
+      screen.queryByTestId('medication-time-input-3'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('adds as many pieces of additional information as needed and saves them', async () => {
+    useScheduleStore.setState({ medicationVersions: [] })
+    openWithVersion()
+
+    for (let i = 0; i < 3; i += 1) {
+      fireEvent.click(screen.getByTestId('medication-add-note-button'))
+    }
+    fireEvent.change(screen.getByTestId('medication-note-date-input-0'), {
+      target: { value: '2025-01-10' },
+    })
+    fireEvent.change(
+      screen.getByTestId('medication-note-professional-input-0'),
+      { target: { value: 'Dr. Carlos' } },
+    )
+    fireEvent.change(screen.getByTestId('medication-note-text-input-0'), {
+      target: { value: 'Dose reduzida' },
+    })
+    fireEvent.change(screen.getByTestId('medication-note-text-input-1'), {
+      target: { value: 'Tomar depois do café' },
+    })
+    fireEvent.click(screen.getByTestId('medication-remove-note-1'))
+    fireEvent.change(screen.getByTestId('medication-note-text-input-1'), {
+      target: { value: 'Começou em 2024' },
+    })
+
+    const saved = await fillRequiredAndSubmit()
+
+    expect(saved?.notes).toEqual([
+      expect.objectContaining({
+        date: '2025-01-10',
+        professional: 'Dr. Carlos',
+        text: 'Dose reduzida',
+      }),
+      expect.objectContaining({ text: 'Começou em 2024' }),
+    ])
+  })
+
+  it('requires the explanation of a started note and marks it invalid', async () => {
+    openWithVersion()
+
+    fireEvent.click(screen.getByTestId('medication-add-note-button'))
+    fireEvent.change(
+      screen.getByTestId('medication-note-professional-input-0'),
+      { target: { value: 'Dr. Carlos' } },
+    )
+    fireEvent.click(screen.getByTestId('medication-form-submit-button'))
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('medication-error-NOTE_TEXT_REQUIRED'),
+      ).toBeInTheDocument(),
+    )
+    expect(screen.getByTestId('medication-note-text-input-0')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+  })
+
+  it('starts a new version with no notes from the base, and keeps them when correcting', () => {
+    const withNotes = {
+      ...baseVersion,
+      notes: [{ id: 'n1', text: 'Histórico antigo' }],
+    }
+    const { unmount } = render(
+      <MedicationVersionForm
+        mode="NEW"
+        baseVersion={withNotes}
+        onClose={vi.fn()}
+      />,
+    )
+    expect(
+      screen.queryByTestId('medication-note-text-input-0'),
+    ).not.toBeInTheDocument()
+    unmount()
+
+    render(
+      <MedicationVersionForm
+        mode="CORRECTION"
+        version={withNotes}
+        onClose={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('medication-note-text-input-0')).toHaveValue(
+      'Histórico antigo',
+    )
+  })
+
+  it('records the specialty of the responsible doctor', async () => {
+    useScheduleStore.setState({ medicationVersions: [] })
+    openWithVersion()
+
+    fireEvent.change(screen.getByTestId('medication-specialty-input-0'), {
+      target: { value: 'Psiquiatra' },
+    })
+
+    const saved = await fillRequiredAndSubmit()
+    expect(saved?.medications[0].specialty).toBe('Psiquiatra')
   })
 })

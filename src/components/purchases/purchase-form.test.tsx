@@ -734,7 +734,9 @@ describe('PurchaseForm', () => {
     fireEvent.click(screen.getByTestId('purchase-date-input-trigger'))
     expect(screen.getByTestId('purchase-date-input-popover')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('purchase-date-input-day-2026-11-12'))
+    fireEvent.click(
+      document.querySelector('button[data-day="2026-11-12"]') as HTMLButtonElement,
+    )
     expect(
       screen.queryByTestId('purchase-date-input-popover'),
     ).not.toBeInTheDocument()

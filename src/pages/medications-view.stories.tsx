@@ -49,6 +49,7 @@ export const WithVersions: Story = {
               dosage: '100 mg',
               source: 'Farmácia Popular',
               responsible: 'Dra. Marina',
+              specialty: 'Psiquiatra',
             },
             {
               id: 'med_vitd',
@@ -82,6 +83,7 @@ export const WithVersions: Story = {
               dosage: '100 mg',
               source: 'Farmácia Popular',
               responsible: 'Dra. Marina',
+              specialty: 'Psiquiatra',
             },
             {
               id: 'med_vitd',

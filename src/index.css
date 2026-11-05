@@ -11,6 +11,46 @@
   --breakpoint-hd: 94.375rem;
 }
 
+/* shadcn/ui tokens, mapped to the app's slate and emerald palette */
+:root {
+  --background: #ffffff;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #059669;
+  --primary-foreground: #ffffff;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --ring: #10b981;
+}
+
+.dark {
+  --background: #0f172a;
+  --popover: #0f172a;
+  --popover-foreground: #f1f5f9;
+  --primary: #059669;
+  --primary-foreground: #ffffff;
+  --accent: #1e293b;
+  --accent-foreground: #f1f5f9;
+  --muted-foreground: #94a3b8;
+  --border: #334155;
+  --ring: #34d399;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+}
+
 /*
   Tailwind CSS v4 no longer sets `cursor: pointer` on buttons; keep the v3 behavior.
 */
@@ -352,6 +392,11 @@
 
   /* Hide main app elements when fullscreen modal is open for print */
   body:has(#fullscreen-calendar-modal-container) > #root {
+    display: none !important;
+  }
+
+  /* The medication sheet lives on body: printing the app shell would clip it to one page */
+  body:has(> #medication-print-sheet) > #root {
     display: none !important;
   }
 

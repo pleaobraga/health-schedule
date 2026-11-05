@@ -25,7 +25,7 @@ Esta funcionalidade será implementada por outra IA, do modelo de dados à inter
 
 Não faz parte desta entrega:
 
-- Importar a planilha ou mudanças antigas
+- Importar a planilha antiga como versões da tabela; o histórico anterior entra como informações adicionais
 - Usar uma versão antiga como base de uma nova
 - Registrar doses tomadas, alertas de horário ou estoque
 - Exportar para Excel
@@ -41,11 +41,13 @@ Não faz parte desta entrega:
 | Início do histórico | Na primeira versão cadastrada |
 | Data da versão | Igual ou posterior à última versão, nunca no futuro |
 | Duas versões na mesma data | Permitidas; vale a salva por último |
-| Dados obrigatórios da versão | Data, profissional e explicação |
+| Dados obrigatórios da versão | Data e explicação; o profissional é opcional em todas as versões, inclusive na primeira |
+| Informações adicionais | Quantas o usuário quiser em cada versão, com explicação obrigatória e data e profissional opcionais. Podem ter data anterior à versão e não passam para a versão seguinte |
 | Nome do medicamento | Texto obrigatório (ex.: "Quetiapina") |
 | Dosagem do medicamento | Texto opcional (ex.: "200mg") |
 | Origem do medicamento | Texto opcional, guardado na versão (ex.: "Posto de Saúde") |
-| Médico responsável | Texto opcional, guardado na versão (ex.: "Psiquiatra", "Urologista") |
+| Médico responsável | Texto opcional, guardado na versão (ex.: "Dra. Marina") |
+| Especialidade do médico | Texto opcional, guardado na versão (ex.: "Psiquiatra", "Urologista") |
 | Dose na célula | Texto livre e opcional (ex.: "1.5 comprimidos", "2 gotas") |
 | Profissional | Texto, com sugestões de nomes já usados |
 | Correção de erro | Edita a própria versão, sem criar outra |
@@ -63,13 +65,22 @@ export interface MedicationColumn {
   dosage?: string
   source?: string
   responsible?: string
+  specialty?: string
+}
+
+export interface MedicationVersionNote {
+  id: string
+  date?: string // 'YYYY-MM-DD'
+  professional?: string
+  text: string
 }
 
 export interface MedicationScheduleVersion {
   id: string
   effectiveDate: string // 'YYYY-MM-DD'
-  professional: string
+  professional?: string
   explanation: string
+  notes?: MedicationVersionNote[] // mais recentes primeiro, sem data no final
   medications: MedicationColumn[]
   times: string[] // 'HH:mm', em ordem crescente
   doses: Record<string, Record<string, string>> // medicationId -> time -> dose
@@ -90,7 +101,8 @@ export type MedicationVersionInput = Omit<
 `normalizeMedicationVersionInput` é aplicada antes de salvar:
 
 - Remove espaços nas pontas de todos os textos.
-- Campos opcionais vazios (`dosage`, `source`, `responsible`) ficam ausentes.
+- Campos opcionais vazios (`professional`, `dosage`, `source`, `responsible`, `specialty`) ficam ausentes.
+- Informações adicionais totalmente vazias são removidas, e as demais ficam com as mais recentes primeiro.
 - Doses vazias são removidas.
 - Doses de medicamento ou horário inexistente na versão são removidas.
 - `times` fica em ordem crescente.
@@ -107,8 +119,8 @@ A dose é guardada exatamente como digitada, sem conversão numérica.
 | `DATE_IN_FUTURE` | Data posterior a `today` |
 | `DATE_BEFORE_LATEST` | Em versão nova, data anterior à última versão |
 | `DATE_OUT_OF_RANGE` | Em correção, data antes da versão anterior ou depois da seguinte |
-| `PROFESSIONAL_REQUIRED` | Profissional vazio |
 | `EXPLANATION_REQUIRED` | Explicação vazia |
+| `NOTE_TEXT_REQUIRED` | Informação adicional iniciada, com data ou profissional, sem explicação |
 | `MEDICATION_REQUIRED` | Nenhum medicamento |
 | `MEDICATION_NAME_REQUIRED` | Medicamento com nome vazio |
 | `DUPLICATE_MEDICATION` | Dois medicamentos com mesmo nome e mesma dosagem, normalizados |
@@ -137,6 +149,7 @@ export type MedicationVersionChange =
   | { type: 'DOSAGE_CHANGED'; medicationId: string; name: string; from?: string; to?: string }
   | { type: 'SOURCE_CHANGED'; medicationId: string; name: string; from?: string; to?: string }
   | { type: 'RESPONSIBLE_CHANGED'; medicationId: string; name: string; from?: string; to?: string }
+  | { type: 'SPECIALTY_CHANGED'; medicationId: string; name: string; from?: string; to?: string }
   | { type: 'TIME_ADDED'; time: string }
   | { type: 'TIME_REMOVED'; time: string }
   | { type: 'DOSE_CHANGED'; medicationId: string; name: string; time: string; from?: string; to?: string }
@@ -185,9 +198,13 @@ Requisitos de produto, com a forma definida pela IA executora:
 - Uma nova versão começa com o conteúdo da versão vigente, e o usuário altera o que mudou.
 - Data, profissional e explicação são preenchidos a cada nova versão, sem aproveitar os valores anteriores.
 - O usuário pode incluir e remover medicamentos e horários.
-- Cada medicamento tem nome, dosagem opcional, origem opcional e médico responsável opcional.
-- O médico responsável fica visível junto ao medicamento quando existir.
-- A dosagem aparece junto ao nome do medicamento quando existir.
+- Cada medicamento tem nome, dosagem opcional, origem opcional, médico responsável opcional e especialidade opcional.
+- Cada versão aceita quantas informações adicionais o usuário quiser, visíveis no histórico de versões e nas mudanças impressas.
+- O filtro por data e a indicação da versão ficam no cartão da tabela, e a tabela fica logo abaixo do cabeçalho.
+- Os horários usam `<input type="time">`, como nos eventos do dia, e são ordenados quando o campo perde o foco.
+- A especialidade aparece como uma etiqueta, logo abaixo do nome e da dosagem, quando existir. O nome do médico fica no cadastro e no histórico de mudanças, fora da tabela.
+- A dosagem aparece na frente do nome do medicamento quando existir.
+- A origem não aparece na tabela, na tela ou na impressão; ela fica no cadastro e no agrupamento por origem.
 - Cada célula aceita texto livre, como "1.5 comprimidos" ou "2 gotas".
 
 ### 6.2 Troca entre versões
@@ -206,8 +223,8 @@ Requisitos de produto, com a forma definida pela IA executora:
 - O usuário pode imprimir ou salvar em PDF o quadro de horários, pelo mesmo fluxo do calendário: `window.print()`, com `document.title` trocado durante a impressão e restaurado depois.
 - A impressão usa a versão exibida, seja a vigente ou uma antiga escolhida.
 - O resultado sai sempre no tema claro, mesmo com o tema escuro ativo.
-- A primeira página contém o título, a data da versão e o quadro completo, com medicamentos, dosagens, médicos responsáveis, horários e doses. O profissional não aparece nela.
-- A página seguinte lista as mudanças, da mais recente para a mais antiga, começando pela versão impressa. Cada uma mostra data, profissional, explicação e resumo do que mudou.
+- A primeira página contém o título, a data da versão e o quadro completo, com medicamentos, dosagens, especialidades, horários e doses. O profissional não aparece nela.
+- A página seguinte mostra primeiro os medicamentos agrupados por origem, da versão impressa, e depois lista as mudanças, da mais recente para a mais antiga, começando pela versão impressa. Cada uma mostra data, profissional, explicação e resumo do que mudou.
 - Mudanças posteriores à versão impressa não aparecem.
 - A lista de mudanças pode ocupar mais de uma página.
 - Navegação, botões, lista de versões e demais áreas da tela ficam fora da impressão.
@@ -242,8 +259,8 @@ export type MedicationValidationCode =
   | 'DATE_IN_FUTURE'
   | 'DATE_BEFORE_LATEST'
   | 'DATE_OUT_OF_RANGE'
-  | 'PROFESSIONAL_REQUIRED'
   | 'EXPLANATION_REQUIRED'
+  | 'NOTE_TEXT_REQUIRED'
   | 'MEDICATION_REQUIRED'
   | 'MEDICATION_NAME_REQUIRED'
   | 'DUPLICATE_MEDICATION'
@@ -256,6 +273,7 @@ export interface MedicationValidationError {
   code: MedicationValidationCode
   medicationId?: string
   time?: string
+  noteId?: string
 }
 
 export interface MedicationVersionHistoryEntry {

@@ -45,6 +45,7 @@
     "DOSAGE_CHANGED": "Dosage of {{medicationName}}: {{before}} → {{after}}",
     "SOURCE_CHANGED": "Source of {{medicationName}}: {{before}} → {{after}}",
     "RESPONSIBLE_CHANGED": "Doctor for {{medicationName}}: {{before}} → {{after}}",
+    "SPECIALTY_CHANGED": "Specialty for {{medicationName}}: {{before}} → {{after}}",
     "TIME_ADDED": "Time added: {{time}}",
     "TIME_REMOVED": "Time removed: {{time}}",
     "DOSE_ADDED": "Dose added at {{time}} for {{medicationName}}: {{after}}",
@@ -53,16 +54,24 @@
   },
   "form": {
     "newTitle": "New Schedule Version",
-    "newSubtitle": "Start from the current schedule, adjust what changed and record who guided the change.",
+    "newSubtitle": "Start from the current schedule and adjust what changed.",
     "correctionTitle": "Correct Version",
     "correctionSubtitle": "Update this version's details without creating a new history entry.",
     "effectiveDate": "Change date *",
     "effectiveDatePlaceholder": "Select date",
-    "professional": "Guiding professional *",
+    "professional": "Guiding professional",
     "professionalPlaceholder": "e.g. Dr. Marina",
     "professionalSuggestions": "Previous professionals",
     "explanation": "Explanation of change *",
     "explanationPlaceholder": "Describe what changed in this prescription...",
+    "notesSection": "Additional information",
+    "addNote": "Add Information",
+    "removeNote": "Remove information",
+    "noteDate": "Date",
+    "noteDatePlaceholder": "Select the date",
+    "noteProfessional": "Professional",
+    "noteText": "Explanation *",
+    "noteTextPlaceholder": "e.g. Dose reduced after the appointment",
     "medicationsSection": "Medications (Columns)",
     "addMedication": "Add Medication",
     "removeMedication": "Remove medication {{name}}",
@@ -74,6 +83,8 @@
     "medicationSourcePlaceholder": "e.g. Central Pharmacy",
     "medicationResponsible": "Responsible doctor",
     "medicationResponsiblePlaceholder": "e.g. Dr. Marina",
+    "medicationSpecialty": "Specialty",
+    "medicationSpecialtyPlaceholder": "e.g. Psychiatrist",
     "timesSection": "Times (Rows)",
     "addTime": "Add Time",
     "removeTime": "Remove time {{time}}",
@@ -89,6 +100,7 @@
   "deleteConfirm": {
     "title": "Delete latest version?",
     "message": "The version from {{date}} ({{professional}}) will be removed and the previous version will become current again.",
+    "messageNoProfessional": "The version from {{date}} will be removed and the previous version will become current again.",
     "confirm": "Yes, delete version",
     "cancel": "Cancel"
   },
@@ -97,8 +109,8 @@
     "DATE_IN_FUTURE": "The change date cannot be in the future.",
     "DATE_BEFORE_LATEST": "The new version date must be on or after the latest version.",
     "DATE_OUT_OF_RANGE": "The corrected date must stay between the previous and next versions.",
-    "PROFESSIONAL_REQUIRED": "Enter the professional who guided the change.",
     "EXPLANATION_REQUIRED": "Explain what changed in this version.",
+    "NOTE_TEXT_REQUIRED": "Write the explanation for each piece of additional information.",
     "MEDICATION_REQUIRED": "Add at least one medication to the schedule.",
     "MEDICATION_NAME_REQUIRED": "Enter a name for every medication.",
     "DUPLICATE_MEDICATION": "There is a duplicate medication with the same name and dosage.",
@@ -106,6 +118,6 @@
     "TIME_INVALID": "Enter all times in HH:mm format (00:00 to 23:59).",
     "DUPLICATE_TIME": "Do not repeat the same time in the schedule.",
     "VERSION_NOT_FOUND": "Version not found."
-  }
+  },
+  "notesTitle": "Additional information"
 }
-

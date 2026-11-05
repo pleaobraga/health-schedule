@@ -12,6 +12,8 @@
 
 ## Global Constraints
 
+- Date fields always use `DatePicker` from `src/components/ui/date-picker.tsx`, the shadcn date picker (`Popover` + `Calendar`, built on `radix-ui` and `react-day-picker`). Never use a native `type="date"` or write another calendar; ESLint blocks native date inputs everywhere except that file.
+- Time fields use the native `<input type="time">` with the same classes as the day events field in `day-events-modal.tsx`.
 - Trabalhe na branch `main`, sem criar branch nova, com um commit por task. Não faça push: o usuário fará o push no final.
 - Antes de cada commit, `pnpm typecheck` e os testes tocados precisam passar.
 - Toda mudança de comportamento segue TDD: teste falhando primeiro.

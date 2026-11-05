@@ -99,7 +99,7 @@ describe('MedicationsView', () => {
     ).toBeInTheDocument()
   })
 
-  it('opens on the current version with medications, dosages, responsible doctors, times and free-text doses', () => {
+  it('opens on the current version with medications, dosages, times and free-text doses', () => {
     useScheduleStore.setState({ medicationVersions: [version1, version2] })
 
     render(<MedicationsView />)
@@ -107,11 +107,11 @@ describe('MedicationsView', () => {
     const table = screen.getByTestId('medications-schedule-table')
     expect(within(table).getByText('Lamotrigina')).toBeInTheDocument()
     expect(within(table).getByText('100 mg')).toBeInTheDocument()
-    expect(within(table).getByText('Dra. Marina')).toBeInTheDocument()
+    expect(within(table).queryByText('Dra. Marina')).not.toBeInTheDocument()
     expect(within(table).getByText('Vitamina D')).toBeInTheDocument()
     expect(within(table).getByText('Melatonina')).toBeInTheDocument()
     expect(within(table).getByText('3 mg')).toBeInTheDocument()
-    expect(within(table).getByText('Dr. Carlos')).toBeInTheDocument()
+    expect(within(table).queryByText('Dr. Carlos')).not.toBeInTheDocument()
     expect(within(table).getByText('08:00')).toBeInTheDocument()
     expect(within(table).getByText('20:00')).toBeInTheDocument()
     expect(within(table).getByText('22:00')).toBeInTheDocument()
@@ -119,14 +119,14 @@ describe('MedicationsView', () => {
     expect(within(table).getByText('2 gotas')).toBeInTheDocument()
     expect(within(table).getByText('1 cápsula')).toBeInTheDocument()
 
-    // Vitamin D has no dosage or responsible doctor on version2
+    // Vitamin D has no dosage or specialty on version2
     const vitdHeader = screen.getByTestId('medication-col-header-med_vitd')
     expect(within(vitdHeader).getByText('Vitamina D')).toBeInTheDocument()
     expect(
       within(vitdHeader).queryByTestId('medication-col-dosage-med_vitd'),
     ).not.toBeInTheDocument()
     expect(
-      within(vitdHeader).queryByTestId('medication-col-responsible-med_vitd'),
+      within(vitdHeader).queryByTestId('medication-col-specialty-med_vitd'),
     ).not.toBeInTheDocument()
   })
 
@@ -354,11 +354,12 @@ describe('MedicationsView', () => {
     // Does not include prescribing professional of version in page 1 header
     expect(within(page1).queryByText(/Prescrito por Dra. Marina/)).not.toBeInTheDocument()
 
-    // But includes responsible doctor of medication in column header
-    expect(within(page1).getByText('Dra. Marina')).toBeInTheDocument()
+    // The table shows the specialty, not the name of the responsible doctor
+    expect(within(page1).queryByText('Dra. Marina')).not.toBeInTheDocument()
 
-    const changes = within(printSheet).getByTestId('medication-print-changes')
-    expect(changes).toHaveClass('print-page-break-before')
+    const page2 = within(printSheet).getByTestId('medication-print-page-2')
+    expect(page2).toHaveClass('print-page-break-before')
+    const changes = within(page2).getByTestId('medication-print-changes')
     // Shows changes down to first version
     expect(within(changes).getByText(/Melatonina/)).toBeInTheDocument()
     expect(within(changes).getByText(/Primeira versão cadastrada/)).toBeInTheDocument()
@@ -371,5 +372,164 @@ describe('MedicationsView', () => {
     expect(screen.queryByTestId('medications-print-button')).not.toBeInTheDocument()
     expect(screen.queryByTestId('medication-print-sheet')).not.toBeInTheDocument()
   })
-})
 
+  it('keeps the version status and date lookup in the table card, right below the header', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    const table = screen.getByTestId('medications-schedule-table')
+    const card = table.parentElement?.parentElement as HTMLElement
+
+    expect(card).toContainElement(screen.getByTestId('medications-current-badge'))
+    expect(card).toContainElement(
+      screen.getByTestId('medications-lookup-date-input'),
+    )
+    expect(
+      card.compareDocumentPosition(
+        screen.getByTestId('medications-edit-version-button'),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('keeps the date lookup available when no version existed on the queried date', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    fireEvent.change(screen.getByTestId('medications-lookup-date-input'), {
+      target: { value: '2026-02-15' },
+    })
+
+    expect(
+      screen.getByTestId('medications-no-version-at-date'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByTestId('medications-lookup-date-input'),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the dosage beside the name and only the specialty as a tag, on screen and in print', () => {
+    useScheduleStore.setState({
+      medicationVersions: [
+        {
+          ...version1,
+          medications: [
+            {
+              id: 'med_lamo',
+              name: 'Lamotrigina',
+              dosage: '100 mg',
+              source: 'Farmácia Popular',
+              responsible: 'Dra. Marina',
+              specialty: 'Psiquiatra',
+            },
+            {
+              id: 'med_vitd',
+              name: 'Vitamina D',
+              responsible: 'Dr. Carlos',
+            },
+          ],
+        },
+      ],
+    })
+
+    render(<MedicationsView />)
+
+    const header = screen.getByTestId('medication-col-header-med_lamo')
+    const printTable = screen.getByTestId('medication-print-table')
+
+    expect(
+      screen.getByTestId('medication-col-dosage-med_lamo').parentElement,
+    ).toHaveTextContent('Lamotrigina100 mg')
+    expect(
+      screen.getByTestId('medication-col-specialty-med_lamo'),
+    ).toHaveTextContent('Psiquiatra')
+    expect(
+      screen.queryByTestId('medication-col-specialty-med_vitd'),
+    ).not.toBeInTheDocument()
+
+    for (const table of [header, printTable]) {
+      expect(table).toHaveTextContent('Psiquiatra')
+      expect(table).not.toHaveTextContent('Dra. Marina')
+      expect(table).not.toHaveTextContent('Dr. Carlos')
+      expect(table).not.toHaveTextContent('Farmácia Popular')
+    }
+    expect(screen.getByTestId('medications-by-source')).toHaveTextContent(
+      'Farmácia Popular',
+    )
+  })
+
+  it('lists the additional information in the history and on the printed changes', () => {
+    useScheduleStore.setState({
+      medicationVersions: [
+        {
+          ...version1,
+          notes: [
+            {
+              id: 'n1',
+              date: '2025-01-10',
+              professional: 'Dr. Carlos',
+              text: 'Dose reduzida',
+            },
+            { id: 'n2', text: 'Tomar depois do café' },
+          ],
+        },
+      ],
+    })
+
+    render(<MedicationsView />)
+
+    const history = screen.getByTestId('medications-version-history')
+    expect(
+      within(history).getByText('10/01/2025 • Dr. Carlos • Dose reduzida'),
+    ).toBeInTheDocument()
+    expect(within(history).getByText('Tomar depois do café')).toBeInTheDocument()
+    expect(
+      within(screen.getByTestId('medication-print-changes')).getByText(
+        'Tomar depois do café',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('renders a version with no professional without an empty label', () => {
+    useScheduleStore.setState({
+      medicationVersions: [{ ...version1, professional: undefined }],
+    })
+
+    render(<MedicationsView />)
+
+    expect(screen.queryByText(/Prescrito por/)).not.toBeInTheDocument()
+    expect(screen.queryByText('undefined')).not.toBeInTheDocument()
+  })
+
+  it('lists on printed page 2 which medications are in each place, before the changes', () => {
+    useScheduleStore.setState({
+      medicationVersions: [
+        {
+          ...version1,
+          medications: [
+            { id: 'a', name: 'Quetiapina', dosage: '200mg', source: 'Posto' },
+            { id: 'b', name: 'Prolopa', source: 'Posto' },
+            { id: 'c', name: 'Dutam', source: 'Farmácia' },
+            { id: 'd', name: 'Vitamina D' },
+          ],
+        },
+      ],
+    })
+
+    render(<MedicationsView />)
+
+    const page2 = screen.getByTestId('medication-print-page-2')
+    const sources = within(page2).getByTestId('medication-print-sources')
+    const [posto, farmacia, withoutSource] = within(sources).getAllByRole('list')
+
+    expect(posto).toHaveTextContent('Quetiapina200mgProlopa')
+    expect(farmacia).toHaveTextContent('Dutam')
+    expect(withoutSource).toHaveTextContent('Vitamina D')
+    expect(
+      sources.compareDocumentPosition(
+        within(page2).getByTestId('medication-print-changes'),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+})

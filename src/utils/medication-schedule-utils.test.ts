@@ -18,6 +18,14 @@ import type {
   MedicationVersionInput,
 } from '../types'
 
+const validInputForNotes = (): MedicationVersionInput => ({
+  effectiveDate: '2026-03-13',
+  explanation: 'Ajuste',
+  medications: [{ id: 'med-1', name: 'Prolopa' }],
+  times: ['06:00'],
+  doses: {},
+})
+
 const version = (
   id: string,
   effectiveDate: string,
@@ -496,13 +504,12 @@ describe('medication-schedule-utils', () => {
       ).toEqual([])
     })
 
-    it('returns PROFESSIONAL_REQUIRED and EXPLANATION_REQUIRED when blank', () => {
+    it('returns EXPLANATION_REQUIRED when blank', () => {
       const errors = validateMedicationVersionInput(
         { ...validInput, professional: '  ', explanation: '' },
         [],
         { today: '2026-11-05' },
       )
-      expect(errors).toContainEqual({ code: 'PROFESSIONAL_REQUIRED' })
       expect(errors).toContainEqual({ code: 'EXPLANATION_REQUIRED' })
     })
 
@@ -663,6 +670,116 @@ describe('medication-schedule-utils', () => {
       ['2026-12-31', 'en', 'medications-12-31-2026'],
     ])('builds the file name for %s in %s', (date, language, expected) => {
       expect(getMedicationFileBaseName(date, language)).toBe(expected)
+    })
+  })
+
+  describe('optional professional', () => {
+    it('accepts a version without a professional and leaves the field absent', () => {
+      const input = { ...validInputForNotes(), professional: '   ' }
+
+      expect(
+        validateMedicationVersionInput(input, [], { today: '2026-03-20' }),
+      ).toEqual([])
+      expect(normalizeMedicationVersionInput(input)).not.toHaveProperty(
+        'professional',
+      )
+    })
+
+    it('skips versions without a professional in the suggestions', () => {
+      const withoutProfessional = version('v1', '2026-01-01', {
+        professional: undefined,
+      })
+
+      expect(
+        searchMedicationProfessionals('Dra', [
+          withoutProfessional,
+          version('v2', '2026-02-01'),
+        ]),
+      ).toEqual(['Dra. Ana Lima'])
+    })
+  })
+
+  describe('additional information notes', () => {
+    it('trims notes, drops blank ones and sorts newest first with undated last', () => {
+      const { notes } = normalizeMedicationVersionInput({
+        ...validInputForNotes(),
+        notes: [
+          { id: 'a', text: ' sem data ' },
+          { id: 'b', date: '2025-01-10', professional: ' ', text: 'antiga' },
+          { id: 'c', date: '', professional: '', text: '   ' },
+          { id: 'd', date: '2026-02-01', text: 'recente' },
+        ],
+      })
+
+      expect(notes).toEqual([
+        { id: 'd', date: '2026-02-01', text: 'recente' },
+        { id: 'b', date: '2025-01-10', text: 'antiga' },
+        { id: 'a', text: 'sem data' },
+      ])
+    })
+
+    it('leaves notes absent when none remain', () => {
+      expect(
+        normalizeMedicationVersionInput({
+          ...validInputForNotes(),
+          notes: [{ id: 'a', text: ' ' }],
+        }),
+      ).not.toHaveProperty('notes')
+    })
+
+    it('allows notes dated before the version and requires text once started', () => {
+      const input = {
+        ...validInputForNotes(),
+        notes: [
+          { id: 'ok', date: '2010-01-01', text: 'Bem antiga' },
+          { id: 'blank', text: '' },
+          { id: 'started', professional: 'Dr. Carlos', text: ' ' },
+        ],
+      }
+
+      expect(
+        validateMedicationVersionInput(input, [], { today: '2026-03-20' }),
+      ).toEqual([{ code: 'NOTE_TEXT_REQUIRED', noteId: 'started' }])
+    })
+
+    it('does not treat notes as table changes', () => {
+      const previous = version('v1', '2026-01-01')
+      const next = version('v2', '2026-02-01', {
+        notes: [{ id: 'a', text: 'Observação' }],
+      })
+
+      expect(getMedicationVersionChanges(previous, next)).toEqual([])
+    })
+  })
+
+  describe('doctor specialty', () => {
+    it('drops an empty specialty and reports a changed one', () => {
+      const input = validInputForNotes()
+      const med = { id: 'med-1', name: 'Prolopa', specialty: '  ' }
+
+      expect(
+        normalizeMedicationVersionInput({ ...input, medications: [med] })
+          .medications[0],
+      ).toEqual({ id: 'med-1', name: 'Prolopa' })
+
+      const previous = version('v1', '2026-01-01', {
+        medications: [{ id: 'med-1', name: 'Prolopa', specialty: 'Neuro' }],
+        doses: {},
+      })
+      const next = version('v2', '2026-02-01', {
+        medications: [{ id: 'med-1', name: 'Prolopa', specialty: 'Geriatra' }],
+        doses: {},
+      })
+
+      expect(getMedicationVersionChanges(previous, next)).toEqual([
+        {
+          type: 'SPECIALTY_CHANGED',
+          medicationId: 'med-1',
+          name: 'Prolopa',
+          from: 'Neuro',
+          to: 'Geriatra',
+        },
+      ])
     })
   })
 })
