@@ -6,9 +6,14 @@ import {
   getMedicationVersionAt,
   getMedicationVersionChanges,
   getMedicationVersionHistory,
+  normalizeMedicationVersionInput,
+  validateMedicationVersionInput,
 } from './medication-schedule-utils'
 
-import type { MedicationScheduleVersion } from '../types'
+import type {
+  MedicationScheduleVersion,
+  MedicationVersionInput,
+} from '../types'
 
 const version = (
   id: string,
@@ -305,6 +310,289 @@ describe('medication-schedule-utils', () => {
           to: undefined,
         },
       ])
+    })
+  })
+
+  describe('normalizeMedicationVersionInput', () => {
+    it('trims strings, drops empty optional fields, drops blank or orphan doses, sorts times, and preserves free-text doses', () => {
+      const raw: MedicationVersionInput = {
+        effectiveDate: ' 2026-03-13 ',
+        professional: '  Dra. Ana Lima  ',
+        explanation: '  Reduziu dose noturna  ',
+        medications: [
+          {
+            id: ' med-1 ',
+            name: '  Prolopa  ',
+            dosage: ' ',
+            source: '',
+            responsible: '   ',
+          },
+          {
+            id: 'med-2',
+            name: ' Quetiapina ',
+            dosage: ' 200mg ',
+            source: ' Farmácia Popular ',
+            responsible: ' Psiquiatra ',
+          },
+        ],
+        times: ['21:00', ' 06:00 '],
+        doses: {
+          'med-1': {
+            '06:00': ' 1.5 comprimidos ',
+            '21:00': '   ',
+            '14:00': '1 comprimido',
+          },
+          'med-2': {
+            '21:00': '2 gotas',
+          },
+          'med-orphan': {
+            '06:00': '1 comprimido',
+          },
+        },
+      }
+
+      const normalized = normalizeMedicationVersionInput(raw)
+      expect(normalized).toEqual({
+        effectiveDate: '2026-03-13',
+        professional: 'Dra. Ana Lima',
+        explanation: 'Reduziu dose noturna',
+        medications: [
+          {
+            id: 'med-1',
+            name: 'Prolopa',
+          },
+          {
+            id: 'med-2',
+            name: 'Quetiapina',
+            dosage: '200mg',
+            source: 'Farmácia Popular',
+            responsible: 'Psiquiatra',
+          },
+        ],
+        times: ['06:00', '21:00'],
+        doses: {
+          'med-1': {
+            '06:00': '1.5 comprimidos',
+          },
+          'med-2': {
+            '21:00': '2 gotas',
+          },
+        },
+      })
+      expect(normalized.medications[0]).not.toHaveProperty('dosage')
+      expect(normalized.medications[0]).not.toHaveProperty('source')
+      expect(normalized.medications[0]).not.toHaveProperty('responsible')
+    })
+  })
+
+  describe('validateMedicationVersionInput', () => {
+    const validInput: MedicationVersionInput = {
+      effectiveDate: '2026-03-13',
+      professional: 'Dra. Ana Lima',
+      explanation: 'Início do tratamento',
+      medications: [{ id: 'med-1', name: 'Prolopa', dosage: '100/25' }],
+      times: ['06:00', '21:00'],
+      doses: {
+        'med-1': { '06:00': '1 comprimido' },
+      },
+    }
+
+    it('returns no errors when input is valid and date equals today or latest version date', () => {
+      const existing = [version('v1', '2026-03-13')]
+      expect(
+        validateMedicationVersionInput(validInput, existing, {
+          today: '2026-03-13',
+        }),
+      ).toEqual([])
+    })
+
+    it.each(['', '13/03/2026', '2026-02-30', '2026-13-01', '2026-00-10'])(
+      'returns DATE_INVALID for invalid date "%s"',
+      (invalidDate) => {
+        const errors = validateMedicationVersionInput(
+          { ...validInput, effectiveDate: invalidDate },
+          [],
+          { today: '2026-11-05' },
+        )
+        expect(errors).toContainEqual({ code: 'DATE_INVALID' })
+      },
+    )
+
+    it('returns DATE_IN_FUTURE when effectiveDate is after today', () => {
+      const errors = validateMedicationVersionInput(
+        { ...validInput, effectiveDate: '2026-11-06' },
+        [],
+        { today: '2026-11-05' },
+      )
+      expect(errors).toContainEqual({ code: 'DATE_IN_FUTURE' })
+    })
+
+    it('returns DATE_BEFORE_LATEST when creating a new version before the latest version date', () => {
+      const existing = [
+        version('v1', '2026-02-13'),
+        version('v2', '2026-03-20'),
+      ]
+      const errors = validateMedicationVersionInput(
+        { ...validInput, effectiveDate: '2026-03-19' },
+        existing,
+        { today: '2026-11-05' },
+      )
+      expect(errors).toContainEqual({ code: 'DATE_BEFORE_LATEST' })
+    })
+
+    it('validates DATE_OUT_OF_RANGE when editing a version against its neighbor versions', () => {
+      const existing = [
+        version('v1', '2026-02-10'),
+        version('v2', '2026-03-10'),
+        version('v3', '2026-04-10'),
+      ]
+
+      // Equal to next version date -> valid
+      expect(
+        validateMedicationVersionInput(
+          { ...validInput, effectiveDate: '2026-04-10' },
+          existing,
+          { today: '2026-11-05', editingVersionId: 'v2' },
+        ),
+      ).toEqual([])
+
+      // Equal to previous version date -> valid
+      expect(
+        validateMedicationVersionInput(
+          { ...validInput, effectiveDate: '2026-02-10' },
+          existing,
+          { today: '2026-11-05', editingVersionId: 'v2' },
+        ),
+      ).toEqual([])
+
+      // After next version -> DATE_OUT_OF_RANGE
+      expect(
+        validateMedicationVersionInput(
+          { ...validInput, effectiveDate: '2026-04-11' },
+          existing,
+          { today: '2026-11-05', editingVersionId: 'v2' },
+        ),
+      ).toContainEqual({ code: 'DATE_OUT_OF_RANGE' })
+
+      // Before previous version -> DATE_OUT_OF_RANGE
+      expect(
+        validateMedicationVersionInput(
+          { ...validInput, effectiveDate: '2026-02-09' },
+          existing,
+          { today: '2026-11-05', editingVersionId: 'v2' },
+        ),
+      ).toContainEqual({ code: 'DATE_OUT_OF_RANGE' })
+
+      // Editing first version with an older date -> valid (no previous neighbor)
+      expect(
+        validateMedicationVersionInput(
+          { ...validInput, effectiveDate: '2025-01-01' },
+          existing,
+          { today: '2026-11-05', editingVersionId: 'v1' },
+        ),
+      ).toEqual([])
+    })
+
+    it('returns PROFESSIONAL_REQUIRED and EXPLANATION_REQUIRED when blank', () => {
+      const errors = validateMedicationVersionInput(
+        { ...validInput, professional: '  ', explanation: '' },
+        [],
+        { today: '2026-11-05' },
+      )
+      expect(errors).toContainEqual({ code: 'PROFESSIONAL_REQUIRED' })
+      expect(errors).toContainEqual({ code: 'EXPLANATION_REQUIRED' })
+    })
+
+    it('returns MEDICATION_REQUIRED when medications array is empty', () => {
+      const errors = validateMedicationVersionInput(
+        { ...validInput, medications: [] },
+        [],
+        { today: '2026-11-05' },
+      )
+      expect(errors).toContainEqual({ code: 'MEDICATION_REQUIRED' })
+    })
+
+    it('returns MEDICATION_NAME_REQUIRED with medicationId when a medication has an empty name', () => {
+      const errors = validateMedicationVersionInput(
+        {
+          ...validInput,
+          medications: [{ id: 'med-empty', name: '   ' }],
+        },
+        [],
+        { today: '2026-11-05' },
+      )
+      expect(errors).toContainEqual({
+        code: 'MEDICATION_NAME_REQUIRED',
+        medicationId: 'med-empty',
+      })
+    })
+
+    it('allows same medication name with different dosages (25mg vs 200mg) and rejects duplicates with same normalized name and dosage', () => {
+      expect(
+        validateMedicationVersionInput(
+          {
+            ...validInput,
+            medications: [
+              { id: 'm1', name: 'Quetiapina', dosage: '25mg' },
+              { id: 'm2', name: 'Quetiapina', dosage: '200mg' },
+            ],
+          },
+          [],
+          { today: '2026-11-05' },
+        ),
+      ).toEqual([])
+
+      const dupErrors = validateMedicationVersionInput(
+        {
+          ...validInput,
+          medications: [
+            { id: 'm1', name: 'Quetiapina' },
+            { id: 'm2', name: 'quetiapina ' },
+          ],
+        },
+        [],
+        { today: '2026-11-05' },
+      )
+      expect(dupErrors).toContainEqual({
+        code: 'DUPLICATE_MEDICATION',
+        medicationId: 'm2',
+      })
+    })
+
+    it('returns TIME_REQUIRED when times array is empty', () => {
+      const errors = validateMedicationVersionInput(
+        { ...validInput, times: [] },
+        [],
+        { today: '2026-11-05' },
+      )
+      expect(errors).toContainEqual({ code: 'TIME_REQUIRED' })
+    })
+
+    it.each(['7:00', '24:00', '12:60', ''])(
+      'returns TIME_INVALID for invalid time "%s"',
+      (badTime) => {
+        const errors = validateMedicationVersionInput(
+          { ...validInput, times: [badTime] },
+          [],
+          { today: '2026-11-05' },
+        )
+        expect(errors).toContainEqual({
+          code: 'TIME_INVALID',
+          time: badTime,
+        })
+      },
+    )
+
+    it('returns DUPLICATE_TIME when the same time is repeated', () => {
+      const errors = validateMedicationVersionInput(
+        { ...validInput, times: ['06:00', '21:00', '06:00'] },
+        [],
+        { today: '2026-11-05' },
+      )
+      expect(errors).toContainEqual({
+        code: 'DUPLICATE_TIME',
+        time: '06:00',
+      })
     })
   })
 })

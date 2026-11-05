@@ -1,6 +1,11 @@
+import { format, isValid, parseISO } from 'date-fns'
+
+import { normalizeItemName } from './expense-item-utils'
+
 import type {
   MedicationColumn,
   MedicationScheduleVersion,
+  MedicationVersionInput,
 } from '../types'
 
 export const PROFESSIONAL_SEARCH_MIN_LENGTH = 3
@@ -91,6 +96,175 @@ export interface MedicationSourceGroup {
 export function createMedicationId(): string {
   const random = Math.random().toString(36).slice(2, 9)
   return `med_${Date.now()}_${random}`
+}
+
+function isValidIsoDateString(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsed = parseISO(value)
+  return isValid(parsed) && format(parsed, 'yyyy-MM-dd') === value
+}
+
+export function normalizeMedicationVersionInput(
+  input: MedicationVersionInput,
+): MedicationVersionInput {
+  const effectiveDate = (input.effectiveDate ?? '').trim()
+  const professional = (input.professional ?? '').trim()
+  const explanation = (input.explanation ?? '').trim()
+
+  const medications: MedicationColumn[] = (input.medications ?? []).map(
+    (med) => {
+      const normalizedMed: MedicationColumn = {
+        id: (med.id ?? '').trim(),
+        name: (med.name ?? '').trim(),
+      }
+      const dosage = med.dosage?.trim()
+      if (dosage) {
+        normalizedMed.dosage = dosage
+      }
+      const source = med.source?.trim()
+      if (source) {
+        normalizedMed.source = source
+      }
+      const responsible = med.responsible?.trim()
+      if (responsible) {
+        normalizedMed.responsible = responsible
+      }
+      return normalizedMed
+    },
+  )
+
+  const times = (input.times ?? [])
+    .map((t) => t.trim())
+    .sort((a, b) => a.localeCompare(b))
+
+  const validMedIds = new Set(medications.map((m) => m.id))
+  const validTimes = new Set(times)
+
+  const doses: Record<string, Record<string, string>> = {}
+  const rawDoses = input.doses ?? {}
+
+  for (const [rawMedId, timeMap] of Object.entries(rawDoses)) {
+    const medId = rawMedId.trim()
+    if (!validMedIds.has(medId) || !timeMap) continue
+
+    for (const [rawTime, rawDose] of Object.entries(timeMap)) {
+      const time = rawTime.trim()
+      if (!validTimes.has(time)) continue
+      const dose = (rawDose ?? '').trim()
+      if (!dose) continue
+
+      if (!doses[medId]) {
+        doses[medId] = {}
+      }
+      doses[medId][time] = dose
+    }
+  }
+
+  return {
+    effectiveDate,
+    professional,
+    explanation,
+    medications,
+    times,
+    doses,
+  }
+}
+
+export function validateMedicationVersionInput(
+  input: MedicationVersionInput,
+  versions: MedicationScheduleVersion[],
+  options: { today: string; editingVersionId?: string },
+): MedicationValidationError[] {
+  const errors: MedicationValidationError[] = []
+  const effectiveDate = (input.effectiveDate ?? '').trim()
+
+  if (!isValidIsoDateString(effectiveDate)) {
+    errors.push({ code: 'DATE_INVALID' })
+  } else {
+    if (effectiveDate > options.today) {
+      errors.push({ code: 'DATE_IN_FUTURE' })
+    }
+
+    const sorted = sortMedicationVersions(versions)
+    if (options.editingVersionId !== undefined) {
+      const idx = sorted.findIndex((v) => v.id === options.editingVersionId)
+      if (idx >= 0) {
+        const prev = idx > 0 ? sorted[idx - 1] : undefined
+        const next = idx < sorted.length - 1 ? sorted[idx + 1] : undefined
+        if (
+          (prev && effectiveDate < prev.effectiveDate) ||
+          (next && effectiveDate > next.effectiveDate)
+        ) {
+          errors.push({ code: 'DATE_OUT_OF_RANGE' })
+        }
+      }
+    } else if (sorted.length > 0) {
+      const latest = sorted[sorted.length - 1]
+      if (effectiveDate < latest.effectiveDate) {
+        errors.push({ code: 'DATE_BEFORE_LATEST' })
+      }
+    }
+  }
+
+  if (!(input.professional ?? '').trim()) {
+    errors.push({ code: 'PROFESSIONAL_REQUIRED' })
+  }
+
+  if (!(input.explanation ?? '').trim()) {
+    errors.push({ code: 'EXPLANATION_REQUIRED' })
+  }
+
+  const medications = input.medications ?? []
+  if (medications.length === 0) {
+    errors.push({ code: 'MEDICATION_REQUIRED' })
+  } else {
+    const seenKeys = new Set<string>()
+    for (const med of medications) {
+      const normName = normalizeItemName(med.name ?? '')
+      if (!normName) {
+        errors.push({
+          code: 'MEDICATION_NAME_REQUIRED',
+          medicationId: med.id,
+        })
+      } else {
+        const normDosage = normalizeItemName(med.dosage ?? '')
+        const key = `${normName}::${normDosage}`
+        if (seenKeys.has(key)) {
+          errors.push({
+            code: 'DUPLICATE_MEDICATION',
+            medicationId: med.id,
+          })
+        } else {
+          seenKeys.add(key)
+        }
+      }
+    }
+  }
+
+  const times = input.times ?? []
+  if (times.length === 0) {
+    errors.push({ code: 'TIME_REQUIRED' })
+  } else {
+    const seenTimes = new Set<string>()
+    for (const rawTime of times) {
+      const time = (rawTime ?? '').trim()
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+        errors.push({
+          code: 'TIME_INVALID',
+          time: rawTime,
+        })
+      } else if (seenTimes.has(time)) {
+        errors.push({
+          code: 'DUPLICATE_TIME',
+          time,
+        })
+      } else {
+        seenTimes.add(time)
+      }
+    }
+  }
+
+  return errors
 }
 
 export function sortMedicationVersions(
