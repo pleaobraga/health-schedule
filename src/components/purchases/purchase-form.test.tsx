@@ -721,5 +721,65 @@ describe('PurchaseForm', () => {
       expect(screen.queryByTestId('purchase-line-name-0')).not.toBeInTheDocument()
     })
   })
+
+  it('picks a purchase date via the DatePicker popover and selects category and professional via the Select popover', async () => {
+    const onClose = vi.fn()
+    render(<PurchaseForm onClose={onClose} />)
+
+    // Open DatePicker popover and navigate to November 2026 if needed, or set initial date to 2026-11-01 then pick 2026-11-12 via popover
+    fireEvent.change(screen.getByTestId('purchase-date-input'), {
+      target: { value: '2026-11-01' },
+    })
+
+    fireEvent.click(screen.getByTestId('purchase-date-input-trigger'))
+    expect(screen.getByTestId('purchase-date-input-popover')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('purchase-date-input-day-2026-11-12'))
+    expect(
+      screen.queryByTestId('purchase-date-input-popover'),
+    ).not.toBeInTheDocument()
+    expect(screen.getByTestId('purchase-date-input-trigger')).toHaveTextContent(
+      '12/11/2026',
+    )
+
+    // Pick Category via Select popover
+    fireEvent.click(screen.getByTestId('purchase-category-select-trigger'))
+    expect(
+      screen.getByTestId('purchase-category-select-content'),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByTestId('purchase-category-select-option-MEDICATION'),
+    )
+    expect(
+      screen.queryByTestId('purchase-category-select-content'),
+    ).not.toBeInTheDocument()
+
+    // Pick Professional via Select popover
+    fireEvent.click(screen.getByTestId('purchase-person-select-trigger'))
+    fireEvent.click(
+      screen.getByTestId('purchase-person-select-option-person-2'),
+    )
+
+    fireEvent.change(screen.getByTestId('purchase-description-input'), {
+      target: { value: 'Compra via DatePicker e Select' },
+    })
+    fireEvent.change(screen.getByTestId('purchase-amount-input'), {
+      target: { value: '95,00' },
+    })
+
+    fireEvent.click(screen.getByTestId('purchase-submit'))
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    const saved = useScheduleStore
+      .getState()
+      .expenses.find((e) => e.description === 'Compra via DatePicker e Select')
+    expect(saved).toBeDefined()
+    expect(saved?.date).toBe('2026-11-12')
+    expect(saved?.category).toBe('MEDICATION')
+    expect(saved?.personId).toBe('person-2')
+  })
 })
 

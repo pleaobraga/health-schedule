@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { AvailabilityMiniCalendar } from './availability-mini-calendar'
 import { formatMonthYear, getMonthDaysArray } from '../../utils/date-utils'
 import { parseNumericRate } from '../../utils/shift-rate-utils'
+import { Select } from '../ui/select'
 
 import type { Person, ShiftDefinition } from '../../types'
 
@@ -464,19 +465,19 @@ export function MonthAvailabilityModal({
                   />
                 </div>
 
-                <select
+                <Select
                   value={rateApplyScope}
                   onChange={(e) =>
                     setRateApplyScope(e.target.value as 'all' | 'weekdays' | 'weekends' | 'custom')
                   }
                   aria-label={t('people:monthAvailability.applyTo')}
-                  className="px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium"
+                  className="py-1.5"
                 >
                   <option value="all">{t('people:monthAvailability.applyAllShiftDays')}</option>
                   <option value="weekdays">{t('people:monthAvailability.applyWeekdays')}</option>
                   <option value="weekends">{t('people:monthAvailability.applyWeekends')}</option>
                   <option value="custom">{t('people:monthAvailability.applySelectedDays')}</option>
-                </select>
+                </Select>
 
                 <button
                   type="button"

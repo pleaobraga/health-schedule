@@ -97,5 +97,11 @@
     "saveLocal": "Escala salva neste dispositivo.",
     "saveCloud": "Escala salva e sincronizada com a nuvem.",
     "saveCloudError": "Escala salva neste dispositivo, mas não foi possível sincronizar com a nuvem."
+  },
+  "datePicker": {
+    "placeholder": "Selecione uma data",
+    "previousMonth": "Mês anterior",
+    "nextMonth": "Próximo mês",
+    "today": "Hoje"
   }
 }

@@ -5,7 +5,7 @@ import { useScheduleStore } from '../../store/use-schedule-store'
 import { BackupService } from '../backup-service'
 import { StorageService } from '../storage-service'
 
-import type { AppDataSnapshot, CalendarEvent } from '../../types'
+import type { AppDataSnapshot, CalendarEvent, DailyExpense } from '../../types'
 
 export interface RelativeMonths {
   prevMonthStr: string
@@ -284,6 +284,20 @@ export function transformSeedData(
     }
   })
 
+  // 10. expenses (a purchase in the current month never lands after the reference date)
+  const expenses = (rawDemo.expenses || []).map((e) => {
+    const expense = e as DailyExpense
+    const srcM = expense.date.slice(0, 7)
+    const tgtM = monthMap[srcM] || srcM
+    const day = parseInt(expense.date.slice(8, 10), 10)
+    const maxDays = getDaysInMonth(tgtM)
+    const lastDay = tgtM === currMonthStr ? Math.min(maxDays, refDate.getDate()) : maxDays
+    const clampedDay = isNaN(day) ? 1 : Math.min(Math.max(1, day), lastDay)
+    const date = `${tgtM}-${String(clampedDay).padStart(2, '0')}`
+    const timestamp = `${date}T12:00:00.000Z`
+    return { ...expense, date, createdAt: timestamp, updatedAt: timestamp }
+  })
+
   return {
     ...rawDemo,
     exportedAt: new Date().toISOString(),
@@ -295,6 +309,8 @@ export function transformSeedData(
     dayShiftAssignments,
     availabilities,
     events,
+    expenses,
+    expenseItems: rawDemo.expenseItems || [],
     people: rawDemo.people || [],
     addresses: rawDemo.addresses || [],
     shiftDefinitions: rawDemo.shiftDefinitions || [],

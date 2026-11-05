@@ -543,6 +543,374 @@
         "shift_n12": { "8": 380, "15": 380, "22": 380, "29": 380 }
       }
     }
+  ],
+  "expenses": [
+    {
+      "id": "exp_seed_01",
+      "date": "2026-10-02",
+      "description": "Pharmacy",
+      "amount": 733.2,
+      "items": [
+        {
+          "itemId": "expitem_seed_01",
+          "itemName": "Adult diapers L",
+          "quantity": 4,
+          "amount": 359.6
+        },
+        {
+          "itemId": "expitem_seed_02",
+          "itemName": "Wet wipes",
+          "quantity": 6,
+          "amount": 71.4
+        },
+        {
+          "itemId": "expitem_seed_03",
+          "itemName": "Diaper rash ointment",
+          "quantity": 2,
+          "amount": 63.8
+        },
+        {
+          "itemId": "expitem_seed_04",
+          "itemName": "Disposable gloves",
+          "quantity": 2,
+          "amount": 59.8
+        },
+        {
+          "itemId": "expitem_seed_05",
+          "itemName": "Sterile gauze",
+          "quantity": 5,
+          "amount": 44.5
+        },
+        {
+          "itemId": "expitem_seed_06",
+          "itemName": "Saline solution",
+          "quantity": 4,
+          "amount": 31.6
+        },
+        {
+          "itemId": "expitem_seed_07",
+          "itemName": "Dipyrone 500mg",
+          "quantity": 2,
+          "amount": 27.8
+        },
+        {
+          "itemId": "expitem_seed_08",
+          "itemName": "Vitamin D",
+          "quantity": 1,
+          "amount": 48.9
+        },
+        {
+          "itemId": "expitem_seed_09",
+          "itemName": "Hand sanitizer",
+          "quantity": 2,
+          "amount": 25.8
+        }
+      ],
+      "category": "MEDICATION",
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "updatedAt": "2026-10-02T12:00:00.000Z"
+    },
+    {
+      "id": "exp_seed_02",
+      "date": "2026-10-04",
+      "description": "Uber",
+      "amount": 38.9,
+      "items": [
+        {
+          "itemId": "expitem_seed_26",
+          "itemName": "Uber ride",
+          "quantity": 1,
+          "amount": 38.9
+        }
+      ],
+      "personId": "p_seed_03",
+      "personName": "RN Sophia Turner",
+      "category": "TRANSPORT",
+      "createdAt": "2026-10-04T12:00:00.000Z",
+      "updatedAt": "2026-10-04T12:00:00.000Z"
+    },
+    {
+      "id": "exp_seed_03",
+      "date": "2026-10-06",
+      "description": "Supermarket",
+      "amount": 743.05,
+      "items": [
+        {
+          "itemId": "expitem_seed_10",
+          "itemName": "Rice 5kg",
+          "quantity": 2,
+          "amount": 57.8
+        },
+        {
+          "itemId": "expitem_seed_11",
+          "itemName": "Beans 1kg",
+          "quantity": 4,
+          "amount": 35.6
+        },
+        {
+          "itemId": "expitem_seed_12",
+          "itemName": "Olive oil",
+          "quantity": 2,
+          "amount": 79.8
+        },
+        {
+          "itemId": "expitem_seed_13",
+          "itemName": "Whole milk",
+          "quantity": 12,
+          "amount": 71.88
+        },
+        {
+          "itemId": "expitem_seed_14",
+          "itemName": "Coffee 500g",
+          "quantity": 3,
+          "amount": 62.7
+        },
+        {
+          "itemId": "expitem_seed_15",
+          "itemName": "Chicken",
+          "quantity": 3,
+          "amount": 68.7
+        },
+        {
+          "itemId": "expitem_seed_16",
+          "itemName": "Ground beef",
+          "quantity": 2,
+          "amount": 79.8
+        },
+        {
+          "itemId": "expitem_seed_17",
+          "itemName": "Eggs",
+          "quantity": 3,
+          "amount": 53.7
+        },
+        {
+          "itemId": "expitem_seed_18",
+          "itemName": "Bananas",
+          "quantity": 2.5,
+          "amount": 17.25
+        },
+        {
+          "itemId": "expitem_seed_19",
+          "itemName": "Apples",
+          "quantity": 2,
+          "amount": 23.8
+        },
+        {
+          "itemId": "expitem_seed_20",
+          "itemName": "Tomatoes",
+          "quantity": 2,
+          "amount": 19.8
+        },
+        {
+          "itemId": "expitem_seed_21",
+          "itemName": "Sliced bread",
+          "quantity": 3,
+          "amount": 29.7
+        },
+        {
+          "itemId": "expitem_seed_22",
+          "itemName": "Yogurt",
+          "quantity": 8,
+          "amount": 39.92
+        },
+        {
+          "itemId": "expitem_seed_23",
+          "itemName": "Laundry detergent",
+          "quantity": 2,
+          "amount": 59.8
+        },
+        {
+          "itemId": "expitem_seed_24",
+          "itemName": "Paper towels",
+          "quantity": 4,
+          "amount": 31.6
+        },
+        {
+          "itemId": "expitem_seed_25",
+          "itemName": "Disinfectant",
+          "quantity": 3,
+          "amount": 23.7
+        }
+      ],
+      "category": "SUPPLIES",
+      "createdAt": "2026-10-06T12:00:00.000Z",
+      "updatedAt": "2026-10-06T12:00:00.000Z"
+    },
+    {
+      "id": "exp_seed_04",
+      "date": "2026-10-09",
+      "description": "Uber",
+      "amount": 46.35,
+      "items": [
+        {
+          "itemId": "expitem_seed_26",
+          "itemName": "Uber ride",
+          "quantity": 1,
+          "amount": 46.35
+        }
+      ],
+      "category": "TRANSPORT",
+      "createdAt": "2026-10-09T12:00:00.000Z",
+      "updatedAt": "2026-10-09T12:00:00.000Z"
+    }
+  ],
+  "expenseItems": [
+    {
+      "id": "expitem_seed_01",
+      "name": "Adult diapers L",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_02",
+      "name": "Wet wipes",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_03",
+      "name": "Diaper rash ointment",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_04",
+      "name": "Disposable gloves",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_05",
+      "name": "Sterile gauze",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_06",
+      "name": "Saline solution",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_07",
+      "name": "Dipyrone 500mg",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_08",
+      "name": "Vitamin D",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_09",
+      "name": "Hand sanitizer",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_10",
+      "name": "Rice 5kg",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_11",
+      "name": "Beans 1kg",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_12",
+      "name": "Olive oil",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_13",
+      "name": "Whole milk",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_14",
+      "name": "Coffee 500g",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_15",
+      "name": "Chicken",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_16",
+      "name": "Ground beef",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_17",
+      "name": "Eggs",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_18",
+      "name": "Bananas",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_19",
+      "name": "Apples",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_20",
+      "name": "Tomatoes",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_21",
+      "name": "Sliced bread",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_22",
+      "name": "Yogurt",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_23",
+      "name": "Laundry detergent",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_24",
+      "name": "Paper towels",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_25",
+      "name": "Disinfectant",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_26",
+      "name": "Uber ride",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    }
   ]
 }
 

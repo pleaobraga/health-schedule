@@ -23,6 +23,7 @@ import { ConfirmDialog } from '../components/common/confirm-dialog'
 import { ItemHistory } from '../components/purchases/item-history'
 import { ItemMaintenance } from '../components/purchases/item-maintenance'
 import { PurchaseForm } from '../components/purchases/purchase-form'
+import { Select } from '../components/ui/select'
 import { useScheduleStore } from '../store/use-schedule-store'
 import {
   formatDisplayDate,
@@ -413,7 +414,7 @@ export function PurchasesView() {
             >
               {t('purchases:filters.category')}
             </label>
-            <select
+            <Select
               id="purchases-filter-category"
               data-testid="purchases-filter-category"
               value={filters.category ?? ''}
@@ -425,7 +426,7 @@ export function PurchasesView() {
                     | undefined,
                 }))
               }
-              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+              className="w-full bg-slate-50"
             >
               <option value="">{t('purchases:filters.allCategories')}</option>
               {CATEGORIES.map((cat) => (
@@ -435,7 +436,7 @@ export function PurchasesView() {
                   )}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Professional Filter */}
@@ -446,7 +447,7 @@ export function PurchasesView() {
             >
               {t('purchases:filters.person')}
             </label>
-            <select
+            <Select
               id="purchases-filter-person"
               data-testid="purchases-filter-person"
               value={filters.personId ?? ''}
@@ -456,7 +457,7 @@ export function PurchasesView() {
                   personId: e.target.value || undefined,
                 }))
               }
-              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+              className="w-full bg-slate-50"
             >
               <option value="">{t('purchases:filters.allPersons')}</option>
               {monthPeople.map((person) => (
@@ -464,7 +465,7 @@ export function PurchasesView() {
                   {person.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Item Filter */}
@@ -475,7 +476,7 @@ export function PurchasesView() {
             >
               {t('purchases:filters.item')}
             </label>
-            <select
+            <Select
               id="purchases-filter-item"
               data-testid="purchases-filter-item"
               value={filters.itemId ?? ''}
@@ -485,7 +486,7 @@ export function PurchasesView() {
                   itemId: e.target.value || undefined,
                 }))
               }
-              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+              className="w-full bg-slate-50"
             >
               <option value="">{t('purchases:filters.allItems')}</option>
               {activeItems.map((item) => (
@@ -493,7 +494,7 @@ export function PurchasesView() {
                   {item.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 

@@ -543,5 +543,373 @@
         "shift_n12": { "8": 380, "15": 380, "22": 380, "29": 380 }
       }
     }
+  ],
+  "expenses": [
+    {
+      "id": "exp_seed_01",
+      "date": "2026-10-02",
+      "description": "Farmácia",
+      "amount": 733.2,
+      "items": [
+        {
+          "itemId": "expitem_seed_01",
+          "itemName": "Fralda geriátrica G",
+          "quantity": 4,
+          "amount": 359.6
+        },
+        {
+          "itemId": "expitem_seed_02",
+          "itemName": "Lenço umedecido",
+          "quantity": 6,
+          "amount": 71.4
+        },
+        {
+          "itemId": "expitem_seed_03",
+          "itemName": "Pomada para assaduras",
+          "quantity": 2,
+          "amount": 63.8
+        },
+        {
+          "itemId": "expitem_seed_04",
+          "itemName": "Luva descartável",
+          "quantity": 2,
+          "amount": 59.8
+        },
+        {
+          "itemId": "expitem_seed_05",
+          "itemName": "Gaze estéril",
+          "quantity": 5,
+          "amount": 44.5
+        },
+        {
+          "itemId": "expitem_seed_06",
+          "itemName": "Soro fisiológico",
+          "quantity": 4,
+          "amount": 31.6
+        },
+        {
+          "itemId": "expitem_seed_07",
+          "itemName": "Dipirona 500mg",
+          "quantity": 2,
+          "amount": 27.8
+        },
+        {
+          "itemId": "expitem_seed_08",
+          "itemName": "Vitamina D",
+          "quantity": 1,
+          "amount": 48.9
+        },
+        {
+          "itemId": "expitem_seed_09",
+          "itemName": "Álcool em gel",
+          "quantity": 2,
+          "amount": 25.8
+        }
+      ],
+      "category": "MEDICATION",
+      "createdAt": "2026-10-02T12:00:00.000Z",
+      "updatedAt": "2026-10-02T12:00:00.000Z"
+    },
+    {
+      "id": "exp_seed_02",
+      "date": "2026-10-04",
+      "description": "Uber",
+      "amount": 38.9,
+      "items": [
+        {
+          "itemId": "expitem_seed_26",
+          "itemName": "Corrida de Uber",
+          "quantity": 1,
+          "amount": 38.9
+        }
+      ],
+      "personId": "p_seed_03",
+      "personName": "Enf. Beatriz Lima",
+      "category": "TRANSPORT",
+      "createdAt": "2026-10-04T12:00:00.000Z",
+      "updatedAt": "2026-10-04T12:00:00.000Z"
+    },
+    {
+      "id": "exp_seed_03",
+      "date": "2026-10-06",
+      "description": "Supermercado",
+      "amount": 743.05,
+      "items": [
+        {
+          "itemId": "expitem_seed_10",
+          "itemName": "Arroz 5kg",
+          "quantity": 2,
+          "amount": 57.8
+        },
+        {
+          "itemId": "expitem_seed_11",
+          "itemName": "Feijão 1kg",
+          "quantity": 4,
+          "amount": 35.6
+        },
+        {
+          "itemId": "expitem_seed_12",
+          "itemName": "Azeite",
+          "quantity": 2,
+          "amount": 79.8
+        },
+        {
+          "itemId": "expitem_seed_13",
+          "itemName": "Leite integral",
+          "quantity": 12,
+          "amount": 71.88
+        },
+        {
+          "itemId": "expitem_seed_14",
+          "itemName": "Café 500g",
+          "quantity": 3,
+          "amount": 62.7
+        },
+        {
+          "itemId": "expitem_seed_15",
+          "itemName": "Frango",
+          "quantity": 3,
+          "amount": 68.7
+        },
+        {
+          "itemId": "expitem_seed_16",
+          "itemName": "Carne moída",
+          "quantity": 2,
+          "amount": 79.8
+        },
+        {
+          "itemId": "expitem_seed_17",
+          "itemName": "Ovos",
+          "quantity": 3,
+          "amount": 53.7
+        },
+        {
+          "itemId": "expitem_seed_18",
+          "itemName": "Banana",
+          "quantity": 2.5,
+          "amount": 17.25
+        },
+        {
+          "itemId": "expitem_seed_19",
+          "itemName": "Maçã",
+          "quantity": 2,
+          "amount": 23.8
+        },
+        {
+          "itemId": "expitem_seed_20",
+          "itemName": "Tomate",
+          "quantity": 2,
+          "amount": 19.8
+        },
+        {
+          "itemId": "expitem_seed_21",
+          "itemName": "Pão de forma",
+          "quantity": 3,
+          "amount": 29.7
+        },
+        {
+          "itemId": "expitem_seed_22",
+          "itemName": "Iogurte",
+          "quantity": 8,
+          "amount": 39.92
+        },
+        {
+          "itemId": "expitem_seed_23",
+          "itemName": "Sabão em pó",
+          "quantity": 2,
+          "amount": 59.8
+        },
+        {
+          "itemId": "expitem_seed_24",
+          "itemName": "Papel toalha",
+          "quantity": 4,
+          "amount": 31.6
+        },
+        {
+          "itemId": "expitem_seed_25",
+          "itemName": "Desinfetante",
+          "quantity": 3,
+          "amount": 23.7
+        }
+      ],
+      "category": "SUPPLIES",
+      "createdAt": "2026-10-06T12:00:00.000Z",
+      "updatedAt": "2026-10-06T12:00:00.000Z"
+    },
+    {
+      "id": "exp_seed_04",
+      "date": "2026-10-09",
+      "description": "Uber",
+      "amount": 46.35,
+      "items": [
+        {
+          "itemId": "expitem_seed_26",
+          "itemName": "Corrida de Uber",
+          "quantity": 1,
+          "amount": 46.35
+        }
+      ],
+      "category": "TRANSPORT",
+      "createdAt": "2026-10-09T12:00:00.000Z",
+      "updatedAt": "2026-10-09T12:00:00.000Z"
+    }
+  ],
+  "expenseItems": [
+    {
+      "id": "expitem_seed_01",
+      "name": "Fralda geriátrica G",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_02",
+      "name": "Lenço umedecido",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_03",
+      "name": "Pomada para assaduras",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_04",
+      "name": "Luva descartável",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_05",
+      "name": "Gaze estéril",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_06",
+      "name": "Soro fisiológico",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_07",
+      "name": "Dipirona 500mg",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_08",
+      "name": "Vitamina D",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_09",
+      "name": "Álcool em gel",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_10",
+      "name": "Arroz 5kg",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_11",
+      "name": "Feijão 1kg",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_12",
+      "name": "Azeite",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_13",
+      "name": "Leite integral",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_14",
+      "name": "Café 500g",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_15",
+      "name": "Frango",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_16",
+      "name": "Carne moída",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_17",
+      "name": "Ovos",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_18",
+      "name": "Banana",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_19",
+      "name": "Maçã",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_20",
+      "name": "Tomate",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_21",
+      "name": "Pão de forma",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_22",
+      "name": "Iogurte",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_23",
+      "name": "Sabão em pó",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_24",
+      "name": "Papel toalha",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_25",
+      "name": "Desinfetante",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    },
+    {
+      "id": "expitem_seed_26",
+      "name": "Corrida de Uber",
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    }
   ]
 }

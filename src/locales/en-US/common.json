@@ -97,5 +97,11 @@
     "saveLocal": "Schedule saved on this device.",
     "saveCloud": "Schedule saved and synced with the cloud.",
     "saveCloudError": "Schedule saved on this device, but it could not be synced with the cloud."
+  },
+  "datePicker": {
+    "placeholder": "Pick a date",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "today": "Today"
   }
 }

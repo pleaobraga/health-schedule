@@ -20,6 +20,7 @@ import { useListOrder } from '../../hooks/use-list-order'
 import { useScheduleStore } from '../../store/use-schedule-store'
 import { sortByListOrder } from '../../utils/list-order'
 import { SortableList } from '../common/sortable-list'
+import { Select } from '../ui/select'
 
 import type {
   PeriodScope,
@@ -663,10 +664,10 @@ export function RulesManagementView() {
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                       {t('settings:rules.type')}
                     </label>
-                    <select
+                    <Select
                       value={type}
                       onChange={(e) => setType(e.target.value as RuleType)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      className="w-full"
                     >
                       <option value="MAX_SHIFTS_PER_PERIOD">
                         {t('settings:rules.types.MAX_SHIFTS_PER_PERIOD')}
@@ -686,7 +687,7 @@ export function RulesManagementView() {
                       <option value="DAILY_SHIFT_HOURS">
                         {t('settings:rules.types.DAILY_SHIFT_HOURS')}
                       </option>
-                    </select>
+                    </Select>
                   </div>
 
                   {/* Severity */}
@@ -694,14 +695,14 @@ export function RulesManagementView() {
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                       {t('settings:rules.severity')}
                     </label>
-                    <select
+                    <Select
                       value={severity}
                       onChange={(e) => setSeverity(e.target.value as 'ERROR' | 'WARNING')}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      className="w-full"
                     >
                       <option value="ERROR">{t('settings:rules.severitySelect.ERROR')}</option>
                       <option value="WARNING">{t('settings:rules.severitySelect.WARNING')}</option>
-                    </select>
+                    </Select>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
                       {t(`settings:rules.severityDescriptions.${severity}`)}
                     </p>
@@ -720,15 +721,15 @@ export function RulesManagementView() {
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                           {t('settings:rules.scope')}
                         </label>
-                        <select
+                        <Select
                           value={scope}
                           onChange={(e) => setScope(e.target.value as PeriodScope)}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                          className="w-full"
                         >
                           <option value="DAY">{t('settings:rules.scopes.DAY')}</option>
                           <option value="WEEK">{t('settings:rules.scopes.WEEK')}</option>
                           <option value="MONTH">{t('settings:rules.scopes.MONTH')}</option>
-                        </select>
+                        </Select>
                       </div>
 
                       {type === 'MAX_SHIFTS_PER_PERIOD' && (
@@ -834,15 +835,15 @@ export function RulesManagementView() {
                           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                             {t('settings:rules.dailyHoursComparison')}
                           </label>
-                          <select
+                          <Select
                             value={dailyHoursComparison}
                             onChange={(e) => setDailyHoursComparison(e.target.value as DailyHoursComparison)}
-                            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                            className="w-full"
                           >
                             <option value="EXACT">{t('settings:rules.comparisons.EXACT')}</option>
                             <option value="MAX">{t('settings:rules.comparisons.MAX')}</option>
                             <option value="MIN">{t('settings:rules.comparisons.MIN')}</option>
-                          </select>
+                          </Select>
                         </div>
                       </div>
 
@@ -850,16 +851,16 @@ export function RulesManagementView() {
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                           {t('settings:rules.dayFilterType')}
                         </label>
-                        <select
+                        <Select
                           value={dayFilterType}
                           onChange={(e) => setDayFilterType(e.target.value as DayFilterType)}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                          className="w-full"
                         >
                           <option value="ALL">{t('settings:rules.dayFilters.ALL')}</option>
                           <option value="WEEKDAYS">{t('settings:rules.dayFilters.WEEKDAYS')}</option>
                           <option value="WEEKENDS">{t('settings:rules.dayFilters.WEEKENDS')}</option>
                           <option value="SPECIFIC_DAYS">{t('settings:rules.dayFilters.SPECIFIC_DAYS')}</option>
-                        </select>
+                        </Select>
                       </div>
 
                       {dayFilterType === 'SPECIFIC_DAYS' && (

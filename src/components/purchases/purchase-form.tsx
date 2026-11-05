@@ -2,7 +2,6 @@ import { format } from 'date-fns'
 import {
   AlertCircle,
   AlertTriangle,
-  Calendar,
   Clock,
   DollarSign,
   FileSpreadsheet,
@@ -33,6 +32,8 @@ import {
   validateExpenseInput,
 } from '../../utils/expense-item-utils'
 import { formatBRL, parseNumericRate } from '../../utils/shift-rate-utils'
+import { DatePicker } from '../ui/date-picker'
+import { Select } from '../ui/select'
 
 import type {
   DailyExpense,
@@ -477,20 +478,15 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                 >
                   {t('purchases:form.date')}
                 </label>
-                <div className="relative">
-                  <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    id="purchase-date-input"
-                    data-testid="purchase-date-input"
-                    type="date"
-                    value={date}
-                    onChange={(e) => {
-                      setDate(e.target.value)
-                      setErrors([])
-                    }}
-                    className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
-                  />
-                </div>
+                <DatePicker
+                  id="purchase-date-input"
+                  data-testid="purchase-date-input"
+                  value={date}
+                  onChange={(val) => {
+                    setDate(val)
+                    setErrors([])
+                  }}
+                />
               </div>
 
               {/* Total Amount */}
@@ -551,7 +547,7 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                 >
                   {t('purchases:form.category')}
                 </label>
-                <select
+                <Select
                   id="purchase-category-select"
                   data-testid="purchase-category-select"
                   value={category}
@@ -560,7 +556,7 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                       (e.target.value || '') as DailyExpenseCategory | '',
                     )
                   }
-                  className="w-full px-3 py-2 text-xs sm:text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                  className="w-full"
                 >
                   <option value="">{t('purchases:form.selectCategory')}</option>
                   {CATEGORIES.map((cat) => (
@@ -570,7 +566,7 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                       )}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div>
@@ -580,12 +576,12 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                 >
                   {t('purchases:form.person')}
                 </label>
-                <select
+                <Select
                   id="purchase-person-select"
                   data-testid="purchase-person-select"
                   value={personId}
                   onChange={(e) => setPersonId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs sm:text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                  className="w-full"
                 >
                   <option value="">{t('purchases:form.noPersonOption')}</option>
                   {availablePeople.map((p) => (
@@ -593,7 +589,7 @@ export function PurchaseForm({ expense, onClose }: PurchaseFormProps) {
                       {p.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             </div>
 

@@ -354,6 +354,77 @@ describe('guestSeedLoader', () => {
     })
   })
 
+  describe('demo purchases', () => {
+    const refDate = new Date(2026, 9, 20)
+
+    it.each([
+      ['Portuguese', demoJson, 'Farmácia', 'Supermercado', 'Uber'],
+      ['English', demoEnJson, 'Pharmacy', 'Supermarket', 'Uber'],
+    ])('adds big pharmacy and supermarket purchases and 2 Uber rides in %s', (_, demo, pharmacy, market, uber) => {
+      const { expenses = [] } = transformSeedData(demo as unknown as AppDataSnapshot, refDate)
+      const current = expenses.filter((e) => e.date.startsWith('2026-10-'))
+
+      expect(current.map((e) => e.description).sort()).toEqual([pharmacy, market, uber, uber].sort())
+      expect(current.find((e) => e.description === pharmacy)?.items.length).toBeGreaterThanOrEqual(8)
+      expect(current.find((e) => e.description === market)?.items.length).toBeGreaterThanOrEqual(12)
+    })
+
+    it.each([
+      ['Portuguese', demoJson],
+      ['English', demoEnJson],
+    ])('links every line to the item registry and to real people in %s', (_, demo) => {
+      const { expenses = [], expenseItems = [], people } = transformSeedData(
+        demo as unknown as AppDataSnapshot,
+        refDate,
+      )
+
+      expenses.forEach((expense) => {
+        expect(expense.amount).toBeGreaterThan(0)
+        expense.items.forEach((line) => {
+          expect(expenseItems.find((item) => item.id === line.itemId)?.name).toBe(line.itemName)
+          expect(line.quantity).toBeGreaterThan(0)
+        })
+        if (expense.personId) {
+          expect(people.find((p) => p.id === expense.personId)?.name).toBe(expense.personName)
+        }
+      })
+    })
+
+    it('reuses the same item in both Uber rides so the purchase history has an interval', () => {
+      const { expenses = [] } = transformSeedData(demoJson as unknown as AppDataSnapshot, refDate)
+      const rides = expenses.filter((e) => e.description === 'Uber')
+
+      expect(new Set(rides.map((e) => e.items[0].itemId)).size).toBe(1)
+      expect(new Set(rides.map((e) => e.date)).size).toBe(2)
+    })
+
+    it('moves purchases to the current month, never after the reference date', () => {
+      const earlyInMonth = new Date(2026, 1, 3)
+
+      const { expenses = [] } = transformSeedData(demoJson as unknown as AppDataSnapshot, earlyInMonth)
+
+      expect(expenses.length).toBe(4)
+      expenses.forEach((expense) => {
+        expect(expense.date.slice(0, 7)).toBe('2026-02')
+        expect(expense.date <= '2026-02-03').toBe(true)
+      })
+    })
+
+    it('loads the purchases and the item registry into the store', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => demoJson,
+      }) as unknown as typeof fetch
+
+      await loadGuestSeedData({ refDate })
+
+      const { expenses, expenseItems } = useScheduleStore.getState()
+      expect(expenses).toHaveLength(4)
+      expect(expenseItems.length).toBeGreaterThan(0)
+      expect(StorageService.getExpenseItems()).toEqual(expenseItems)
+    })
+  })
+
   describe('isGuestDataEmpty', () => {
     it('returns true when local storage has no people and no assignments', () => {
       expect(isGuestDataEmpty()).toBe(true)

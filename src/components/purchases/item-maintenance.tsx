@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useScheduleStore } from '../../store/use-schedule-store'
 import { ConfirmDialog } from '../common/confirm-dialog'
+import { Select } from '../ui/select'
 
 import type { ExpenseItemActionCode } from '../../store/use-schedule-store'
 import type { ExpenseItem } from '../../types'
@@ -219,7 +220,7 @@ export function ItemMaintenance({ item, onClose }: ItemMaintenanceProps) {
                   {t('purchases:maintenance.mergeLabel')}
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <select
+                  <Select
                     id="item-maintenance-merge-select"
                     data-testid="item-maintenance-merge-select"
                     value={targetId}
@@ -227,7 +228,7 @@ export function ItemMaintenance({ item, onClose }: ItemMaintenanceProps) {
                       setTargetId(e.target.value)
                       setErrorCode(null)
                     }}
-                    className="flex-1 px-3 py-2 text-xs sm:text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                    className="flex-1 focus:ring-amber-500/30 focus:border-amber-500"
                   >
                     <option value="">
                       {t('purchases:maintenance.mergeSelectPlaceholder')}
@@ -237,7 +238,7 @@ export function ItemMaintenance({ item, onClose }: ItemMaintenanceProps) {
                         {candidate.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <button
                     type="submit"
                     data-testid="item-maintenance-merge-submit"

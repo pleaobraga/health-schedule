@@ -24,6 +24,8 @@ import { formatAddress } from '../../utils/address-utils'
 import { copyToClipboard } from '../../utils/clipboard-utils'
 import { formatDisplayDate } from '../../utils/date-utils'
 import { parseNumericRate } from '../../utils/shift-rate-utils'
+import { DatePicker } from '../ui/date-picker'
+import { Select } from '../ui/select'
 
 import type { CalendarEvent, DailyExpense, DailyExpenseCategory, Person } from '../../types'
 
@@ -699,12 +701,12 @@ export function DayEventsModal() {
                       data-testid="selected-caregiver-color-preview"
                     />
                   )}
-                  <select
+                  <Select
                     id="event-person"
                     aria-label={t('calendar:eventsModal.responsibleStaff')}
                     value={selectedPersonId}
                     onChange={(e) => setSelectedPersonId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-slate-800 dark:text-slate-100 dark:scheme-dark"
+                    className="w-full"
                   >
                     <option value="">
                       {t('calendar:eventsModal.noCaregiverOption')}
@@ -723,7 +725,7 @@ export function DayEventsModal() {
                         </option>
                       )
                     })}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -753,7 +755,7 @@ export function DayEventsModal() {
                   <span>{t('calendar:eventsModal.addressLabel')}</span>
                 </label>
 
-                <select
+                <Select
                   id="event-address-select"
                   aria-label={t('calendar:eventsModal.selectAddress')}
                   value={addressSelection}
@@ -764,7 +766,7 @@ export function DayEventsModal() {
                       setManualAddress('')
                     }
                   }}
-                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-slate-800 dark:text-slate-100 dark:scheme-dark"
+                  className="w-full"
                 >
                   <option value="">
                     {t('calendar:eventsModal.noAddressOption')}
@@ -780,7 +782,7 @@ export function DayEventsModal() {
                   <option value="__new__">
                     {t('calendar:eventsModal.newAddressOption')}
                   </option>
-                </select>
+                </Select>
 
                 {/* Preview of selected registered address */}
                 {(() => {
@@ -1140,12 +1142,11 @@ export function DayEventsModal() {
                 >
                   {t('calendar:eventsModal.expenseDate')}
                 </label>
-                <input
+                <DatePicker
                   id="expense-date"
-                  type="date"
+                  data-testid="expense-date"
                   value={expenseDate}
-                  onChange={(e) => setExpenseDate(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-slate-800 dark:text-slate-100 dark:scheme-dark"
+                  onChange={(val) => setExpenseDate(val)}
                 />
               </div>
 
@@ -1203,12 +1204,12 @@ export function DayEventsModal() {
                   <User className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                   <span>{t('calendar:eventsModal.expensePerson')}</span>
                 </label>
-                <select
+                <Select
                   id="expense-person"
                   aria-label={t('calendar:eventsModal.expensePerson')}
                   value={expensePersonId}
                   onChange={(e) => setExpensePersonId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-slate-800 dark:text-slate-100 dark:scheme-dark"
+                  className="w-full"
                 >
                   <option value="">
                     {t('calendar:eventsModal.noExpensePersonOption')}
@@ -1226,7 +1227,7 @@ export function DayEventsModal() {
                         t('calendar:removedProfessional')}
                     </option>
                   )}
-                </select>
+                </Select>
               </div>
 
               {/* Category Selection (Optional) */}
@@ -1238,14 +1239,14 @@ export function DayEventsModal() {
                   <Tag className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                   <span>{t('calendar:eventsModal.expenseCategory')}</span>
                 </label>
-                <select
+                <Select
                   id="expense-category"
                   aria-label={t('calendar:eventsModal.expenseCategory')}
                   value={expenseCategory}
                   onChange={(e) =>
                     setExpenseCategory(e.target.value as DailyExpenseCategory | '')
                   }
-                  className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-slate-800 dark:text-slate-100 dark:scheme-dark"
+                  className="w-full"
                 >
                   <option value="">
                     {t('calendar:eventsModal.categories.none')}
@@ -1262,7 +1263,7 @@ export function DayEventsModal() {
                   <option value="OTHER">
                     {t('calendar:eventsModal.categories.OTHER')}
                   </option>
-                </select>
+                </Select>
               </div>
 
               {/* Form Buttons */}
