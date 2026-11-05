@@ -372,5 +372,95 @@ describe('CloudSyncService', () => {
       expect(success).toBe(false)
       expect(firestoreModule.setDoc).not.toHaveBeenCalled()
     })
+
+    it('saves expenseItems to schedules/_master_expense_items in the items field and pulls them back', async () => {
+      CloudSyncService.setSyncEnabled(true)
+      const items = [
+        {
+          id: 'item_1',
+          name: 'Fralda G',
+          normalizedName: 'fralda g',
+          createdAt: '2026-11-05T10:00:00.000Z',
+          updatedAt: '2026-11-05T10:00:00.000Z',
+        },
+      ]
+
+      const saved = await CloudSyncService.saveExpenseItemsToCloud(items, true)
+      expect(saved).toBe(true)
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        { path: 'schedules/_master_expense_items' },
+        {
+          items,
+          updatedAt: 'mock-server-timestamp',
+        },
+      )
+
+      mockScheduleDocs({
+        _master_expense_items: { items },
+      })
+      const pulled = await CloudSyncService.pullAllFromCloud(true)
+      expect(pulled.expenseItems).toEqual(items)
+
+      mockScheduleDocs({})
+      const pulledWithoutDoc = await CloudSyncService.pullAllFromCloud(true)
+      expect(pulledWithoutDoc.expenseItems).toBeNull()
+    })
+
+    it('writes expenseItems in pushAllToCloud when provided and keeps expense lines and personName in sliceMonthScheduleData', async () => {
+      const items = [
+        {
+          id: 'item_1',
+          name: 'Fralda G',
+          normalizedName: 'fralda g',
+          createdAt: '2026-11-05T10:00:00.000Z',
+          updatedAt: '2026-11-05T10:00:00.000Z',
+        },
+      ]
+      const expenseWithLines = {
+        id: 'exp_1',
+        date: '2026-10-12',
+        description: 'Farmácia',
+        amount: 59.9,
+        personId: 'p1',
+        personName: 'Dra. Marina',
+        items: [
+          {
+            id: 'line_1',
+            itemId: 'item_1',
+            itemName: 'Fralda G',
+            quantity: 2,
+            amount: 59.9,
+          },
+        ],
+        createdAt: '2026-10-12T10:00:00.000Z',
+        updatedAt: '2026-10-12T10:00:00.000Z',
+      }
+
+      const slice = sliceMonthScheduleData(
+        { ...fullDataset, expenses: [expenseWithLines] },
+        '2026-10',
+      )
+      expect(slice.expenses).toEqual([expenseWithLines])
+
+      mockScheduleDocs({})
+      const success = await CloudSyncService.pushAllToCloud(
+        {
+          monthData: { ...fullDataset, expenses: [expenseWithLines] },
+          persons: [],
+          addresses: [],
+          expenseItems: items,
+        },
+        true,
+        true,
+      )
+      expect(success).toBe(true)
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        { path: 'schedules/_master_expense_items' },
+        {
+          items,
+          updatedAt: 'mock-server-timestamp',
+        },
+      )
+    })
   })
 })

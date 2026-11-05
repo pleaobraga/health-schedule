@@ -4,6 +4,7 @@ import { useScheduleStore } from '../store/use-schedule-store'
 
 import type {
   AppDataSnapshot,
+  ExpenseItem,
   MonthlyAvailability,
   ShiftDefinition,
   ShiftRule,
@@ -79,6 +80,7 @@ export async function exportAppData(): Promise<void> {
   const assignments = StorageService.getAssignments()
   const events = StorageService.getEvents()
   const expenses = StorageService.getExpenses()
+  const expenseItems = StorageService.getExpenseItems()
   const addresses = StorageService.getAddresses()
   const shiftDefinitions = StorageService.getShiftDefinitions()
   const shiftRules = StorageService.getShiftRules()
@@ -97,6 +99,7 @@ export async function exportAppData(): Promise<void> {
     assignments,
     events,
     expenses,
+    expenseItems,
     addresses,
     shiftDefinitions,
     shiftRules,
@@ -174,6 +177,7 @@ export async function validateAndParseBackup(file: File): Promise<AppDataSnapsho
 
   const events = Array.isArray(raw.events) ? raw.events : []
   const expenses = Array.isArray(raw.expenses) ? raw.expenses : []
+  const expenseItems = Array.isArray(raw.expenseItems) ? (raw.expenseItems as ExpenseItem[]) : []
   const addresses = Array.isArray(raw.addresses) ? raw.addresses : []
   const availabilities = raw.availabilities ?? []
   const shiftDefinitions = Array.isArray(raw.shiftDefinitions) ? (raw.shiftDefinitions as ShiftDefinition[]) : undefined
@@ -208,6 +212,7 @@ export async function validateAndParseBackup(file: File): Promise<AppDataSnapsho
     assignments,
     events,
     expenses,
+    expenseItems,
     addresses,
     shiftDefinitions,
     shiftRules,
@@ -253,6 +258,9 @@ export async function restoreAppData(data: AppDataSnapshot): Promise<void> {
   const expenses = Array.isArray(data.expenses) ? data.expenses : []
   StorageService.saveExpenses(expenses)
 
+  const expenseItems = Array.isArray(data.expenseItems) ? data.expenseItems : []
+  StorageService.saveExpenseItems(expenseItems)
+
   const addresses = Array.isArray(data.addresses) ? data.addresses : []
   StorageService.saveAddresses(addresses)
 
@@ -297,6 +305,8 @@ export async function restoreAppData(data: AppDataSnapshot): Promise<void> {
     assignments,
     savedAssignments: { ...assignments },
     events,
+    expenses,
+    expenseItems,
     addresses,
     shiftDefinitions: restoredShiftDefinitions,
     shiftRules: restoredShiftRules,
@@ -420,6 +430,17 @@ export async function mergeAppData(data: AppDataSnapshot): Promise<void> {
   const mergedExpenses = Array.from(expenseMap.values())
   StorageService.saveExpenses(mergedExpenses)
 
+  // 5c. Merge expenseItems by id
+  const currentExpenseItems = StorageService.getExpenseItems()
+  const incomingExpenseItems = Array.isArray(data.expenseItems) ? data.expenseItems : []
+  const expenseItemMap = new Map(currentExpenseItems.map((item) => [item.id, item]))
+  for (const item of incomingExpenseItems) {
+    const existing = expenseItemMap.get(item.id)
+    expenseItemMap.set(item.id, existing ? { ...existing, ...item } : item)
+  }
+  const mergedExpenseItems = Array.from(expenseItemMap.values())
+  StorageService.saveExpenseItems(mergedExpenseItems)
+
   // 6. Merge addresses by id
   const currentAddresses = StorageService.getAddresses()
   const incomingAddresses = Array.isArray(data.addresses) ? data.addresses : []
@@ -532,6 +553,8 @@ export async function mergeAppData(data: AppDataSnapshot): Promise<void> {
     assignments: mergedAssignments,
     savedAssignments: { ...mergedAssignments },
     events: mergedEvents,
+    expenses: mergedExpenses,
+    expenseItems: mergedExpenseItems,
     addresses: mergedAddresses,
     shiftDefinitions: mergedShiftDefinitions,
     shiftRules: mergedShiftRules,

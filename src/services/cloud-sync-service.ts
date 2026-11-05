@@ -15,6 +15,7 @@ import type {
   MonthlyAvailability,
   CalendarEvent,
   DailyExpense,
+  ExpenseItem,
   MonthRegistrySnapshot,
   Person,
   Address,
@@ -63,6 +64,7 @@ export interface CloudPullData {
   addresses: Address[] | null;
   shifts: ShiftDefinition[] | null;
   rules: ShiftRule[] | null;
+  expenseItems: ExpenseItem[] | null;
 }
 
 const isMonthId = (value: string | undefined): value is string =>
@@ -405,6 +407,7 @@ export class CloudSyncService {
       addresses: null,
       shifts: null,
       rules: null,
+      expenseItems: null,
     }
 
     if (!(await this.isAllowed(isAdmin, ignoreSyncEnabled))) {
@@ -428,6 +431,7 @@ export class CloudSyncService {
         addresses: (byId.get('_master_addresses')?.addresses as Address[]) ?? null,
         shifts: (byId.get('_master_shifts')?.shifts as ShiftDefinition[]) ?? null,
         rules: (byId.get('_master_rules')?.rules as ShiftRule[]) ?? null,
+        expenseItems: (byId.get('_master_expense_items')?.items as ExpenseItem[]) ?? null,
       }
     } catch (err) {
       console.error('Failed to pull schedules from Firestore:', err)
@@ -545,6 +549,23 @@ export class CloudSyncService {
   }
 
   /**
+   * Syncs master expense items registry to Firestore when saving if sync is active.
+   */
+  static async saveExpenseItemsToCloud(
+    items: ExpenseItem[],
+    isAdmin?: boolean,
+    ignoreSyncEnabled = false,
+  ): Promise<boolean> {
+    return this.saveMasterListToCloud(
+      '_master_expense_items',
+      'items',
+      items,
+      isAdmin,
+      ignoreSyncEnabled,
+    )
+  }
+
+  /**
    * Makes the cloud an exact copy of the local data: every local month plus every month already
    * in the cloud is rewritten (months that no longer exist locally become empty), along with the
    * master lists. Does not require or alter the local sync toggle.
@@ -556,6 +577,7 @@ export class CloudSyncService {
       addresses: Address[];
       shifts?: ShiftDefinition[];
       rules?: ShiftRule[];
+      expenseItems?: ExpenseItem[];
     },
     isAdmin?: boolean,
     ignoreSyncEnabled = true,
@@ -581,6 +603,11 @@ export class CloudSyncService {
     }
     if (data.rules) {
       promises.push(this.saveRulesToCloud(data.rules, isAdmin, ignoreSyncEnabled))
+    }
+    if (data.expenseItems) {
+      promises.push(
+        this.saveExpenseItemsToCloud(data.expenseItems, isAdmin, ignoreSyncEnabled),
+      )
     }
 
     const results = await Promise.all(promises)

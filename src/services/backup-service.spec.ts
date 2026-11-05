@@ -413,3 +413,135 @@ describe('BackupService month snapshots', () => {
     })
   })
 })
+
+describe('BackupService expenses and expenseItems', () => {
+  const sampleItem = {
+    id: 'item_1',
+    name: 'Fralda G',
+    normalizedName: 'fralda g',
+    createdAt: '2026-11-05T10:00:00.000Z',
+    updatedAt: '2026-11-05T10:00:00.000Z',
+  }
+
+  const sampleExpense = {
+    id: 'exp_1',
+    date: '2026-11-05',
+    description: 'Farmácia',
+    amount: 59.9,
+    personId: 'p1',
+    personName: 'Dra. Camila',
+    items: [
+      {
+        id: 'line_1',
+        itemId: 'item_1',
+        itemName: 'Fralda G',
+        quantity: 2,
+        amount: 59.9,
+      },
+    ],
+    createdAt: '2026-11-05T10:00:00.000Z',
+    updatedAt: '2026-11-05T10:00:00.000Z',
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    useScheduleStore.setState({ expenses: [], expenseItems: [] })
+  })
+
+  it('includes expenseItems when exporting app data', async () => {
+    StorageService.savePersons([{ id: 'p1', name: 'Dra. Camila', color: '#3b82f6' }])
+    StorageService.saveExpenseItems([sampleItem])
+
+    let exportedBlob: Blob | null = null
+    window.URL.createObjectURL = vi.fn().mockImplementation((blob: Blob) => {
+      exportedBlob = blob
+      return 'blob:test-url'
+    })
+    window.URL.revokeObjectURL = vi.fn()
+
+    await exportAppData()
+
+    expect(exportedBlob).not.toBeNull()
+    const parsed = JSON.parse(await exportedBlob!.text())
+    expect(parsed.expenseItems).toEqual([sampleItem])
+  })
+
+  it('normalizes non-array expenseItems to an empty array in validateAndParseBackup', async () => {
+    const file = new File(
+      [
+        JSON.stringify({
+          people: [{ id: 'p1', name: 'Dra. Camila', color: '#3b82f6' }],
+          expenseItems: 'invalid',
+        }),
+      ],
+      'backup.json',
+      { type: 'application/json' },
+    )
+
+    const parsed = await validateAndParseBackup(file)
+    expect(parsed.expenseItems).toEqual([])
+  })
+
+  it('restoreAppData updates storage and store for expenses and expenseItems before forcePushCloudData', async () => {
+    localStorage.setItem('scale_manager_cloud_sync_enabled', 'true')
+    let pushedExpenses: unknown = null
+    let pushedExpenseItems: unknown = null
+    const pushSpy = vi
+      .spyOn(useScheduleStore.getState(), 'forcePushCloudData')
+      .mockImplementation(async () => {
+        pushedExpenses = useScheduleStore.getState().expenses
+        pushedExpenseItems = useScheduleStore.getState().expenseItems
+        return { success: true, code: 'success', message: 'ok' }
+      })
+
+    await restoreAppData({
+      exportedAt: '2026-11-05T10:00:00.000Z',
+      people: [{ id: 'p1', name: 'Dra. Camila', color: '#3b82f6' }],
+      monthParticipants: {},
+      availabilities: [],
+      assignments: {},
+      events: [],
+      expenses: [sampleExpense],
+      expenseItems: [sampleItem],
+    })
+
+    expect(StorageService.getExpenses()).toEqual([sampleExpense])
+    expect(StorageService.getExpenseItems()).toEqual([sampleItem])
+    expect(useScheduleStore.getState().expenses).toEqual([sampleExpense])
+    expect(useScheduleStore.getState().expenseItems).toEqual([sampleItem])
+    expect(pushSpy).toHaveBeenCalledTimes(1)
+    expect(pushedExpenses).toEqual([sampleExpense])
+    expect(pushedExpenseItems).toEqual([sampleItem])
+  })
+
+  it('mergeAppData merges expenses and expenseItems by id and updates both in the store', async () => {
+    StorageService.saveExpenses([
+      { ...sampleExpense, id: 'exp_1', description: 'Antiga' },
+      { ...sampleExpense, id: 'exp_local', description: 'Local' },
+    ])
+    StorageService.saveExpenseItems([
+      { ...sampleItem, id: 'item_1', name: 'Antigo' },
+      { ...sampleItem, id: 'item_local', name: 'Local' },
+    ])
+
+    await mergeAppData({
+      exportedAt: '2026-11-05T10:00:00.000Z',
+      people: [],
+      monthParticipants: {},
+      availabilities: [],
+      assignments: {},
+      events: [],
+      expenses: [{ ...sampleExpense, id: 'exp_1', description: 'Nova' }],
+      expenseItems: [{ ...sampleItem, id: 'item_1', name: 'Novo' }],
+    })
+
+    expect(useScheduleStore.getState().expenses.map((e) => e.description)).toEqual([
+      'Nova',
+      'Local',
+    ])
+    expect(useScheduleStore.getState().expenseItems.map((i) => i.name)).toEqual([
+      'Novo',
+      'Local',
+    ])
+  })
+})

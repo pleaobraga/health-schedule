@@ -22,6 +22,7 @@ import type {
   CalendarEvent,
   DailyExpense,
   ExpenseInput,
+  ExpenseItem,
   ValidationError,
   NavigationTab,
   Address,
@@ -65,6 +66,7 @@ interface ScheduleStore {
   savedDayShiftAssignments: Record<string, Record<string, string>>;
   events: CalendarEvent[];
   expenses: DailyExpense[];
+  expenseItems: ExpenseItem[];
   dayEventsModalTab: 'events' | 'expenses';
   addresses: Address[];
   shiftDefinitions: ShiftDefinition[];
@@ -347,6 +349,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   savedDayShiftAssignments: StorageService.getDayShiftAssignments(),
   events: StorageService.getEvents(),
   expenses: StorageService.getExpenses(),
+  expenseItems: StorageService.getExpenseItems(),
   addresses: StorageService.getAddresses(),
   shiftDefinitions: StorageService.getShiftDefinitions(),
   shiftRules: StorageService.getShiftRules(),
@@ -1750,6 +1753,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     StorageService.saveDayShiftAssignments(get().dayShiftAssignments)
     StorageService.saveEvents(get().events)
     StorageService.saveExpenses(get().expenses)
+    StorageService.saveExpenseItems(get().expenseItems)
     StorageService.saveMonthParticipants(get().monthParticipants)
     StorageService.saveAddresses(get().addresses)
     StorageService.saveShiftDefinitions(get().shiftDefinitions)
@@ -1773,15 +1777,28 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       try {
         const monthPayload = buildMonthCloudPayload(get())
         const monthsToSync = getMonthsToSync(get(), get().currentMonth)
-        const [monthSaved, peopleSaved, addressesSaved, shiftsSaved, rulesSaved] =
-          await Promise.all([
-            CloudSyncService.saveMonthsToCloud(monthsToSync, monthPayload),
-            CloudSyncService.savePeopleToCloud(get().persons),
-            CloudSyncService.saveAddressesToCloud(get().addresses),
-            CloudSyncService.saveShiftsToCloud(get().shiftDefinitions),
-            CloudSyncService.saveRulesToCloud(get().shiftRules),
-          ])
-        cloudSaved = monthSaved && peopleSaved && addressesSaved && shiftsSaved && rulesSaved
+        const [
+          monthSaved,
+          peopleSaved,
+          addressesSaved,
+          shiftsSaved,
+          rulesSaved,
+          expenseItemsSaved,
+        ] = await Promise.all([
+          CloudSyncService.saveMonthsToCloud(monthsToSync, monthPayload),
+          CloudSyncService.savePeopleToCloud(get().persons),
+          CloudSyncService.saveAddressesToCloud(get().addresses),
+          CloudSyncService.saveShiftsToCloud(get().shiftDefinitions),
+          CloudSyncService.saveRulesToCloud(get().shiftRules),
+          CloudSyncService.saveExpenseItemsToCloud(get().expenseItems),
+        ])
+        cloudSaved =
+          monthSaved &&
+          peopleSaved &&
+          addressesSaved &&
+          shiftsSaved &&
+          rulesSaved &&
+          expenseItemsSaved
       } catch (err) {
         console.error('Failed to sync schedule to cloud:', err)
       }
@@ -1803,7 +1820,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
   pullCloudData: async (isAdmin?: boolean) => {
     try {
-      const { status, monthData, persons, addresses, shifts, rules } =
+      const { status, monthData, persons, addresses, shifts, rules, expenseItems } =
         await CloudSyncService.pullAllFromCloud(isAdmin, true)
 
       if (status === 'offline') {
@@ -1828,7 +1845,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         }
       }
 
-      if (!monthData && !persons && !addresses && !shifts && !rules) {
+      if (!monthData && !persons && !addresses && !shifts && !rules && !expenseItems) {
         return {
           success: false,
           code: 'no_data',
@@ -1854,6 +1871,11 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       if (Array.isArray(rules)) {
         StorageService.saveShiftRules(rules)
         set({ shiftRules: rules })
+      }
+
+      if (Array.isArray(expenseItems)) {
+        StorageService.saveExpenseItems(expenseItems)
+        set({ expenseItems })
       }
 
       if (monthData) {
@@ -1932,6 +1954,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           addresses: get().addresses,
           shifts: get().shiftDefinitions,
           rules: get().shiftRules,
+          expenseItems: get().expenseItems,
         },
         isAdmin,
         true,
@@ -1969,6 +1992,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     const dayShiftAssignments = StorageService.getDayShiftAssignments()
     const events = StorageService.getEvents()
     const expenses = StorageService.getExpenses()
+    const expenseItems = StorageService.getExpenseItems()
     const addresses = StorageService.getAddresses()
     const shiftDefinitions = StorageService.getShiftDefinitions()
     const shiftRules = StorageService.getShiftRules()
@@ -1987,6 +2011,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       savedDayShiftAssignments: { ...dayShiftAssignments },
       events,
       expenses,
+      expenseItems,
       addresses,
       shiftDefinitions,
       shiftRules,
@@ -2012,6 +2037,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       savedDayShiftAssignments: {},
       events: [],
       expenses: [],
+      expenseItems: [],
       addresses: [],
       shiftDefinitions: [],
       shiftRules: [],

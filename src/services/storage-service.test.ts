@@ -236,3 +236,35 @@ describe('StorageService month snapshots', () => {
     expect(StorageService.getMonthSnapshots()).toEqual({ '2026-10': snapshot })
   })
 })
+
+describe('StorageService expense items', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('saves, loads, resets and preserves expenseItems in datasets', () => {
+    const items = [
+      {
+        id: 'expitem_1',
+        name: 'Fralda G',
+        normalizedName: 'fralda g',
+        createdAt: '2026-11-05T10:00:00.000Z',
+        updatedAt: '2026-11-05T10:00:00.000Z',
+      },
+    ]
+
+    expect(StorageService.getExpenseItems()).toEqual([])
+
+    StorageService.saveExpenseItems(items)
+    expect(StorageService.getExpenseItems()).toEqual(items)
+
+    const dataset = StorageService.getCurrentDataset()
+    expect(dataset.expenseItems).toEqual(items)
+
+    StorageService.resetToDefault()
+    expect(StorageService.getExpenseItems()).toEqual([])
+
+    StorageService.restoreDataset(dataset)
+    expect(StorageService.getExpenseItems()).toEqual(items)
+  })
+})

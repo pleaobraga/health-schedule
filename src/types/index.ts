@@ -137,6 +137,7 @@ export interface AppDataSnapshot {
   assignments: Record<string, unknown>; // Schedule assignments and daily allocations
   events: Array<CalendarEvent | (CalendarEvent & { [key: string]: unknown })>;
   expenses?: Array<DailyExpense | (DailyExpense & { [key: string]: unknown })>;
+  expenseItems?: ExpenseItem[];
   addresses?: Address[];
   shiftDefinitions?: ShiftDefinition[];
   shiftRules?: ShiftRule[];
@@ -162,6 +163,7 @@ export interface GuestDataset {
   assignments: Record<string, string[]>;
   events: CalendarEvent[];
   expenses?: DailyExpense[];
+  expenseItems?: ExpenseItem[];
   monthParticipants: Record<string, string[]>;
   addresses?: Address[];
   shiftDefinitions?: ShiftDefinition[];
