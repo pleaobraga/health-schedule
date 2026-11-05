@@ -5,6 +5,8 @@ import {
   DollarSign,
   Filter,
   Package,
+  Pencil,
+  Plus,
   Receipt,
   RotateCcw,
   ShoppingBag,
@@ -15,6 +17,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ConfirmDialog } from '../components/common/confirm-dialog'
+import { PurchaseForm } from '../components/purchases/purchase-form'
 import { useScheduleStore } from '../store/use-schedule-store'
 import {
   formatDisplayDate,
@@ -54,6 +57,10 @@ export function PurchasesView() {
 
   const [filters, setFilters] = useState<ExpenseFilters>(() =>
     createDefaultExpenseFilters(),
+  )
+  const [isPurchaseFormOpen, setIsPurchaseFormOpen] = useState(false)
+  const [expenseToEdit, setExpenseToEdit] = useState<DailyExpense | undefined>(
+    undefined,
   )
   const [expenseToDelete, setExpenseToDelete] = useState<DailyExpense | null>(
     null,
@@ -181,6 +188,19 @@ export function PurchasesView() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
+
+          <button
+            type="button"
+            data-testid="purchases-new-button"
+            onClick={() => {
+              setExpenseToEdit(undefined)
+              setIsPurchaseFormOpen(true)
+            }}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 shadow-xs transition cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>{t('purchases:newPurchase')}</span>
+          </button>
         </div>
       </div>
 
@@ -450,6 +470,23 @@ export function PurchasesView() {
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
+                        data-testid={`edit-purchase-${exp.id}`}
+                        onClick={() => {
+                          setExpenseToEdit(exp)
+                          setIsPurchaseFormOpen(true)
+                        }}
+                        title={t('purchases:list.editPurchaseAria', {
+                          description: exp.description,
+                        })}
+                        aria-label={t('purchases:list.editPurchaseAria', {
+                          description: exp.description,
+                        })}
+                        className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
                         data-testid={`delete-purchase-${exp.id}`}
                         onClick={() => setExpenseToDelete(exp)}
                         title={t('purchases:list.deletePurchaseAria', {
@@ -535,6 +572,17 @@ export function PurchasesView() {
             )
           })}
         </div>
+      )}
+
+      {/* Purchase Create / Edit Modal */}
+      {isPurchaseFormOpen && (
+        <PurchaseForm
+          expense={expenseToEdit}
+          onClose={() => {
+            setIsPurchaseFormOpen(false)
+            setExpenseToEdit(undefined)
+          }}
+        />
       )}
 
       {/* Confirm Delete Dialog */}
