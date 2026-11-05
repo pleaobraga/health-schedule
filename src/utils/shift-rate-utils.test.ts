@@ -83,6 +83,7 @@ describe('shift-rate-utils', () => {
         amount: 85.5,
         personId: 'p1', // Linked to p1
         category: 'MEDICATION',
+        items: [],
         createdAt: '2026-10-05T10:00:00Z',
         updatedAt: '2026-10-05T10:00:00Z',
       },
@@ -93,6 +94,7 @@ describe('shift-rate-utils', () => {
         amount: 50.0,
         personId: 'p1', // Linked to p1
         category: 'TRANSPORT',
+        items: [],
         createdAt: '2026-10-12T10:00:00Z',
         updatedAt: '2026-10-12T10:00:00Z',
       },
@@ -103,6 +105,7 @@ describe('shift-rate-utils', () => {
         amount: 120.0,
         // No personId -> General operational expense
         category: 'SUPPLIES',
+        items: [],
         createdAt: '2026-10-18T10:00:00Z',
         updatedAt: '2026-10-18T10:00:00Z',
       },
@@ -112,6 +115,7 @@ describe('shift-rate-utils', () => {
         description: 'Gasto de outro mês',
         amount: 99.0,
         personId: 'p1',
+        items: [],
         createdAt: '2026-11-01T10:00:00Z',
         updatedAt: '2026-11-01T10:00:00Z',
       },

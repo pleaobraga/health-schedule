@@ -21,6 +21,7 @@ import type {
   MonthlyAvailability,
   CalendarEvent,
   DailyExpense,
+  ExpenseInput,
   ValidationError,
   NavigationTab,
   Address,
@@ -168,7 +169,7 @@ interface ScheduleStore {
   deleteEvent: (eventId: string) => void;
 
   // Expenses management
-  addExpense: (expense: Omit<DailyExpense, 'id' | 'createdAt' | 'updatedAt'>) => Promise<DailyExpense>;
+  addExpense: (expense: ExpenseInput) => Promise<DailyExpense>;
   updateExpense: (expenseId: string, updatedData: Partial<Omit<DailyExpense, 'id' | 'createdAt'>>) => Promise<void>;
   deleteExpense: (expenseId: string) => Promise<void>;
 
@@ -1192,9 +1193,11 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   addExpense: async (expenseData) => {
     const now = new Date().toISOString()
     const id = `exp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    const { items: _items, ...rest } = expenseData
     const newExpense: DailyExpense = {
-      ...expenseData,
+      ...rest,
       id,
+      items: [],
       createdAt: now,
       updatedAt: now,
     }

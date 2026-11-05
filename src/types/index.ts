@@ -45,13 +45,51 @@ export interface CalendarEvent {
 
 export type DailyExpenseCategory = 'MEDICATION' | 'TRANSPORT' | 'SUPPLIES' | 'OTHER'
 
+export interface ExpenseItem {
+  id: string
+  name: string
+  normalizedName: string
+  mergedIntoId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ExpenseLine {
+  id: string
+  itemId: string
+  itemName: string
+  quantity?: number
+  amount?: number
+}
+
+export interface ExpenseLineInput {
+  id?: string
+  itemId?: string
+  name?: string
+  quantity?: number
+  amount?: number
+}
+
+export interface ExpenseInput {
+  date: string
+  description: string
+  amount: number
+  personId?: string
+  category?: DailyExpenseCategory
+  items?: ExpenseLineInput[]
+}
+
+export type ExpenseUpdateInput = Partial<ExpenseInput>
+
 export interface DailyExpense {
   id: string
   date: string // 'YYYY-MM-DD'
   description: string // Motivo do gasto (ex: "Farmácia", "Alimentação")
   amount: number // Valor monetário em reais
   personId?: string // ID opcional do profissional (para fins de reembolso direto)
+  personName?: string
   category?: DailyExpenseCategory
+  items: ExpenseLine[]
   createdAt: string
   updatedAt: string
 }

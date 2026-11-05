@@ -774,5 +774,16 @@ describe('useScheduleStore', () => {
     expect(useScheduleStore.getState().expenses).toHaveLength(0)
     expect(StorageService.getExpenses()).toHaveLength(0)
   })
+
+  it('saves an expense without lines using an empty items list', async () => {
+    const created = await useScheduleStore.getState().addExpense({
+      date: '2026-10-15',
+      description: 'Farmácia',
+      amount: 32.5,
+    })
+
+    expect(created.items).toEqual([])
+    expect(useScheduleStore.getState().expenses[0].items).toEqual([])
+  })
 })
 

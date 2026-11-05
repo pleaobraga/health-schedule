@@ -54,6 +54,7 @@ describe('StorageService - local-first persistence', () => {
           description: 'Farmácia',
           amount: 45.5,
           category: 'MEDICATION',
+          items: [],
           createdAt: '2026-10-20T10:00:00.000Z',
           updatedAt: '2026-10-20T10:00:00.000Z',
         },

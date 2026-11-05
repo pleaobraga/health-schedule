@@ -121,6 +121,7 @@ describe('getMonthReferencedIds', () => {
           description: 'Gasto',
           amount: 10,
           personId: 'p6',
+          items: [],
           createdAt: '2026-10-04',
           updatedAt: '2026-10-04',
         },
