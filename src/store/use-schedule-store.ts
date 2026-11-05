@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 import { create } from 'zustand'
 
 import { i18n } from '../i18n'
@@ -18,6 +19,11 @@ import {
   resolveExpenseLines,
   validateExpenseInput,
 } from '../utils/expense-item-utils'
+import {
+  normalizeMedicationVersionInput,
+  sortMedicationVersions,
+  validateMedicationVersionInput,
+} from '../utils/medication-schedule-utils'
 import { captureMonthSnapshots, getMonthReferencedIds, getMonthRegistry } from '../utils/month-registry'
 import { validateSchedule } from '../utils/validate-schedule'
 
@@ -30,6 +36,8 @@ import type {
   ExpenseItem,
   ExpenseLineInput,
   ExpenseUpdateInput,
+  MedicationScheduleVersion,
+  MedicationVersionInput,
   ValidationError,
   NavigationTab,
   Address,
@@ -38,6 +46,7 @@ import type {
   ShiftRule,
 } from '../types'
 import type { ExpenseValidationError } from '../utils/expense-item-utils'
+import type { MedicationValidationError } from '../utils/medication-schedule-utils'
 import type { MonthRegistry } from '../utils/month-registry'
 
 
@@ -67,6 +76,10 @@ export type ExpenseItemActionResult =
   | { ok: true }
   | { ok: false; code: ExpenseItemActionCode }
 
+export type MedicationActionResult =
+  | { ok: true; version: MedicationScheduleVersion }
+  | { ok: false; errors: MedicationValidationError[] }
+
 interface ScheduleStore {
   // Navigation & UI state
   currentView: NavigationTab; // 'calendar' | 'people' | 'addresses'
@@ -89,6 +102,7 @@ interface ScheduleStore {
   events: CalendarEvent[];
   expenses: DailyExpense[];
   expenseItems: ExpenseItem[];
+  medicationVersions: MedicationScheduleVersion[];
   dayEventsModalTab: 'events' | 'expenses';
   addresses: Address[];
   shiftDefinitions: ShiftDefinition[];
@@ -198,6 +212,14 @@ interface ScheduleStore {
   deleteExpense: (expenseId: string) => Promise<void>;
   renameExpenseItem: (itemId: string, name: string) => Promise<ExpenseItemActionResult>;
   mergeExpenseItems: (sourceId: string, targetId: string) => Promise<ExpenseItemActionResult>;
+
+  // Medication schedule versions management
+  addMedicationVersion: (input: MedicationVersionInput) => Promise<MedicationActionResult>;
+  updateMedicationVersion: (
+    versionId: string,
+    input: MedicationVersionInput,
+  ) => Promise<MedicationActionResult>;
+  deleteLatestMedicationVersion: () => Promise<boolean>;
 
   // Address management
   addAddress: (address: Omit<Address, 'id'>) => Address;
@@ -374,6 +396,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
   events: StorageService.getEvents(),
   expenses: StorageService.getExpenses(),
   expenseItems: StorageService.getExpenseItems(),
+  medicationVersions: StorageService.getMedicationVersions(),
   addresses: StorageService.getAddresses(),
   shiftDefinitions: StorageService.getShiftDefinitions(),
   shiftRules: StorageService.getShiftRules(),
@@ -1486,6 +1509,97 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     return { ok: true }
   },
 
+  addMedicationVersion: async (input) => {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const versions = get().medicationVersions
+    const errors = validateMedicationVersionInput(input, versions, { today })
+    if (errors.length > 0) {
+      return { ok: false, errors }
+    }
+
+    const normalized = normalizeMedicationVersionInput(input)
+    const now = new Date().toISOString()
+    const id = `medver_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+    const newVersion: MedicationScheduleVersion = {
+      id,
+      ...normalized,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    const updated = [...versions, newVersion]
+    StorageService.saveMedicationVersions(updated)
+    set({ medicationVersions: updated })
+
+    if (CloudSyncService.isSyncEnabled()) {
+      CloudSyncService.saveMedicationVersionsToCloud(updated).catch((err) => {
+        console.error('Failed to sync medication versions to cloud:', err)
+      })
+    }
+
+    return { ok: true, version: newVersion }
+  },
+
+  updateMedicationVersion: async (versionId, input) => {
+    const versions = get().medicationVersions
+    const existing = versions.find((v) => v.id === versionId)
+    if (!existing) {
+      return { ok: false, errors: [{ code: 'VERSION_NOT_FOUND' }] }
+    }
+
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const errors = validateMedicationVersionInput(input, versions, {
+      today,
+      editingVersionId: versionId,
+    })
+    if (errors.length > 0) {
+      return { ok: false, errors }
+    }
+
+    const normalized = normalizeMedicationVersionInput(input)
+    const now = new Date().toISOString()
+    const updatedVersion: MedicationScheduleVersion = {
+      id: existing.id,
+      ...normalized,
+      createdAt: existing.createdAt,
+      updatedAt: now,
+    }
+
+    const updated = versions.map((v) => (v.id === versionId ? updatedVersion : v))
+    StorageService.saveMedicationVersions(updated)
+    set({ medicationVersions: updated })
+
+    if (CloudSyncService.isSyncEnabled()) {
+      CloudSyncService.saveMedicationVersionsToCloud(updated).catch((err) => {
+        console.error('Failed to sync medication versions to cloud:', err)
+      })
+    }
+
+    return { ok: true, version: updatedVersion }
+  },
+
+  deleteLatestMedicationVersion: async () => {
+    const versions = get().medicationVersions
+    if (versions.length === 0) {
+      return false
+    }
+
+    const sorted = sortMedicationVersions(versions)
+    const latest = sorted[sorted.length - 1]
+    const updated = versions.filter((v) => v.id !== latest.id)
+
+    StorageService.saveMedicationVersions(updated)
+    set({ medicationVersions: updated })
+
+    if (CloudSyncService.isSyncEnabled()) {
+      CloudSyncService.saveMedicationVersionsToCloud(updated).catch((err) => {
+        console.error('Failed to sync medication versions to cloud:', err)
+      })
+    }
+
+    return true
+  },
+
   addAddress: (addressData) => {
     const id = `addr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
     const newAddress: Address = { id, ...addressData }
@@ -2004,6 +2118,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     StorageService.saveEvents(get().events)
     StorageService.saveExpenses(get().expenses)
     StorageService.saveExpenseItems(get().expenseItems)
+    StorageService.saveMedicationVersions(get().medicationVersions)
     StorageService.saveMonthParticipants(get().monthParticipants)
     StorageService.saveAddresses(get().addresses)
     StorageService.saveShiftDefinitions(get().shiftDefinitions)
@@ -2034,6 +2149,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           shiftsSaved,
           rulesSaved,
           expenseItemsSaved,
+          medicationVersionsSaved,
         ] = await Promise.all([
           CloudSyncService.saveMonthsToCloud(monthsToSync, monthPayload),
           CloudSyncService.savePeopleToCloud(get().persons),
@@ -2041,6 +2157,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           CloudSyncService.saveShiftsToCloud(get().shiftDefinitions),
           CloudSyncService.saveRulesToCloud(get().shiftRules),
           CloudSyncService.saveExpenseItemsToCloud(get().expenseItems),
+          CloudSyncService.saveMedicationVersionsToCloud(get().medicationVersions),
         ])
         cloudSaved =
           monthSaved &&
@@ -2048,7 +2165,8 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           addressesSaved &&
           shiftsSaved &&
           rulesSaved &&
-          expenseItemsSaved
+          expenseItemsSaved &&
+          medicationVersionsSaved
       } catch (err) {
         console.error('Failed to sync schedule to cloud:', err)
       }
@@ -2070,8 +2188,16 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
   pullCloudData: async (isAdmin?: boolean) => {
     try {
-      const { status, monthData, persons, addresses, shifts, rules, expenseItems } =
-        await CloudSyncService.pullAllFromCloud(isAdmin, true)
+      const {
+        status,
+        monthData,
+        persons,
+        addresses,
+        shifts,
+        rules,
+        expenseItems,
+        medicationVersions,
+      } = await CloudSyncService.pullAllFromCloud(isAdmin, true)
 
       if (status === 'offline') {
         return {
@@ -2095,7 +2221,15 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
         }
       }
 
-      if (!monthData && !persons && !addresses && !shifts && !rules && !expenseItems) {
+      if (
+        !monthData &&
+        !persons &&
+        !addresses &&
+        !shifts &&
+        !rules &&
+        !expenseItems &&
+        !medicationVersions
+      ) {
         return {
           success: false,
           code: 'no_data',
@@ -2126,6 +2260,11 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       if (Array.isArray(expenseItems)) {
         StorageService.saveExpenseItems(expenseItems)
         set({ expenseItems })
+      }
+
+      if (Array.isArray(medicationVersions)) {
+        StorageService.saveMedicationVersions(medicationVersions)
+        set({ medicationVersions })
       }
 
       if (monthData) {
@@ -2205,6 +2344,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
           shifts: get().shiftDefinitions,
           rules: get().shiftRules,
           expenseItems: get().expenseItems,
+          medicationVersions: get().medicationVersions,
         },
         isAdmin,
         true,
@@ -2243,6 +2383,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
     const events = StorageService.getEvents()
     const expenses = StorageService.getExpenses()
     const expenseItems = StorageService.getExpenseItems()
+    const medicationVersions = StorageService.getMedicationVersions()
     const addresses = StorageService.getAddresses()
     const shiftDefinitions = StorageService.getShiftDefinitions()
     const shiftRules = StorageService.getShiftRules()
@@ -2262,6 +2403,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       events,
       expenses,
       expenseItems,
+      medicationVersions,
       addresses,
       shiftDefinitions,
       shiftRules,
@@ -2288,6 +2430,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       events: [],
       expenses: [],
       expenseItems: [],
+      medicationVersions: [],
       addresses: [],
       shiftDefinitions: [],
       shiftRules: [],

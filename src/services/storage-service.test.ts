@@ -268,3 +268,39 @@ describe('StorageService expense items', () => {
     expect(StorageService.getExpenseItems()).toEqual(items)
   })
 })
+
+describe('StorageService medication versions', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('saves, loads, resets and preserves medicationVersions in datasets', () => {
+    const versions = [
+      {
+        id: 'medver_1',
+        effectiveDate: '2026-03-13',
+        professional: 'Dra. Marina',
+        explanation: 'Ajuste de dose',
+        medications: [{ id: 'med_1', name: 'Lamotrigina', dosage: '100 mg' }],
+        times: ['08:00'],
+        doses: { med_1: { '08:00': '1.5 comprimidos' } },
+        createdAt: '2026-03-13T10:00:00.000Z',
+        updatedAt: '2026-03-13T10:00:00.000Z',
+      },
+    ]
+
+    expect(StorageService.getMedicationVersions()).toEqual([])
+
+    StorageService.saveMedicationVersions(versions)
+    expect(StorageService.getMedicationVersions()).toEqual(versions)
+
+    const dataset = StorageService.getCurrentDataset()
+    expect(dataset.medicationVersions).toEqual(versions)
+
+    StorageService.resetToDefault()
+    expect(StorageService.getMedicationVersions()).toEqual([])
+
+    StorageService.restoreDataset(dataset)
+    expect(StorageService.getMedicationVersions()).toEqual(versions)
+  })
+})

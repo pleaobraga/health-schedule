@@ -545,3 +545,104 @@ describe('BackupService expenses and expenseItems', () => {
     ])
   })
 })
+
+describe('BackupService medicationVersions', () => {
+  const sampleVersion = {
+    id: 'medver_1',
+    effectiveDate: '2026-03-13',
+    professional: 'Dra. Marina',
+    explanation: 'Ajuste de dose',
+    medications: [{ id: 'med_1', name: 'Lamotrigina', dosage: '100 mg' }],
+    times: ['08:00'],
+    doses: { med_1: { '08:00': '1.5 comprimidos' } },
+    createdAt: '2026-03-13T10:00:00.000Z',
+    updatedAt: '2026-03-13T10:00:00.000Z',
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    useScheduleStore.setState({ medicationVersions: [] })
+  })
+
+  it('includes medicationVersions when exporting app data', async () => {
+    StorageService.savePersons([{ id: 'p1', name: 'Dra. Camila', color: '#3b82f6' }])
+    StorageService.saveMedicationVersions([sampleVersion])
+
+    let exportedBlob: Blob | null = null
+    window.URL.createObjectURL = vi.fn().mockImplementation((blob: Blob) => {
+      exportedBlob = blob
+      return 'blob:test-url'
+    })
+    window.URL.revokeObjectURL = vi.fn()
+
+    await exportAppData()
+
+    expect(exportedBlob).not.toBeNull()
+    const parsed = JSON.parse(await exportedBlob!.text())
+    expect(parsed.medicationVersions).toEqual([sampleVersion])
+  })
+
+  it('normalizes non-array medicationVersions to an empty array in validateAndParseBackup', async () => {
+    const file = new File(
+      [
+        JSON.stringify({
+          people: [{ id: 'p1', name: 'Dra. Camila', color: '#3b82f6' }],
+          medicationVersions: 'invalid',
+        }),
+      ],
+      'backup.json',
+      { type: 'application/json' },
+    )
+
+    const parsed = await validateAndParseBackup(file)
+    expect(parsed.medicationVersions).toEqual([])
+  })
+
+  it('restoreAppData updates storage and store for medicationVersions before forcePushCloudData', async () => {
+    localStorage.setItem('scale_manager_cloud_sync_enabled', 'true')
+    let pushedVersions: unknown = null
+    const pushSpy = vi
+      .spyOn(useScheduleStore.getState(), 'forcePushCloudData')
+      .mockImplementation(async () => {
+        pushedVersions = useScheduleStore.getState().medicationVersions
+        return { success: true, code: 'success', message: 'ok' }
+      })
+
+    await restoreAppData({
+      exportedAt: '2026-11-05T10:00:00.000Z',
+      people: [{ id: 'p1', name: 'Dra. Camila', color: '#3b82f6' }],
+      monthParticipants: {},
+      availabilities: [],
+      assignments: {},
+      events: [],
+      medicationVersions: [sampleVersion],
+    })
+
+    expect(StorageService.getMedicationVersions()).toEqual([sampleVersion])
+    expect(useScheduleStore.getState().medicationVersions).toEqual([sampleVersion])
+    expect(pushSpy).toHaveBeenCalledTimes(1)
+    expect(pushedVersions).toEqual([sampleVersion])
+  })
+
+  it('mergeAppData merges medicationVersions by id and updates the store', async () => {
+    StorageService.saveMedicationVersions([
+      { ...sampleVersion, id: 'medver_1', explanation: 'Antiga' },
+      { ...sampleVersion, id: 'medver_local', explanation: 'Local' },
+    ])
+
+    await mergeAppData({
+      exportedAt: '2026-11-05T10:00:00.000Z',
+      people: [],
+      monthParticipants: {},
+      availabilities: [],
+      assignments: {},
+      events: [],
+      medicationVersions: [{ ...sampleVersion, id: 'medver_1', explanation: 'Nova' }],
+    })
+
+    expect(useScheduleStore.getState().medicationVersions.map((v) => v.explanation)).toEqual([
+      'Nova',
+      'Local',
+    ])
+  })
+})

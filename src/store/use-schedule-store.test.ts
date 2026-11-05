@@ -620,6 +620,7 @@ describe('useScheduleStore', () => {
       shifts: [],
       rules: [],
       expenseItems: [],
+      medicationVersions: [],
     })
 
     localStorage.setItem('scale_manager_cloud_sync_enabled', 'false')
@@ -648,6 +649,7 @@ describe('useScheduleStore', () => {
       shifts: null,
       rules: null,
       expenseItems: null,
+      medicationVersions: null,
     })
 
     const res = await useScheduleStore.getState().pullCloudData(true)

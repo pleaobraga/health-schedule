@@ -7,6 +7,7 @@ import type {
   CalendarEvent,
   DailyExpense,
   ExpenseItem,
+  MedicationScheduleVersion,
   GuestProfile,
   GuestDataset,
   MonthRegistrySnapshot,
@@ -22,6 +23,7 @@ const STORAGE_KEYS = {
   EVENTS: 'scale_manager_events_v1',
   EXPENSES: 'scale_manager_expenses_v1',
   EXPENSE_ITEMS: 'scale_manager_expense_items_v1',
+  MEDICATION_VERSIONS: 'scale_manager_medication_versions_v1',
   MONTH_PARTICIPANTS: 'scale_manager_month_participants_v1',
   ADDRESSES: 'scale_manager_addresses_v1',
   SHIFT_DEFINITIONS: 'scale_manager_shift_definitions_v1',
@@ -210,6 +212,33 @@ export class StorageService {
       }
     } catch (err) {
       console.error('Failed to save expense items to localStorage:', err)
+    }
+  }
+
+  /**
+   * Load medication schedule versions (returns empty array if storage has no data)
+   */
+  static getMedicationVersions(): MedicationScheduleVersion[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.MEDICATION_VERSIONS)
+      if (!data) {
+        return []
+      }
+      return JSON.parse(data)
+    } catch (err) {
+      console.error('Failed to load medication versions from localStorage:', err)
+      return []
+    }
+  }
+
+  static saveMedicationVersions(versions: MedicationScheduleVersion[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.MEDICATION_VERSIONS, JSON.stringify(versions))
+      if (!isRestoringDataset) {
+        StorageService.snapshotActiveSession()
+      }
+    } catch (err) {
+      console.error('Failed to save medication versions to localStorage:', err)
     }
   }
 
@@ -495,6 +524,7 @@ export class StorageService {
     localStorage.removeItem(STORAGE_KEYS.EVENTS)
     localStorage.removeItem(STORAGE_KEYS.EXPENSES)
     localStorage.removeItem(STORAGE_KEYS.EXPENSE_ITEMS)
+    localStorage.removeItem(STORAGE_KEYS.MEDICATION_VERSIONS)
     localStorage.removeItem(STORAGE_KEYS.MONTH_PARTICIPANTS)
     localStorage.removeItem(STORAGE_KEYS.ADDRESSES)
     localStorage.removeItem(STORAGE_KEYS.SHIFT_DEFINITIONS)
@@ -606,6 +636,7 @@ export class StorageService {
       events: StorageService.getEvents(),
       expenses: StorageService.getExpenses(),
       expenseItems: StorageService.getExpenseItems(),
+      medicationVersions: StorageService.getMedicationVersions(),
       monthParticipants: StorageService.getMonthParticipants(),
       addresses: StorageService.getAddresses(),
       shiftDefinitions: StorageService.getShiftDefinitions(),
@@ -627,6 +658,7 @@ export class StorageService {
       StorageService.saveEvents(dataset.events || [])
       StorageService.saveExpenses(dataset.expenses || [])
       StorageService.saveExpenseItems(dataset.expenseItems || [])
+      StorageService.saveMedicationVersions(dataset.medicationVersions || [])
       StorageService.saveMonthParticipants(dataset.monthParticipants || {})
       StorageService.saveAddresses(dataset.addresses || [])
       StorageService.saveMonthSnapshots(dataset.monthSnapshots || {})

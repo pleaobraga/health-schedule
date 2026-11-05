@@ -5,6 +5,7 @@ import { useScheduleStore } from '../store/use-schedule-store'
 import type {
   AppDataSnapshot,
   ExpenseItem,
+  MedicationScheduleVersion,
   MonthlyAvailability,
   ShiftDefinition,
   ShiftRule,
@@ -81,6 +82,7 @@ export async function exportAppData(): Promise<void> {
   const events = StorageService.getEvents()
   const expenses = StorageService.getExpenses()
   const expenseItems = StorageService.getExpenseItems()
+  const medicationVersions = StorageService.getMedicationVersions()
   const addresses = StorageService.getAddresses()
   const shiftDefinitions = StorageService.getShiftDefinitions()
   const shiftRules = StorageService.getShiftRules()
@@ -100,6 +102,7 @@ export async function exportAppData(): Promise<void> {
     events,
     expenses,
     expenseItems,
+    medicationVersions,
     addresses,
     shiftDefinitions,
     shiftRules,
@@ -178,6 +181,9 @@ export async function validateAndParseBackup(file: File): Promise<AppDataSnapsho
   const events = Array.isArray(raw.events) ? raw.events : []
   const expenses = Array.isArray(raw.expenses) ? raw.expenses : []
   const expenseItems = Array.isArray(raw.expenseItems) ? (raw.expenseItems as ExpenseItem[]) : []
+  const medicationVersions = Array.isArray(raw.medicationVersions)
+    ? (raw.medicationVersions as MedicationScheduleVersion[])
+    : []
   const addresses = Array.isArray(raw.addresses) ? raw.addresses : []
   const availabilities = raw.availabilities ?? []
   const shiftDefinitions = Array.isArray(raw.shiftDefinitions) ? (raw.shiftDefinitions as ShiftDefinition[]) : undefined
@@ -213,6 +219,7 @@ export async function validateAndParseBackup(file: File): Promise<AppDataSnapsho
     events,
     expenses,
     expenseItems,
+    medicationVersions,
     addresses,
     shiftDefinitions,
     shiftRules,
@@ -261,6 +268,9 @@ export async function restoreAppData(data: AppDataSnapshot): Promise<void> {
   const expenseItems = Array.isArray(data.expenseItems) ? data.expenseItems : []
   StorageService.saveExpenseItems(expenseItems)
 
+  const medicationVersions = Array.isArray(data.medicationVersions) ? data.medicationVersions : []
+  StorageService.saveMedicationVersions(medicationVersions)
+
   const addresses = Array.isArray(data.addresses) ? data.addresses : []
   StorageService.saveAddresses(addresses)
 
@@ -307,6 +317,7 @@ export async function restoreAppData(data: AppDataSnapshot): Promise<void> {
     events,
     expenses,
     expenseItems,
+    medicationVersions,
     addresses,
     shiftDefinitions: restoredShiftDefinitions,
     shiftRules: restoredShiftRules,
@@ -441,6 +452,19 @@ export async function mergeAppData(data: AppDataSnapshot): Promise<void> {
   const mergedExpenseItems = Array.from(expenseItemMap.values())
   StorageService.saveExpenseItems(mergedExpenseItems)
 
+  // 5d. Merge medicationVersions by id
+  const currentMedicationVersions = StorageService.getMedicationVersions()
+  const incomingMedicationVersions = Array.isArray(data.medicationVersions)
+    ? data.medicationVersions
+    : []
+  const medicationVersionMap = new Map(currentMedicationVersions.map((ver) => [ver.id, ver]))
+  for (const ver of incomingMedicationVersions) {
+    const existing = medicationVersionMap.get(ver.id)
+    medicationVersionMap.set(ver.id, existing ? { ...existing, ...ver } : ver)
+  }
+  const mergedMedicationVersions = Array.from(medicationVersionMap.values())
+  StorageService.saveMedicationVersions(mergedMedicationVersions)
+
   // 6. Merge addresses by id
   const currentAddresses = StorageService.getAddresses()
   const incomingAddresses = Array.isArray(data.addresses) ? data.addresses : []
@@ -555,6 +579,7 @@ export async function mergeAppData(data: AppDataSnapshot): Promise<void> {
     events: mergedEvents,
     expenses: mergedExpenses,
     expenseItems: mergedExpenseItems,
+    medicationVersions: mergedMedicationVersions,
     addresses: mergedAddresses,
     shiftDefinitions: mergedShiftDefinitions,
     shiftRules: mergedShiftRules,

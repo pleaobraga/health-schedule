@@ -164,6 +164,7 @@ export interface AppDataSnapshot {
   events: Array<CalendarEvent | (CalendarEvent & { [key: string]: unknown })>;
   expenses?: Array<DailyExpense | (DailyExpense & { [key: string]: unknown })>;
   expenseItems?: ExpenseItem[];
+  medicationVersions?: MedicationScheduleVersion[];
   addresses?: Address[];
   shiftDefinitions?: ShiftDefinition[];
   shiftRules?: ShiftRule[];
@@ -190,6 +191,7 @@ export interface GuestDataset {
   events: CalendarEvent[];
   expenses?: DailyExpense[];
   expenseItems?: ExpenseItem[];
+  medicationVersions?: MedicationScheduleVersion[];
   monthParticipants: Record<string, string[]>;
   addresses?: Address[];
   shiftDefinitions?: ShiftDefinition[];

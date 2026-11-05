@@ -16,6 +16,7 @@ import type {
   CalendarEvent,
   DailyExpense,
   ExpenseItem,
+  MedicationScheduleVersion,
   MonthRegistrySnapshot,
   Person,
   Address,
@@ -65,6 +66,7 @@ export interface CloudPullData {
   shifts: ShiftDefinition[] | null;
   rules: ShiftRule[] | null;
   expenseItems: ExpenseItem[] | null;
+  medicationVersions: MedicationScheduleVersion[] | null;
 }
 
 const isMonthId = (value: string | undefined): value is string =>
@@ -408,6 +410,7 @@ export class CloudSyncService {
       shifts: null,
       rules: null,
       expenseItems: null,
+      medicationVersions: null,
     }
 
     if (!(await this.isAllowed(isAdmin, ignoreSyncEnabled))) {
@@ -432,6 +435,9 @@ export class CloudSyncService {
         shifts: (byId.get('_master_shifts')?.shifts as ShiftDefinition[]) ?? null,
         rules: (byId.get('_master_rules')?.rules as ShiftRule[]) ?? null,
         expenseItems: (byId.get('_master_expense_items')?.items as ExpenseItem[]) ?? null,
+        medicationVersions:
+          (byId.get('_master_medication_versions')?.versions as MedicationScheduleVersion[]) ??
+          null,
       }
     } catch (err) {
       console.error('Failed to pull schedules from Firestore:', err)
@@ -566,6 +572,23 @@ export class CloudSyncService {
   }
 
   /**
+   * Syncs master medication schedule versions to Firestore when saving if sync is active.
+   */
+  static async saveMedicationVersionsToCloud(
+    versions: MedicationScheduleVersion[],
+    isAdmin?: boolean,
+    ignoreSyncEnabled = false,
+  ): Promise<boolean> {
+    return this.saveMasterListToCloud(
+      '_master_medication_versions',
+      'versions',
+      versions,
+      isAdmin,
+      ignoreSyncEnabled,
+    )
+  }
+
+  /**
    * Makes the cloud an exact copy of the local data: every local month plus every month already
    * in the cloud is rewritten (months that no longer exist locally become empty), along with the
    * master lists. Does not require or alter the local sync toggle.
@@ -578,6 +601,7 @@ export class CloudSyncService {
       shifts?: ShiftDefinition[];
       rules?: ShiftRule[];
       expenseItems?: ExpenseItem[];
+      medicationVersions?: MedicationScheduleVersion[];
     },
     isAdmin?: boolean,
     ignoreSyncEnabled = true,
@@ -607,6 +631,15 @@ export class CloudSyncService {
     if (data.expenseItems) {
       promises.push(
         this.saveExpenseItemsToCloud(data.expenseItems, isAdmin, ignoreSyncEnabled),
+      )
+    }
+    if (data.medicationVersions) {
+      promises.push(
+        this.saveMedicationVersionsToCloud(
+          data.medicationVersions,
+          isAdmin,
+          ignoreSyncEnabled,
+        ),
       )
     }
 

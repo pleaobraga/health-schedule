@@ -462,5 +462,62 @@ describe('CloudSyncService', () => {
         },
       )
     })
+
+    it('saves medicationVersions to schedules/_master_medication_versions in the versions field, pulls them back and returns null when missing', async () => {
+      CloudSyncService.setSyncEnabled(true)
+      const versions = [
+        {
+          id: 'medver_1',
+          effectiveDate: '2026-03-13',
+          professional: 'Dra. Marina',
+          explanation: 'Ajuste de dose',
+          medications: [{ id: 'med_1', name: 'Lamotrigina', dosage: '100 mg' }],
+          times: ['08:00'],
+          doses: { med_1: { '08:00': '1.5 comprimidos' } },
+          createdAt: '2026-03-13T10:00:00.000Z',
+          updatedAt: '2026-03-13T10:00:00.000Z',
+        },
+      ]
+
+      const saved = await CloudSyncService.saveMedicationVersionsToCloud(versions, true)
+      expect(saved).toBe(true)
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        { path: 'schedules/_master_medication_versions' },
+        {
+          versions,
+          updatedAt: 'mock-server-timestamp',
+        },
+      )
+
+      mockScheduleDocs({
+        _master_medication_versions: { versions },
+      })
+      const pulled = await CloudSyncService.pullAllFromCloud(true)
+      expect(pulled.medicationVersions).toEqual(versions)
+
+      mockScheduleDocs({})
+      const pulledWithoutDoc = await CloudSyncService.pullAllFromCloud(true)
+      expect(pulledWithoutDoc.medicationVersions).toBeNull()
+
+      mockScheduleDocs({})
+      const pushed = await CloudSyncService.pushAllToCloud(
+        {
+          monthData: fullDataset,
+          persons: [],
+          addresses: [],
+          medicationVersions: versions,
+        },
+        true,
+        true,
+      )
+      expect(pushed).toBe(true)
+      expect(firestoreModule.setDoc).toHaveBeenCalledWith(
+        { path: 'schedules/_master_medication_versions' },
+        {
+          versions,
+          updatedAt: 'mock-server-timestamp',
+        },
+      )
+    })
   })
 })
