@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  createDefaultExpenseFilters,
+  filterExpenses,
   findExpenseItemByName,
+  getExpenseLinesSummary,
   getItemHistory,
   getItemLastPurchase,
   getMergedItemIds,
   normalizeItemName,
   resolveExpenseItemId,
+  resolveExpenseLines,
   searchExpenseItems,
+  validateExpenseInput,
 } from './expense-item-utils'
 
 import type { DailyExpense, ExpenseItem } from '../types'
@@ -217,5 +222,323 @@ describe('getItemHistory', () => {
       averageIntervalDays: null,
       entries: [],
     })
+  })
+})
+
+describe('createDefaultExpenseFilters and filterExpenses', () => {
+  const items = [
+    item('a', 'Fraldas', 'b'),
+    item('b', 'Fralda'),
+    item('c', 'Luva'),
+  ]
+
+  const expenses: DailyExpense[] = [
+    {
+      ...purchase('sep', '2026-09-10', ['b']),
+      category: 'SUPPLIES',
+      personId: 'p1',
+    },
+    {
+      ...purchase('oct1', '2026-10-05', ['a']),
+      category: 'SUPPLIES',
+      personId: 'p1',
+      createdAt: '2026-10-05T08:00:00.000Z',
+    },
+    {
+      ...purchase('oct2', '2026-10-05', ['c']),
+      category: 'MEDICATION',
+      personId: 'p2',
+      createdAt: '2026-10-05T12:00:00.000Z',
+    },
+    {
+      ...purchase('oct3', '2026-10-12', []),
+      category: 'SUPPLIES',
+      personId: 'p1',
+      createdAt: '2026-10-12T09:00:00.000Z',
+    },
+    {
+      ...purchase('nov', '2026-11-01', ['b']),
+      category: 'SUPPLIES',
+      personId: 'p1',
+    },
+  ]
+
+  it('creates default filters for the given date month', () => {
+    expect(createDefaultExpenseFilters(new Date(2026, 10, 5))).toEqual({
+      month: '2026-11',
+    })
+  })
+
+  it('filters by month and includes expenses without items, ordered by date desc then createdAt desc', () => {
+    const result = filterExpenses(expenses, items, { month: '2026-10' })
+    expect(result.map((e) => e.id)).toEqual(['oct3', 'oct2', 'oct1'])
+  })
+
+  it('filters by category, personId and itemId alone and combined, including merged items', () => {
+    expect(
+      filterExpenses(expenses, items, {
+        month: '2026-10',
+        category: 'MEDICATION',
+      }).map((e) => e.id),
+    ).toEqual(['oct2'])
+
+    expect(
+      filterExpenses(expenses, items, {
+        month: '2026-10',
+        personId: 'p1',
+      }).map((e) => e.id),
+    ).toEqual(['oct3', 'oct1'])
+
+    expect(
+      filterExpenses(expenses, items, {
+        month: '2026-10',
+        itemId: 'b',
+      }).map((e) => e.id),
+    ).toEqual(['oct1'])
+
+    expect(
+      filterExpenses(expenses, items, {
+        month: '2026-10',
+        category: 'SUPPLIES',
+        personId: 'p1',
+        itemId: 'b',
+      }).map((e) => e.id),
+    ).toEqual(['oct1'])
+  })
+})
+
+describe('getExpenseLinesSummary', () => {
+  it('calculates subtotal and difference when all lines have amounts', () => {
+    expect(
+      getExpenseLinesSummary({
+        amount: 45,
+        items: [
+          { id: '1', itemId: 'a', itemName: 'A', amount: 30 },
+          { id: '2', itemId: 'b', itemName: 'B', amount: 20 },
+        ],
+      }),
+    ).toEqual({
+      subtotal: 50,
+      allLinesHaveAmount: true,
+      difference: -5,
+    })
+  })
+
+  it('returns null difference when a line has no amount', () => {
+    expect(
+      getExpenseLinesSummary({
+        amount: 45,
+        items: [
+          { id: '1', itemId: 'a', itemName: 'A', amount: 30 },
+          { id: '2', itemId: 'b', itemName: 'B' },
+        ],
+      }),
+    ).toEqual({
+      subtotal: 30,
+      allLinesHaveAmount: false,
+      difference: null,
+    })
+  })
+
+  it('returns zero subtotal and null difference when there are no lines', () => {
+    expect(
+      getExpenseLinesSummary({
+        amount: 45,
+        items: [],
+      }),
+    ).toEqual({
+      subtotal: 0,
+      allLinesHaveAmount: false,
+      difference: null,
+    })
+  })
+
+  it('rounds floating point cents and normalizes -0 to 0', () => {
+    const summary = getExpenseLinesSummary({
+      amount: 0.3,
+      items: [
+        { id: '1', itemId: 'a', itemName: 'A', amount: 0.1 },
+        { id: '2', itemId: 'b', itemName: 'B', amount: 0.2 },
+      ],
+    })
+    expect(summary).toEqual({
+      subtotal: 0.3,
+      allLinesHaveAmount: true,
+      difference: 0,
+    })
+    expect(Object.is(summary.difference, -0)).toBe(false)
+  })
+})
+
+describe('validateExpenseInput', () => {
+  const items = [item('a', 'Fralda'), item('b', 'Luva')]
+
+  it('validates date, description, amount and line fields', () => {
+    expect(
+      validateExpenseInput(
+        {
+          date: '2026-02-30',
+          description: '   ',
+          amount: 0,
+          items: [
+            {},
+            { itemId: 'unknown' },
+            { itemId: 'a', quantity: 0 },
+            { itemId: 'b', amount: -1 },
+          ],
+        },
+        items,
+      ),
+    ).toEqual([
+      { code: 'DATE_INVALID' },
+      { code: 'DESCRIPTION_REQUIRED' },
+      { code: 'AMOUNT_INVALID' },
+      { code: 'ITEM_REQUIRED', lineIndex: 0 },
+      { code: 'ITEM_NOT_FOUND', lineIndex: 1 },
+      { code: 'QUANTITY_INVALID', lineIndex: 2 },
+      { code: 'LINE_AMOUNT_INVALID', lineIndex: 3 },
+    ])
+  })
+
+  it('detects duplicate items when matching an existing item by name and itemId', () => {
+    expect(
+      validateExpenseInput(
+        {
+          date: '2026-10-15',
+          description: 'Farmácia',
+          amount: 50,
+          items: [{ itemId: 'a' }, { name: 'Fralda' }],
+        },
+        items,
+      ),
+    ).toEqual([{ code: 'DUPLICATE_ITEM', lineIndex: 1 }])
+  })
+
+  it('detects duplicate items by normalized name', () => {
+    expect(
+      validateExpenseInput(
+        {
+          date: '2026-10-15',
+          description: 'Farmácia',
+          amount: 50,
+          items: [{ name: 'Fralda' }, { name: ' fralda ' }],
+        },
+        [],
+      ),
+    ).toEqual([{ code: 'DUPLICATE_ITEM', lineIndex: 1 }])
+  })
+
+  it('accepts a line with amount: 0', () => {
+    expect(
+      validateExpenseInput(
+        {
+          date: '2026-10-15',
+          description: 'Farmácia',
+          amount: 50,
+          items: [{ itemId: 'a', amount: 0 }],
+        },
+        items,
+      ),
+    ).toEqual([])
+  })
+})
+
+describe('resolveExpenseLines', () => {
+  const createCounterId = () => {
+    let count = 0
+    return () => `gen_${++count}`
+  }
+
+  it('creates a new item once with normalized spaces and defaults quantity to 1', () => {
+    const result = resolveExpenseLines({
+      lines: [{ name: ' Fralda   G ' }],
+      items: [],
+      now: '2026-11-05T10:00:00.000Z',
+      createId: createCounterId(),
+    })
+
+    expect(result.items).toEqual([
+      {
+        id: 'gen_1',
+        name: 'Fralda G',
+        normalizedName: 'fralda g',
+        createdAt: '2026-11-05T10:00:00.000Z',
+        updatedAt: '2026-11-05T10:00:00.000Z',
+      },
+    ])
+    expect(result.lines).toEqual([
+      {
+        id: 'gen_2',
+        itemId: 'gen_1',
+        itemName: 'Fralda G',
+        quantity: 1,
+      },
+    ])
+  })
+
+  it('reuses an existing item when matched by name', () => {
+    const existing = [item('a', 'Fralda G')]
+    const result = resolveExpenseLines({
+      lines: [{ name: 'fralda g', quantity: 2, amount: 40 }],
+      items: existing,
+      now: '2026-11-05T10:00:00.000Z',
+      createId: createCounterId(),
+    })
+
+    expect(result.items).toHaveLength(1)
+    expect(result.lines).toEqual([
+      {
+        id: 'gen_1',
+        itemId: 'a',
+        itemName: 'Fralda G',
+        quantity: 2,
+        amount: 40,
+      },
+    ])
+  })
+
+  it('resolves a merged item name to the target item and its name', () => {
+    const existing = [item('a', 'Fraldas', 'b'), item('b', 'Fralda')]
+    const result = resolveExpenseLines({
+      lines: [{ name: 'Fraldas', quantity: 1 }],
+      items: existing,
+      now: '2026-11-05T10:00:00.000Z',
+      createId: createCounterId(),
+    })
+
+    expect(result.items).toHaveLength(2)
+    expect(result.lines[0].itemId).toBe('b')
+    expect(result.lines[0].itemName).toBe('Fralda')
+  })
+
+  it('preserves saved itemName for existing lines and uses current registry name for new lines when editing', () => {
+    const existing = [item('a', 'Fralda Renomeada'), item('b', 'Luva Atual')]
+    const result = resolveExpenseLines({
+      lines: [
+        { id: 'line_saved', itemId: 'a', quantity: 3 },
+        { itemId: 'b', quantity: 1 },
+      ],
+      items: existing,
+      savedLines: [
+        { id: 'line_saved', itemId: 'a', itemName: 'Fralda Antiga', quantity: 2 },
+      ],
+      now: '2026-11-05T10:00:00.000Z',
+      createId: createCounterId(),
+    })
+
+    expect(result.lines).toEqual([
+      {
+        id: 'line_saved',
+        itemId: 'a',
+        itemName: 'Fralda Antiga',
+        quantity: 3,
+      },
+      {
+        id: 'gen_1',
+        itemId: 'b',
+        itemName: 'Luva Atual',
+        quantity: 1,
+      },
+    ])
   })
 })

@@ -1,6 +1,15 @@
-import { differenceInCalendarDays, isValid, parseISO } from 'date-fns'
+import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns'
 
-import type { DailyExpense, ExpenseItem } from '../types'
+import { getCurrentMonth } from './date-utils'
+
+import type {
+  DailyExpense,
+  DailyExpenseCategory,
+  ExpenseInput,
+  ExpenseItem,
+  ExpenseLine,
+  ExpenseLineInput,
+} from '../types'
 
 export const ITEM_SEARCH_MIN_LENGTH = 3
 export const ITEM_SEARCH_MAX_RESULTS = 4
@@ -32,10 +41,39 @@ export interface ItemHistory extends ItemLastPurchase {
   averageIntervalDays: number | null
 }
 
+export interface ExpenseFilters {
+  month: string // 'YYYY-MM'
+  category?: DailyExpenseCategory
+  personId?: string
+  itemId?: string
+}
+
+export interface ExpenseLinesSummary {
+  subtotal: number
+  allLinesHaveAmount: boolean
+  difference: number | null
+}
+
+export type ExpenseValidationCode =
+  | 'DATE_INVALID'
+  | 'DESCRIPTION_REQUIRED'
+  | 'AMOUNT_INVALID'
+  | 'ITEM_REQUIRED'
+  | 'ITEM_NOT_FOUND'
+  | 'QUANTITY_INVALID'
+  | 'LINE_AMOUNT_INVALID'
+  | 'DUPLICATE_ITEM'
+  | 'EXPENSE_NOT_FOUND'
+
+export interface ExpenseValidationError {
+  code: ExpenseValidationCode
+  lineIndex?: number
+}
+
 export function isValidIsoDateString(dateStr: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false
   const parsed = parseISO(dateStr)
-  return isValid(parsed)
+  return isValid(parsed) && format(parsed, 'yyyy-MM-dd') === dateStr
 }
 
 export function normalizeItemName(name: string): string {
@@ -245,5 +283,210 @@ export function getItemHistory(
       options.mode === 'LAST'
         ? [allEntries[allEntries.length - 1]]
         : allEntries,
+  }
+}
+
+export function createDefaultExpenseFilters(now?: Date): ExpenseFilters {
+  return {
+    month: now ? format(now, 'yyyy-MM') : getCurrentMonth(),
+  }
+}
+
+export function filterExpenses(
+  expenses: DailyExpense[],
+  items: ExpenseItem[],
+  filters: ExpenseFilters,
+): DailyExpense[] {
+  const targetItemIds = filters.itemId
+    ? new Set(getMergedItemIds(resolveExpenseItemId(filters.itemId, items), items))
+    : null
+
+  const filtered = expenses.filter((exp) => {
+    if (!exp.date.startsWith(`${filters.month}-`)) return false
+    if (filters.category && exp.category !== filters.category) return false
+    if (filters.personId && exp.personId !== filters.personId) return false
+    if (targetItemIds && !exp.items.some((line) => targetItemIds.has(line.itemId))) {
+      return false
+    }
+    return true
+  })
+
+  return filtered.sort((a, b) => {
+    const dateCmp = b.date.localeCompare(a.date)
+    if (dateCmp !== 0) return dateCmp
+    return b.createdAt.localeCompare(a.createdAt)
+  })
+}
+
+function roundCents(value: number): number {
+  const rounded = Math.round(value * 100) / 100
+  return rounded === 0 ? 0 : rounded
+}
+
+export function getExpenseLinesSummary(
+  expense: Pick<DailyExpense, 'amount' | 'items'>,
+): ExpenseLinesSummary {
+  const lines = expense.items
+  const rawSubtotal = lines.reduce(
+    (sum, line) =>
+      typeof line.amount === 'number' && Number.isFinite(line.amount)
+        ? sum + line.amount
+        : sum,
+    0,
+  )
+  const subtotal = roundCents(rawSubtotal)
+  const allLinesHaveAmount =
+    lines.length > 0 &&
+    lines.every(
+      (line) => typeof line.amount === 'number' && Number.isFinite(line.amount),
+    )
+  const difference = allLinesHaveAmount
+    ? roundCents(expense.amount - subtotal)
+    : null
+
+  return {
+    subtotal,
+    allLinesHaveAmount,
+    difference,
+  }
+}
+
+export function validateExpenseInput(
+  input: ExpenseInput,
+  items: ExpenseItem[],
+): ExpenseValidationError[] {
+  const errors: ExpenseValidationError[] = []
+
+  if (!isValidIsoDateString(input.date)) {
+    errors.push({ code: 'DATE_INVALID' })
+  }
+
+  if (!input.description || input.description.trim().length === 0) {
+    errors.push({ code: 'DESCRIPTION_REQUIRED' })
+  }
+
+  if (
+    typeof input.amount !== 'number' ||
+    !Number.isFinite(input.amount) ||
+    input.amount <= 0
+  ) {
+    errors.push({ code: 'AMOUNT_INVALID' })
+  }
+
+  const lines = input.items ?? []
+  const byId = new Set(items.map((item) => item.id))
+  const seenKeys = new Set<string>()
+
+  lines.forEach((line, lineIndex) => {
+    const itemId = line.itemId?.trim() ?? ''
+    const normalizedName = line.name ? normalizeItemName(line.name) : ''
+
+    if (!itemId && !normalizedName) {
+      errors.push({ code: 'ITEM_REQUIRED', lineIndex })
+    } else if (itemId && !byId.has(itemId)) {
+      errors.push({ code: 'ITEM_NOT_FOUND', lineIndex })
+    } else {
+      let dedupeKey: string
+      if (itemId) {
+        // Keep itemId literal so old purchases with lines that were later merged remain editable
+        dedupeKey = `id:${itemId}`
+      } else {
+        const existing = findExpenseItemByName(line.name ?? '', items)
+        dedupeKey = existing
+          ? `id:${resolveExpenseItemId(existing.id, items)}`
+          : `name:${normalizedName}`
+      }
+
+      if (seenKeys.has(dedupeKey)) {
+        errors.push({ code: 'DUPLICATE_ITEM', lineIndex })
+      } else {
+        seenKeys.add(dedupeKey)
+      }
+    }
+
+    if (
+      line.quantity !== undefined &&
+      (typeof line.quantity !== 'number' ||
+        !Number.isFinite(line.quantity) ||
+        line.quantity <= 0)
+    ) {
+      errors.push({ code: 'QUANTITY_INVALID', lineIndex })
+    }
+
+    if (
+      line.amount !== undefined &&
+      (typeof line.amount !== 'number' ||
+        !Number.isFinite(line.amount) ||
+        line.amount < 0)
+    ) {
+      errors.push({ code: 'LINE_AMOUNT_INVALID', lineIndex })
+    }
+  })
+
+  return errors
+}
+
+export function resolveExpenseLines(input: {
+  lines: ExpenseLineInput[]
+  items: ExpenseItem[]
+  savedLines?: ExpenseLine[]
+  now: string
+  createId: () => string
+}): { lines: ExpenseLine[]; items: ExpenseItem[] } {
+  const nextItems = [...input.items]
+  const resolvedLines: ExpenseLine[] = []
+
+  for (const lineInput of input.lines) {
+    const explicitItemId = lineInput.itemId?.trim()
+    let targetItemId: string
+    let targetItemName: string
+    let savedLine: ExpenseLine | undefined
+
+    if (explicitItemId) {
+      savedLine = input.savedLines?.find((sl) => sl.itemId === explicitItemId)
+      const registryItem = nextItems.find((it) => it.id === explicitItemId)
+      targetItemId = explicitItemId
+      targetItemName = savedLine
+        ? savedLine.itemName
+        : (registryItem?.name ?? '')
+    } else {
+      const cleanName = (lineInput.name ?? '').trim().replace(/\s+/g, ' ')
+      const existing = findExpenseItemByName(cleanName, nextItems)
+
+      if (existing) {
+        const resolvedId = resolveExpenseItemId(existing.id, nextItems)
+        const targetItem =
+          nextItems.find((it) => it.id === resolvedId) ?? existing
+        targetItemId = targetItem.id
+        savedLine = input.savedLines?.find((sl) => sl.itemId === targetItemId)
+        targetItemName = savedLine ? savedLine.itemName : targetItem.name
+      } else {
+        const newItem: ExpenseItem = {
+          id: input.createId(),
+          name: cleanName,
+          normalizedName: normalizeItemName(cleanName),
+          createdAt: input.now,
+          updatedAt: input.now,
+        }
+        nextItems.push(newItem)
+        targetItemId = newItem.id
+        targetItemName = newItem.name
+      }
+    }
+
+    const line: ExpenseLine = {
+      id: lineInput.id ?? savedLine?.id ?? input.createId(),
+      itemId: targetItemId,
+      itemName: targetItemName,
+      quantity: lineInput.quantity ?? 1,
+      ...(lineInput.amount !== undefined ? { amount: lineInput.amount } : {}),
+    }
+
+    resolvedLines.push(line)
+  }
+
+  return {
+    lines: resolvedLines,
+    items: nextItems,
   }
 }
