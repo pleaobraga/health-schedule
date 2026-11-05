@@ -403,4 +403,46 @@ describe('FullScreenCalendarModal', () => {
     fireEvent.click(dayNumberBtn)
     expect(useScheduleStore.getState().selectedDateForEvents).toBe('2026-10-15')
   })
+
+  it('signals a day with purchases in fullscreen on desktop and <= 640px, and opens expenses tab when clicked', () => {
+    useScheduleStore.setState({
+      isFullScreenModalOpen: true,
+      currentMonth: '2026-10',
+      selectedDateForEvents: null,
+      events: [],
+      expenses: [
+        {
+          id: 'exp-1',
+          date: '2026-10-18',
+          description: 'Farmácia',
+          amount: 120.0,
+          items: [
+            {
+              id: 'line-1',
+              itemId: 'item-1',
+              itemName: 'Fralda G',
+              quantity: 2,
+              amount: 120.0,
+            },
+          ],
+          createdAt: '2026-10-18T10:00:00Z',
+          updatedAt: '2026-10-18T10:00:00Z',
+        },
+      ],
+    })
+
+    render(<FullScreenCalendarModal />)
+
+    const badge = screen.getByTestId('fullscreen-expense-badge-2026-10-18')
+    expect(badge).toBeInTheDocument()
+    expect(badge.getAttribute('title')).toMatch(/1 gasto\(s\) totalizando R\$\s*120,00/)
+
+    const dayNumberBtn = screen.getByTestId('fullscreen-day-number-2026-10-18')
+    expect(dayNumberBtn.parentElement).toHaveClass('mobile:bg-emerald-50')
+    expect(dayNumberBtn).toHaveClass('mobile:text-emerald-700', 'mobile:font-extrabold')
+
+    fireEvent.click(dayNumberBtn)
+    expect(useScheduleStore.getState().selectedDateForEvents).toBe('2026-10-18')
+    expect(useScheduleStore.getState().dayEventsModalTab).toBe('expenses')
+  })
 })

@@ -180,17 +180,17 @@ export function MonthPaymentsModal({
     const result: PersonPaymentSummary[] = []
 
     personItemsMap.forEach((items, personId) => {
+      const personExpenses =
+        monthExpensesSummary.personExpenses[personId] || []
       const person = personMap.get(personId) || {
         id: personId,
-        name: t('calendar:removedProfessional'),
+        name: personExpenses[0]?.personName || t('calendar:removedProfessional'),
         color: '#64748b',
       }
 
       const shiftsAmount = items.reduce((acc, curr) => acc + curr.rate, 0)
       const reimbursementsAmount =
         monthExpensesSummary.personReimbursements[personId] || 0
-      const personExpenses =
-        monthExpensesSummary.personExpenses[personId] || []
       const totalAmount = shiftsAmount + reimbursementsAmount
 
       result.push({
@@ -208,15 +208,16 @@ export function MonthPaymentsModal({
     Object.keys(monthExpensesSummary.personReimbursements).forEach(
       (personId) => {
         if (personItemsMap.has(personId)) return
+        const personExpenses =
+          monthExpensesSummary.personExpenses[personId] || []
         const person = personMap.get(personId) || {
           id: personId,
-          name: t('calendar:removedProfessional'),
+          name:
+            personExpenses[0]?.personName || t('calendar:removedProfessional'),
           color: '#64748b',
         }
         const reimbursementsAmount =
           monthExpensesSummary.personReimbursements[personId] || 0
-        const personExpenses =
-          monthExpensesSummary.personExpenses[personId] || []
 
         result.push({
           person,
@@ -334,7 +335,10 @@ export function MonthPaymentsModal({
           {/* Top KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Grand Total */}
-            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex flex-col justify-between">
+            <div
+              data-testid="kpi-total-to-pay"
+              className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex flex-col justify-between"
+            >
               <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
                 {t('calendar:paymentsModal.totalToPay')}
               </span>

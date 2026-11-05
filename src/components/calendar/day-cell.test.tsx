@@ -707,4 +707,54 @@ describe('DayCell', () => {
 
     expect(screen.queryByTestId('day-expense-badge-2026-10-15')).not.toBeInTheDocument()
   })
+
+  it('formats the expense badge and mobile day-number tooltip with purchase count and total amount', () => {
+    const expenses: DailyExpense[] = [
+      {
+        id: 'exp-1',
+        date: '2026-10-15',
+        description: 'Supermercado',
+        amount: 30,
+        items: [
+          { id: 'l1', itemId: 'i1', itemName: 'Leite', quantity: 2, amount: 20 },
+        ],
+        createdAt: '2026-10-15T10:00:00Z',
+        updatedAt: '2026-10-15T10:00:00Z',
+      },
+      {
+        id: 'exp-2',
+        date: '2026-10-15',
+        description: 'Farmácia',
+        amount: 20,
+        items: [],
+        createdAt: '2026-10-15T11:00:00Z',
+        updatedAt: '2026-10-15T11:00:00Z',
+      },
+    ]
+
+    render(
+      <DayCell
+        dayInfo={mockDayInfo}
+        currentMonth="2026-10"
+        isEditMode={false}
+        assignedPersonIds={[]}
+        allPersons={mockPersons}
+        events={[]}
+        dailyExpenses={expenses}
+        highlightedPerson={null}
+        isHighlightedPersonAvailable={false}
+        isPersonAvailable={() => true}
+        onOpenEvents={vi.fn()}
+        onOpenExpenses={vi.fn()}
+        onRemovePerson={vi.fn()}
+        onAddPerson={vi.fn()}
+      />
+    )
+
+    const badge = screen.getByTestId('day-expense-badge-2026-10-15')
+    expect(badge.getAttribute('title')).toMatch(/2 gasto\(s\) totalizando R\$\s*50,00/)
+
+    const dayNumberBtn = screen.getByTestId('day-number-button')
+    expect(dayNumberBtn.getAttribute('aria-label')).toMatch(/2 gasto\(s\) totalizando R\$\s*50,00/)
+  })
 })

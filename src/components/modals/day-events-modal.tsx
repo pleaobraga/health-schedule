@@ -28,7 +28,7 @@ import { parseNumericRate } from '../../utils/shift-rate-utils'
 import type { CalendarEvent, DailyExpense, DailyExpenseCategory, Person } from '../../types'
 
 export function DayEventsModal() {
-  const { t, i18n } = useTranslation(['calendar', 'common'])
+  const { t, i18n } = useTranslation(['calendar', 'common', 'purchases'])
   const {
     selectedDateForEvents,
     setSelectedDateForEvents,
@@ -956,10 +956,13 @@ export function DayEventsModal() {
                   const linkedPerson = exp.personId
                     ? personMap.get(exp.personId)
                     : null
+                  const fallbackPersonName =
+                    exp.personName || t('calendar:removedProfessional')
 
                   return (
                     <div
                       key={exp.id}
+                      data-testid={`day-expense-card-${exp.id}`}
                       className={`flex items-start justify-between p-3 rounded-xl border transition-all ${
                         isBeingEdited
                           ? 'border-emerald-400 dark:border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/40 ring-2 ring-emerald-500/20'
@@ -1005,11 +1008,11 @@ export function DayEventsModal() {
                               className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded-sm shrink-0"
                               title={t(
                                 'calendar:eventsModal.reimbursementBadge',
-                                { name: t('calendar:removedProfessional') },
+                                { name: fallbackPersonName },
                               )}
                             >
                               <User className="w-2.5 h-2.5" />
-                              <span>{t('calendar:removedProfessional')}</span>
+                              <span>{fallbackPersonName}</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded-sm shrink-0">
@@ -1020,6 +1023,35 @@ export function DayEventsModal() {
                             </span>
                           )}
                         </div>
+                        {exp.items.length > 0 && (
+                          <div
+                            data-testid={`day-expense-items-${exp.id}`}
+                            className="pt-1.5 mt-1.5 border-t border-slate-200/70 dark:border-slate-700/60 space-y-1"
+                          >
+                            {exp.items.map((line) => (
+                              <div
+                                key={line.id}
+                                className="flex items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-300"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="font-medium text-slate-700 dark:text-slate-200 truncate">
+                                    {line.itemName}
+                                  </span>
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0">
+                                    {t('purchases:list.quantityBadge', {
+                                      quantity: line.quantity,
+                                    })}
+                                  </span>
+                                </div>
+                                {typeof line.amount === 'number' && (
+                                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 shrink-0">
+                                    {formatBRL(line.amount)}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Action buttons: Edit and Delete */}
@@ -1189,6 +1221,8 @@ export function DayEventsModal() {
                   {!isExpensePersonListed && (
                     <option value={expensePersonId}>
                       {personMap.get(expensePersonId)?.name ??
+                        dayExpenses.find((e) => e.id === editingExpenseId)
+                          ?.personName ??
                         t('calendar:removedProfessional')}
                     </option>
                   )}

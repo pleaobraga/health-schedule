@@ -818,5 +818,166 @@ describe('DayEventsModal', () => {
       const updatedExpenses = useScheduleStore.getState().expenses
       expect(updatedExpenses).toHaveLength(0)
     })
+
+    it('groups items by purchase and displays the saved itemName even if the catalog item was renamed', () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        expenseItems: [
+          {
+            id: 'item-1',
+            name: 'Leite Integral Novo Nome',
+            normalizedName: 'leite integral novo nome',
+            createdAt: '2026-10-01T10:00:00Z',
+            updatedAt: '2026-10-10T10:00:00Z',
+          },
+        ],
+        expenses: [
+          {
+            id: 'exp-super',
+            date: '2026-10-15',
+            description: 'Supermercado',
+            amount: 45.0,
+            items: [
+              {
+                id: 'line-1',
+                itemId: 'item-1',
+                itemName: 'Leite Antigo',
+                quantity: 2,
+                amount: 16.0,
+              },
+              {
+                id: 'line-2',
+                itemId: 'item-2',
+                itemName: 'Arroz 5kg',
+                quantity: 1,
+                amount: 29.0,
+              },
+            ],
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+          },
+          {
+            id: 'exp-pharma',
+            date: '2026-10-15',
+            description: 'Farmácia',
+            amount: 80.0,
+            items: [
+              {
+                id: 'line-3',
+                itemId: 'item-3',
+                itemName: 'Fralda G',
+                quantity: 1,
+                amount: 80.0,
+              },
+            ],
+            createdAt: '2026-10-15T11:00:00Z',
+            updatedAt: '2026-10-15T11:00:00Z',
+          },
+        ],
+      })
+
+      render(<DayEventsModal />)
+
+      const superCard = screen.getByTestId('day-expense-card-exp-super')
+      const pharmaCard = screen.getByTestId('day-expense-card-exp-pharma')
+
+      expect(superCard).toHaveTextContent('Supermercado')
+      expect(superCard).toHaveTextContent('Leite Antigo')
+      expect(superCard).toHaveTextContent('Arroz 5kg')
+      expect(superCard).not.toHaveTextContent('Leite Integral Novo Nome')
+      expect(superCard).not.toHaveTextContent('Fralda G')
+
+      expect(pharmaCard).toHaveTextContent('Farmácia')
+      expect(pharmaCard).toHaveTextContent('Fralda G')
+      expect(pharmaCard).not.toHaveTextContent('Leite Antigo')
+    })
+
+    it('preserves item lines when editing an expense amount through the day modal', async () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        expenses: [
+          {
+            id: 'exp-with-items',
+            date: '2026-10-15',
+            description: 'Supermercado',
+            amount: 50.0,
+            items: [
+              {
+                id: 'line-1',
+                itemId: 'item-1',
+                itemName: 'Fralda G',
+                quantity: 2,
+                amount: 45.0,
+              },
+            ],
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+          },
+        ],
+      })
+
+      render(<DayEventsModal />)
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /Editar gasto Supermercado/i }),
+      )
+
+      const amountInput = screen.getByDisplayValue('50')
+      fireEvent.change(amountInput, { target: { value: '60' } })
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('submit-expense-btn'))
+      })
+
+      const updated = useScheduleStore.getState().expenses[0]
+      expect(updated.amount).toBe(60)
+      expect(updated.items).toEqual([
+        {
+          id: 'line-1',
+          itemId: 'item-1',
+          itemName: 'Fralda G',
+          quantity: 2,
+          amount: 45.0,
+        },
+      ])
+    })
+
+    it('displays saved personName for a deleted professional in the day modal and falls back to removedProfessional when absent', () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        persons: [],
+        expenses: [
+          {
+            id: 'exp-named',
+            date: '2026-10-15',
+            description: 'Táxi Plantão',
+            amount: 35.0,
+            personId: 'deleted-1',
+            personName: 'Enf. Carla',
+            items: [],
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+          },
+          {
+            id: 'exp-unnamed',
+            date: '2026-10-15',
+            description: 'Lanche Plantão',
+            amount: 20.0,
+            personId: 'deleted-2',
+            items: [],
+            createdAt: '2026-10-15T11:00:00Z',
+            updatedAt: '2026-10-15T11:00:00Z',
+          },
+        ],
+      })
+
+      render(<DayEventsModal />)
+
+      expect(screen.getByText('Enf. Carla')).toBeInTheDocument()
+      expect(screen.getByText('Profissional removido')).toBeInTheDocument()
+    })
   })
 })

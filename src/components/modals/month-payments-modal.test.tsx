@@ -359,5 +359,61 @@ describe('MonthPaymentsModal', () => {
     expect(screen.getByText('10/05/2026')).toBeInTheDocument()
     expect(screen.getByText('10/15/2026')).toBeInTheDocument()
   })
+
+  it('displays saved personName for a deleted professional in the closing modal and uses amount regardless of item lines', async () => {
+    await i18n.changeLanguage('pt-BR')
+
+    useScheduleStore.setState({
+      persons: [],
+      dayShiftAssignments: {},
+      assignments: {},
+      availabilities: [],
+      expenses: [
+        {
+          id: 'exp-deleted-named',
+          date: '2026-10-08',
+          description: 'Compra Farmácia',
+          amount: 150.0,
+          personId: 'deleted-caregiver',
+          personName: 'Enf. Mariana',
+          items: [
+            {
+              id: 'line-1',
+              itemId: 'item-1',
+              itemName: 'Luva Cirúrgica',
+              quantity: 2,
+              amount: 100.0,
+            },
+          ],
+          createdAt: '2026-10-08T10:00:00Z',
+          updatedAt: '2026-10-08T10:00:00Z',
+        },
+        {
+          id: 'exp-general-no-lines',
+          date: '2026-10-09',
+          description: 'Transporte',
+          amount: 50.0,
+          items: [],
+          createdAt: '2026-10-09T10:00:00Z',
+          updatedAt: '2026-10-09T10:00:00Z',
+        },
+      ],
+    })
+
+    render(
+      <MonthPaymentsModal
+        isOpen={true}
+        onClose={vi.fn()}
+        currentMonth="2026-10"
+      />
+    )
+
+    expect(screen.getByText('Enf. Mariana')).toBeInTheDocument()
+    expect(screen.queryByText('Profissional removido')).not.toBeInTheDocument()
+    expect(
+      screen.getByTestId('person-reimbursement-badge-deleted-caregiver'),
+    ).toHaveTextContent(/150,00/)
+    expect(screen.getByTestId('kpi-total-to-pay')).toHaveTextContent(/200,00/)
+  })
 })
 

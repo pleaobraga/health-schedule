@@ -146,7 +146,8 @@ export function DayCell({
                 ? eventsButtonLabel
                 : hasExpenses
                 ? t('calendar:dayCell.expensesTooltip', {
-                    amount: formatBRL(dayExpensesTotal),
+                    count: (dailyExpenses || []).length,
+                    total: formatBRL(dayExpensesTotal),
                   })
                 : eventsButtonLabel
             }
@@ -228,10 +229,12 @@ export function DayCell({
               }}
               data-testid={`day-expense-badge-${dateStr}`}
               aria-label={t('calendar:dayCell.expensesTooltip', {
-                amount: formatBRL(dayExpensesTotal),
+                count: (dailyExpenses || []).length,
+                total: formatBRL(dayExpensesTotal),
               })}
               title={t('calendar:dayCell.expensesTooltip', {
-                amount: formatBRL(dayExpensesTotal),
+                count: (dailyExpenses || []).length,
+                total: formatBRL(dayExpensesTotal),
               })}
               className="mobile:hidden p-1 rounded-md text-xs transition flex items-center text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 cursor-pointer"
             >

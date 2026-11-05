@@ -276,22 +276,44 @@ export function FullScreenCalendarModal() {
                     {/* Day number: on small screens (<= 640px) it opens the events modal */}
                     <button
                       type="button"
-                      onClick={() => setSelectedDateForEvents(dayInfo.dateStr)}
+                      onClick={() =>
+                        setSelectedDateForEvents(
+                          dayInfo.dateStr,
+                          hasEvents
+                            ? 'events'
+                            : hasExpenses
+                              ? 'expenses'
+                              : 'events',
+                        )
+                      }
                       tabIndex={-1}
                       data-testid={`fullscreen-day-number-${dayInfo.dateStr}`}
                       aria-label={
                         hasEvents
                           ? t('calendar:dayCell.eventsTooltip', { count: dayEvents.length })
-                          : t('calendar:dayCell.viewOrAddEvents')
+                          : hasExpenses
+                            ? t('calendar:dayCell.expensesTooltip', {
+                                count: dayExpenses.length,
+                                total: formatBRL(dayExpensesTotal),
+                              })
+                            : t('calendar:dayCell.viewOrAddEvents')
                       }
                       className={`pointer-events-none mobile:pointer-events-auto mobile:cursor-pointer text-sm md:text-base font-semibold inline-flex items-center justify-center transition-colors print:w-6 print:h-6 print:text-xs ${
                         hasEvents
                           ? 'text-red-600 font-extrabold dark:text-red-400 bg-red-50 dark:bg-red-950/60 w-7 h-7 rounded-full mobile:bg-transparent mobile:dark:bg-transparent mobile:w-auto mobile:h-auto mobile:rounded-none print:w-6 print:h-6 print:bg-red-100 dark:print:bg-red-100 print:text-red-700 dark:print:text-red-700'
-                          : dayInfo.isToday
-                            ? 'text-indigo-600 dark:text-indigo-400 font-bold px-1 print:text-slate-900 dark:print:text-slate-900'
-                            : dayInfo.isCurrentMonth
-                              ? 'text-slate-800 dark:text-slate-200 print:text-slate-900 dark:print:text-slate-900 font-bold'
-                              : 'text-slate-400 dark:text-slate-600 print:text-slate-400 dark:print:text-slate-400'
+                          : hasExpenses
+                            ? `mobile:text-emerald-700 mobile:font-extrabold mobile:dark:text-emerald-400 mobile:bg-transparent mobile:dark:bg-transparent mobile:w-auto mobile:h-auto mobile:rounded-none ${
+                                dayInfo.isToday
+                                  ? 'text-indigo-600 dark:text-indigo-400 font-bold px-1 print:text-slate-900 dark:print:text-slate-900'
+                                  : dayInfo.isCurrentMonth
+                                    ? 'text-slate-800 dark:text-slate-200 print:text-slate-900 dark:print:text-slate-900 font-bold'
+                                    : 'text-slate-400 dark:text-slate-600 print:text-slate-400 dark:print:text-slate-400'
+                              }`
+                            : dayInfo.isToday
+                              ? 'text-indigo-600 dark:text-indigo-400 font-bold px-1 print:text-slate-900 dark:print:text-slate-900'
+                              : dayInfo.isCurrentMonth
+                                ? 'text-slate-800 dark:text-slate-200 print:text-slate-900 dark:print:text-slate-900 font-bold'
+                                : 'text-slate-400 dark:text-slate-600 print:text-slate-400 dark:print:text-slate-400'
                       }`}
                     >
                       {dayInfo.dayNumber}
@@ -305,10 +327,12 @@ export function FullScreenCalendarModal() {
                           onClick={() => setSelectedDateForEvents(dayInfo.dateStr, 'expenses')}
                           data-testid={`fullscreen-expense-badge-${dayInfo.dateStr}`}
                           aria-label={t('calendar:dayCell.expensesTooltip', {
-                            amount: formatBRL(dayExpensesTotal),
+                            count: dayExpenses.length,
+                            total: formatBRL(dayExpensesTotal),
                           })}
                           title={t('calendar:dayCell.expensesTooltip', {
-                            amount: formatBRL(dayExpensesTotal),
+                            count: dayExpenses.length,
+                            total: formatBRL(dayExpensesTotal),
                           })}
                           className="mobile:hidden p-1 rounded-md text-xs transition flex items-center text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 print:text-emerald-800 cursor-pointer"
                         >
