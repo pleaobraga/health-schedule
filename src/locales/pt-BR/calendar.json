@@ -58,6 +58,7 @@
   "actionsMenuTooltip": "Mais opções e ações da escala",
   "monthlyPayments": "Valores a Pagar",
   "monthlyPaymentsTooltip": "Visualizar valores pagos a cada profissional e o total do mês",
+  "removedProfessional": "Profissional removido",
   "paymentsModal": {
     "title": "Fechamento de Valores do Mês",
     "subtitle": "Cálculo detalhado dos valores a pagar aos profissionais escalados em {{month}}",

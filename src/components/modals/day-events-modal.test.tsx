@@ -566,6 +566,101 @@ describe('DayEventsModal', () => {
       ).toBeInTheDocument()
     })
 
+    it('labels a removed professional expense as removed and a personless expense as general', () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        expenses: [
+          {
+            id: 'exp-removed',
+            date: '2026-10-15',
+            description: 'Reembolso Antigo',
+            amount: 80.0,
+            personId: 'removed-person',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+          },
+          {
+            id: 'exp-general',
+            date: '2026-10-15',
+            description: 'Material de Limpeza',
+            amount: 50.0,
+            createdAt: '2026-10-15T11:00:00Z',
+            updatedAt: '2026-10-15T11:00:00Z',
+          },
+        ],
+      })
+
+      render(<DayEventsModal />)
+
+      expect(screen.getAllByText('Profissional removido')).toHaveLength(1)
+      expect(screen.getAllByText('Gasto Geral / Operacional')).toHaveLength(1)
+    })
+
+    it('keeps the removed professional selected when editing their expense', () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        expenses: [
+          {
+            id: 'exp-removed',
+            date: '2026-10-15',
+            description: 'Reembolso Antigo',
+            amount: 80.0,
+            personId: 'removed-person',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+          },
+        ],
+      })
+
+      render(<DayEventsModal />)
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /Editar gasto Reembolso Antigo/i }),
+      )
+
+      const personSelect = screen.getByRole('combobox', {
+        name: 'Reembolso para Profissional (Opcional)',
+      })
+      expect(personSelect).toHaveValue('removed-person')
+      expect(personSelect).toHaveDisplayValue('Profissional removido')
+    })
+
+    it('keeps a deactivated professional selected by name when editing their expense', () => {
+      useScheduleStore.setState({
+        selectedDateForEvents: '2026-10-15',
+        dayEventsModalTab: 'expenses',
+        persons: [
+          ...mockPersons,
+          { id: 'p3', name: 'Enf. Beatriz', color: '#8b5cf6', active: false },
+        ],
+        expenses: [
+          {
+            id: 'exp-deactivated',
+            date: '2026-10-15',
+            description: 'Reembolso Antigo',
+            amount: 80.0,
+            personId: 'p3',
+            createdAt: '2026-10-15T10:00:00Z',
+            updatedAt: '2026-10-15T10:00:00Z',
+          },
+        ],
+      })
+
+      render(<DayEventsModal />)
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /Editar gasto Reembolso Antigo/i }),
+      )
+
+      const personSelect = screen.getByRole('combobox', {
+        name: 'Reembolso para Profissional (Opcional)',
+      })
+      expect(personSelect).toHaveValue('p3')
+      expect(personSelect).toHaveDisplayValue('Enf. Beatriz')
+    })
+
     it('validates required fields when adding an expense', async () => {
       useScheduleStore.setState({
         selectedDateForEvents: '2026-10-15',

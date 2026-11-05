@@ -17,6 +17,7 @@ HealthSchedule streamlines the complexity of medical roster planning through an 
 - 📅 **Interactive Schedule Calendar**: Monthly grid with instant day allocations, candidate availability filters, unsaved changes protection, and high-contrast print-optimized export.
 - ⚙️ **Custom Shifts & Dynamic Rule Engine**: Define customizable shifts (12h, 24h, custom hours) with real-time compliance auditing (consecutive day limits, minimum rest, maximum weekly/monthly hours).
 - 💰 **Shift Rates & Financial Reports**: Configure base and surge rates per professional/day (weekends, holidays) and generate instant monthly payment summaries.
+- 🧾 **Daily Expenses**: Record expenses per day, either as reimbursements for a professional or as general operational costs, and review them in the monthly closing.
 - 👥 **Staff Registry & Referential Integrity**: Centralized staff management with custom color coding and soft-delete protection for historical allocations.
 - 💾 **Offline-First & Multi-Profile Guest Mode**: Works 100% offline via browser storage with instant dynamic demo seed data; supports multi-profile guest accounts and optional Firebase Cloud Sync for administrators.
 - 📊 **Export & Data Portability**: Multi-sheet formatted Excel reports (`.xlsx`), JSON snapshot backups, and cloud recovery.
@@ -29,7 +30,7 @@ HealthSchedule streamlines the complexity of medical roster planning through an 
 | Layer | Technologies |
 | :--- | :--- |
 | **Frontend** | React 19, TypeScript, Tailwind CSS, Lucide Icons |
-| **State & Storage** | Zustand, Browser LocalStorage / IndexedDB |
+| **State & Storage** | Zustand, Browser LocalStorage (Firestore offline cache in IndexedDB) |
 | **Cloud & Auth** | Firebase 13 (Auth, Firestore Cloud Sync) |
 | **Reporting & i18n** | SheetJS (XLSX), i18next & react-i18next |
 | **Quality & Tests** | Vitest, React Testing Library, ESLint, Husky, Storybook 10 |
@@ -45,7 +46,7 @@ graph TD
     subgraph UI_Layer [Presentation Layer]
         Router[HashRouter & Route Guards]
         AuthGuard[PrivateRoute & AdminRoute]
-        Layout[MainLayout & HoverSidebar]
+        Layout[RootLayout & HoverSidebar]
         CalendarView[Calendar View & Grid]
         PeopleView[People Management View]
         ShiftsView[Shifts Management View]
@@ -135,7 +136,7 @@ graph TD
 
 ```bash
 # Clone repository
-git clone https://github.com/pleaobraga/health-scale.git
+git clone https://github.com/pleaobraga/health-schedule.git
 cd health-schedule
 
 # Install dependencies
@@ -175,7 +176,7 @@ _(Note: The app runs in complete offline/guest mode even without Firebase creden
 | `pnpm lint`      | Runs ESLint flat config validation                          |
 | `pnpm lint:fix`  | Automatically fixes linting and formatting issues           |
 | `pnpm typecheck` | Validates TypeScript types across the codebase              |
-| `pnpm validate`  | Full pipeline: typecheck + lint + test:run                  |
+| `pnpm validate`  | Full pipeline: typecheck + lint + test                      |
 | `pnpm storybook` | Starts Storybook component workshop                         |
 
 ---

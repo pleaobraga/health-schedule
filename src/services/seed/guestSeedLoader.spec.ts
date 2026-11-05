@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import demoEnJson from '../../../public/demo/demo-en.json'
-import demoJson from '../../../public/demo/demo.json'
-import { i18n } from '../../i18n'
-import { useScheduleStore } from '../../store/use-schedule-store'
-import { StorageService } from '../storage-service'
 import {
   getDaysInMonth,
   getRelativeMonths,
@@ -14,6 +9,11 @@ import {
   resolveSeedUrl,
   transformSeedData,
 } from './guestSeedLoader'
+import demoEnJson from '../../../public/demo/demo-en.json'
+import demoJson from '../../../public/demo/demo.json'
+import { i18n } from '../../i18n'
+import { useScheduleStore } from '../../store/use-schedule-store'
+import { StorageService } from '../storage-service'
 
 import type { AppDataSnapshot, CalendarEvent, MonthlyAvailability } from '../../types'
 

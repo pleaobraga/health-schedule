@@ -182,7 +182,7 @@ export function MonthPaymentsModal({
     personItemsMap.forEach((items, personId) => {
       const person = personMap.get(personId) || {
         id: personId,
-        name: 'Profissional',
+        name: t('calendar:removedProfessional'),
         color: '#64748b',
       }
 
@@ -210,7 +210,7 @@ export function MonthPaymentsModal({
         if (personItemsMap.has(personId)) return
         const person = personMap.get(personId) || {
           id: personId,
-          name: 'Profissional',
+          name: t('calendar:removedProfessional'),
           color: '#64748b',
         }
         const reimbursementsAmount =

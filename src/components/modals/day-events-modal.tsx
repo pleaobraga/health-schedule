@@ -146,6 +146,11 @@ export function DayEventsModal() {
     if (customPerson) caregiverOptions.push(customPerson)
   }
 
+  // An expense can belong to someone who is no longer selectable (deactivated or removed)
+  const isExpensePersonListed =
+    !expensePersonId ||
+    caregiverOptions.some((p) => p.id === expensePersonId)
+
   const currentSelectedPerson = selectedPersonId
     ? personMap.get(selectedPersonId)
     : null
@@ -987,6 +992,17 @@ export function DayEventsModal() {
                                 {linkedPerson.name}
                               </span>
                             </span>
+                          ) : exp.personId ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded-sm shrink-0"
+                              title={t(
+                                'calendar:eventsModal.reimbursementBadge',
+                                { name: t('calendar:removedProfessional') },
+                              )}
+                            >
+                              <User className="w-2.5 h-2.5" />
+                              <span>{t('calendar:removedProfessional')}</span>
+                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded-sm shrink-0">
                               <Receipt className="w-2.5 h-2.5" />
@@ -1162,6 +1178,12 @@ export function DayEventsModal() {
                       {person.name}
                     </option>
                   ))}
+                  {!isExpensePersonListed && (
+                    <option value={expensePersonId}>
+                      {personMap.get(expensePersonId)?.name ??
+                        t('calendar:removedProfessional')}
+                    </option>
+                  )}
                 </select>
               </div>
 

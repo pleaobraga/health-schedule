@@ -58,6 +58,7 @@
   "actionsMenuTooltip": "More options and schedule actions",
   "monthlyPayments": "Payments Due",
   "monthlyPaymentsTooltip": "View amounts paid to each professional and monthly total",
+  "removedProfessional": "Removed professional",
   "paymentsModal": {
     "title": "Monthly Payments Summary",
     "subtitle": "Detailed calculation of amounts payable to scheduled professionals in {{month}}",

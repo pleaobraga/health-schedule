@@ -36,6 +36,7 @@
 5. **Financial Calculation & Shift Rates**:
    - Per-person, per-shift, per-day rates (`shiftRates[shiftId][dayNumber] = rateInBRL`).
    - Monthly financial closing modal (`MonthPaymentsModal`) and dedicated financial sheet in Excel exports.
+   - Daily expenses (`DailyExpense`) registered in the expenses tab of `DayEventsModal`: an expense with a `personId` is a reimbursement for that professional, and one without is a general operational expense. `calculateMonthExpensesSummary` aggregates them for `MonthPaymentsModal`. Expenses are not part of the Excel export.
 6. **Offline-First Storage, Multi-Profile Guest Mode & Firebase Cloud Sync**:
    - 100% functional offline via `StorageService` (`localStorage`) with dataset isolation per authenticated user (`scale_manager_user_data_v1_<uid>`) and per guest profile (`scale_manager_guest_data_v1_<guestId>`).
    - Dynamic demo seed loader (`guestSeedLoader.ts`) for new guest sessions.
@@ -53,14 +54,14 @@
 | Category | Technology |
 | :--- | :--- |
 | **Runtime & Package Manager** | Node.js `>= 24.22.0`, `pnpm >= 12.14.0` |
-| **Framework & Language** | React 19, TypeScript 5.8 (strict mode), Vite 8 |
+| **Framework & Language** | React 19, TypeScript 5.9 (strict mode), Vite 8 |
 | **Styling & Icons** | Tailwind CSS 4 (`dark` class strategy), `lucide-react` |
 | **State Management** | Zustand 5 (`useScheduleStore`) |
-| **Routing** | React Router DOM 7 (`createHashRouter` for GitHub Pages compatibility) |
+| **Routing** | React Router DOM 7 (`HashRouter` + `<Routes>` for GitHub Pages compatibility) |
 | **Backend / Cloud** | Firebase 13 (Firebase Auth + Cloud Firestore) |
 | **Internationalization** | `i18next`, `react-i18next` (`pt-BR` default, `en-US` secondary) |
 | **Date & Spreadsheet** | `date-fns` 4, `xlsx` (SheetJS) |
-| **Testing & Quality** | Vitest 5, React Testing Library, JSDOM, ESLint 9 (Flat Config), Storybook 10 |
+| **Testing & Quality** | Vitest 5, React Testing Library, JSDOM, ESLint 10 (Flat Config), Storybook 10 |
 
 ---
 
@@ -70,32 +71,38 @@
 src/
 ├── components/
 │   ├── auth/                  # Route guards (PrivateRoute, AdminRoute)
-│   ├── calendar/              # CalendarGrid, CalendarHeader, DayCell, CandidatePicker, AuditValidationBar
-│   ├── common/                # LanguageSelector, shared UI controls
+│   ├── calendar/              # CalendarView, CalendarGrid, CalendarHeader, DayCell, CandidatePicker
+│   ├── common/                # ConfirmDialog, ErrorBoundary, LanguageSelector, SortableList, ToastViewport
 │   ├── import/                # ImportView, ConfirmOverwriteModal (backup restore/merge & cloud pull)
-│   ├── layout/                # MainLayout, Header (top bar, save/cloud buttons, user menu)
+│   ├── layout/                # RootLayout (navigation, route outlet, global modals, toasts, onboarding redirect)
 │   ├── modals/                # FullScreenCalendarModal, MonthShiftConfigModal, MonthPaymentsModal,
 │   │                          # DayEventsModal, AddDayShiftModal, DayViolationsModal, ScheduleAuditModal,
 │   │                          # UnsavedChangesModal
-│   ├── navigation/            # HoverSidebar (left navigation rail)
-│   ├── people-management/     # PeopleManagementView, PersonFormModal, ConfirmDeactivate/DeleteModal
-│   ├── settings/              # SettingsView, ShiftsManagementView, RulesManagementView, ConfirmClearLocalDataModal
-│   └── sidebar/               # Sidebar (Month panel: Daily Shifts, Month People, Validation Rules),
-│                              # PersonCard, MonthAvailabilityModal, AddMonthParticipantsModal, AddMonthRulesModal
+│   ├── navigation/            # HoverSidebar (left rail) and MobileBottomNav (tab bar below 768px)
+│   ├── people-management/     # PeopleManagementView, GlobalPersonModal, DeactivatePersonModal, ConfirmDeleteModal
+│   ├── settings/              # SettingsView, ShiftsManagementView, RulesManagementView,
+│   │                          # ConfirmClearLocalDataModal, EnableCloudSyncModal
+│   ├── sidebar/               # Sidebar (Month panel: Daily Shifts, Month People, Validation Rules),
+│   │                          # PersonCard, MonthAvailabilityModal, AddMonthParticipantsModal, AddMonthRulesModal
+│   └── users/                 # CreateUserModal
 ├── context/
 │   ├── auth-context-base.ts   # AuthContext definition & types
 │   └── auth-context.tsx       # AuthProvider (Firebase Auth, Firestore role lookup, Guest mode, dataset switching)
-├── i18n/
-│   └── index.ts               # i18next initialization & language persistence ('app_language')
+├── hooks/
+│   ├── use-cloud-sync.ts      # Empty placeholder: sync calls live in store actions
+│   └── use-list-order.ts      # Drag-and-drop list order, stored per device and never synced
+├── i18n.ts                    # i18next initialization & language persistence ('health-schedule:language')
 ├── locales/
-│   ├── pt-BR/                 # JSON namespaces: common, auth, calendar, people, settings, import, address, users
-│   └── en-US/                 # JSON namespaces: common, auth, calendar, people, settings, import, address, users
+│   ├── pt-BR/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users
+│   └── en-US/                 # JSON namespaces: common, auth, calendar, people, settings, import, addresses, users
 ├── pages/
 │   ├── address-management-view.tsx # Global Address CRUD
 │   ├── login-page.tsx              # Firebase Login + Guest Profile Login
 │   └── user-management-view.tsx    # Admin user role management (Firestore 'users' collection)
 ├── router/
-│   └── router.tsx             # HashRouter routes and redirects
+│   ├── index.tsx              # AppRoutes, AppRouter (HashRouter), TestAppRouter (MemoryRouter)
+│   ├── route-config.ts        # Route metadata only
+│   └── routes.tsx             # Re-exports
 ├── services/
 │   ├── seed/                  # guestSeedLoader.ts (demo data generator)
 │   ├── validation/            # rule-engine.ts (DEFAULT_SHIFTS, DEFAULT_RULES, rule evaluation logic)
@@ -105,16 +112,21 @@ src/
 │   ├── person-service.ts      # Referential integrity checks for staff deletion
 │   └── storage-service.ts     # LocalStorage wrapper + Guest/User dataset snapshot isolation
 ├── store/
-│   └── use-schedule-store.ts  # Single source of truth Zustand store
+│   ├── use-schedule-store.ts  # Single source of truth Zustand store
+│   └── use-toast-store.ts     # Toast notifications
 ├── types/
-│   ├── index.ts               # Core domain types (Person, MonthlyAvailability, CalendarEvent, Address, etc.)
+│   ├── index.ts               # Core domain types (Person, MonthlyAvailability, CalendarEvent, DailyExpense, Address, etc.)
 │   └── scheduleConfig.ts      # ShiftDefinition, ShiftRule, RuleViolation, MonthScheduleDocument
 └── utils/
     ├── address-utils.ts       # Address formatting helpers
+    ├── auth-errors.ts         # Firebase Auth error codes to localized messages
+    ├── clipboard-utils.ts     # Clipboard copy with execCommand fallback
+    ├── cloud-feedback.ts      # Toasts for cloud push and pull results
     ├── date-utils.ts          # Month navigation, calendar 42-day grid generation, past-event checks
     ├── export-to-excel.ts     # Multi-sheet XLSX workbook generator & localized filename builder
+    ├── list-order.ts          # Sorting and reordering by a saved id order
     ├── popover-position.ts    # Viewport-clamped fixed popover positioning utility (for React portals)
-    ├── shift-rate-utils.ts    # Shift rate lookup & monthly payment calculations
+    ├── shift-rate-utils.ts    # Shift rate lookup, monthly payment calculations & expense summaries
     └── validate-schedule.ts   # Bridge between store state and rule-engine validation
 ```
 
@@ -134,7 +146,7 @@ All application state lives in `src/store/use-schedule-store.ts`:
 - `assignments: Record<string, string[]>` & `savedAssignments: Record<string, string[]>`
   - Maps `'YYYY-MM-DD'` -> `personId[]` assigned on that date.
 - `dayShiftAssignments: Record<string, Record<string, string>>` & `savedDayShiftAssignments`
-  - Maps `'YYYY-MM-DD'` -> `{ [shiftId]: personId }`.
+  - Maps `'YYYY-MM-DD'` -> `{ [shiftId]: personId }`. Everyone in a day's shift map is also in `assignments[date]`, which can additionally hold people with no shift.
 - `shiftDefinitions: ShiftDefinition[]`
   - `{ id, name, code, startTime: 'HH:mm', durationHours: number, color, enabledByDefault, createdAt, updatedAt }`
 - `shiftRules: ShiftRule[]`
@@ -146,6 +158,9 @@ All application state lives in `src/store/use-schedule-store.ts`:
   - Per-month active shift IDs and rule IDs.
 - `events: CalendarEvent[]`
   - `{ id, date: 'YYYY-MM-DD', title, time?: 'HH:mm', description?, address?, addressId?, personId? }`
+- `expenses: DailyExpense[]`
+  - `{ id, date: 'YYYY-MM-DD', description, amount, personId?, category?: 'MEDICATION' | 'TRANSPORT' | 'SUPPLIES' | 'OTHER', createdAt, updatedAt }`
+  - Managed by `addExpense`, `updateExpense`, and `deleteExpense`. Like events, expenses persist immediately, independent of the edit-mode draft.
 - `addresses: Address[]`
   - `{ id, name, street, number, complement?, neighborhood?, city? }`
 
@@ -154,6 +169,7 @@ All application state lives in `src/store/use-schedule-store.ts`:
 - `isEditMode: boolean` & `hasUnsavedChanges: boolean`
 - `highlightedPersonId: string | null` — Highlights a person's **available days** in yellow/amber on the calendar.
 - `highlightedScheduledPersonId: string | null` — Highlights a person's **scheduled working days** in green/emerald on the calendar (mutually exclusive with `highlightedPersonId`).
+- `dayEventsModalTab: 'events' | 'expenses'` — Active tab of `DayEventsModal`, set through `setSelectedDateForEvents(dateStr, initialTab)`.
 
 ---
 
@@ -165,9 +181,9 @@ All application state lives in `src/store/use-schedule-store.ts`:
 2. **Address Update/Delete Cascade**:
    - Updating or deleting an `Address` cascades to **future** `CalendarEvent` records (`!isEventInPast(ev.date, ev.time)`), while **past** events preserve their historical address text untouched.
 3. **Staff Deletion vs. Deactivation**:
-   - `deletePerson(id)` checks `canDeletePerson(id)`. If the person has any assignments in `assignments`, deletion is blocked and the UI prompts to deactivate (`deactivatePerson(id)`) instead.
+   - `deletePerson(id)` checks `canDeletePerson(id)`. If the person has any assignments in `assignments`, deletion is blocked and the UI prompts to deactivate (`deactivatePerson(id)`) instead. The check looks only at `assignments`, so expenses do not block deletion. A deleted person's expenses are intentionally kept to preserve financial history. Their `personId` no longer resolves, so the UI shows `calendar:removedProfessional` in place of the name, and the amounts stay in the monthly totals.
 4. **Clear All Local Data**:
-   - `clearAllLocalData()` in `useScheduleStore` and `StorageService.clearAllLocalData()` wipes **all** local data—including `persons`, `monthParticipants`, `availabilities`, `assignments`, `dayShiftAssignments`, `events`, `addresses`, `shiftDefinitions` (set to `[]`), `shiftRules` (set to `[]`), `monthActiveShifts`, `monthActiveRules`, and `monthDailyShifts`—as well as the active user/guest snapshot.
+   - `clearAllLocalData()` in `useScheduleStore` and `StorageService.clearAllLocalData()` wipes **all** local data—including `persons`, `monthParticipants`, `availabilities`, `assignments`, `dayShiftAssignments`, `events`, `expenses`, `addresses`, `shiftDefinitions` (set to `[]`), `shiftRules` (set to `[]`), `monthActiveShifts`, `monthActiveRules`, and `monthDailyShifts`—as well as the active user/guest snapshot.
 5. **Export & Print Filenames**:
    - `getScheduleFileBaseName(month, language)` in `src/utils/export-to-excel.ts` formats the filename as:
      - `escala-<1..12>-<YYYY>` when language is Portuguese (`pt*`)
@@ -183,30 +199,37 @@ Firestore documents are stored under the `schedules` collection:
 - `schedules/_master_addresses` -> `{ addresses: Address[], updatedAt }`
 - `schedules/_master_shifts` -> `{ shifts: ShiftDefinition[], updatedAt }`
 - `schedules/_master_rules` -> `{ rules: ShiftRule[], updatedAt }`
-- `schedules/{YYYY-MM}` -> `{ month, assignments, monthParticipants, availabilities, events, dayShiftAssignments, monthDailyShifts, monthActiveShifts, monthActiveRules, updatedAt }`
+- `schedules/{YYYY-MM}` -> `{ month, schemaVersion, assignments, monthParticipants, availabilities, events, expenses, dayShiftAssignments, monthDailyShifts, monthActiveShifts, monthActiveRules, updatedAt }`
+
+Each schema v2 month document holds only that month's data. Older v1 documents hold a full copy of the dataset, so `mergeMonthDocs` uses the newest v1 document as a base and replaces each month with its v2 slice.
+
+`firestore.rules` allows any authenticated user to read and write `schedules`. The admin-only restriction on sync is enforced in the client by `CloudSyncService`.
 
 ### Sync Behavior
 - **Toggle Control**: Controlled by `CloudSyncService.isSyncEnabled()` (`localStorage` key `scale_manager_cloud_sync_enabled`). Toggling it ON in `SettingsView` immediately triggers `forcePushCloudData`.
-- **Automatic Sync on Edits**: When `CloudSyncService.isSyncEnabled()` is `true`, all store actions for people, addresses, shifts, rules, events, month participants, availabilities, and month daily shifts automatically sync to Firestore—even for future months that are not scheduled yet.
-- **Multi-Month Push & Pull Fallback**:
-  - `CloudSyncService.pushAllToCloud`, `saveSchedule`, and `forcePushCloudData` save `schedules/{month}` for all months present in `monthParticipants`, `availabilities`, `monthDailyShifts`, `monthActiveShifts`, `monthActiveRules`, `assignments`, `dayShiftAssignments`, `events`, as well as `currentMonth` and `getCurrentMonth()`.
-  - `pullCloudData` fetches `targetMonth` first and falls back to `currentMonth` / `getCurrentMonth()` if the target unscheduled month document does not yet exist in Firestore.
+- **Automatic Sync on Edits**: When `CloudSyncService.isSyncEnabled()` is `true`, all store actions for people, addresses, shifts, rules, events, expenses, month participants, availabilities, and month daily shifts automatically sync to Firestore—even for future months that are not scheduled yet. Actions rewrite only the month they touched (`syncMonthScheduleIfEnabled`).
+- **Draft Protection**: While in edit mode, `buildMonthCloudPayload` sends `savedAssignments` and `savedDayShiftAssignments`, so unsaved drafts never reach Firestore.
+- **Multi-Month Push & Pull**:
+  - `saveSchedule` and `forcePushCloudData` save `schedules/{month}` for every month referenced by the dataset (`getMonthsInScheduleData`), plus `currentMonth` and `getCurrentMonth()`.
+  - `pullCloudData` fetches every schedule document through `pullAllFromCloud`, merges them with `mergeMonthDocs`, and replaces the whole local schedule, including any draft.
 
 ---
 
-## 7. Routing Structure (`src/router/router.tsx`)
+## 7. Routing Structure (`src/router/index.tsx`)
 
-Uses `createHashRouter` (`#/...`):
+Uses `HashRouter` with `<Routes>` (`#/...`):
 - `/login` — Public login & guest profile selection page.
-- `/` — Protected by `PrivateRoute` -> redirects to `/calendario` (or `/configuracoes?tab=importar` on first onboarding when storage is empty).
-  - `/calendario` — Main schedule view (`Sidebar` + `CalendarGrid`).
+- `/` — Protected by `PrivateRoute`, renders `CalendarView`. `RootLayout` redirects to `/configuracoes?tab=importar` on first onboarding when storage is empty.
+  - `/calendario` — Alias of the main schedule view (`Sidebar` + `CalendarGrid`).
   - `/pessoas` — Global staff management (`PeopleManagementView`).
+  - `/turnos` — Global shift definitions management (`ShiftsManagementView`).
+  - `/regras` — Global validation rules management (`RulesManagementView`).
   - `/enderecos` — Global address registry (`AddressManagementView`).
   - `/configuracoes` — General settings, language, theme, cloud sync, local storage summary & clear, and Import tab (`?tab=importar`).
-  - `/configuracoes/turnos` — Global shift definitions management (`ShiftsManagementView`).
-  - `/configuracoes/regras` — Global validation rules management (`RulesManagementView`).
-  - `/configuracoes/importar` — Redirects to `/configuracoes?tab=importar`.
+  - `/importar`, `/configuracoes/importar` — Redirect to `/configuracoes?tab=importar`.
+  - `/configuracoes/turnos`, `/configuracoes/regras` — Redirect to `/turnos` and `/regras`.
   - `/usuarios` — Protected by `AdminRoute` (`UserManagementView`).
+  - Any other path redirects to `/calendario`.
 
 ---
 
@@ -218,9 +241,11 @@ Uses `createHashRouter` (`#/...`):
 2. **TypeScript Strictness**:
    - No implicit or explicit `any`. Run `pnpm lint` and `pnpm build` (`tsc -b && vite build`) to verify zero type or lint errors.
 3. **Portal-Based Popovers & Menus**:
-   - Floating menus/popovers inside scrollable or `overflow-hidden` containers (such as `CandidatePicker`, `PersonCard` shift balloon, `CalendarGrid` options menu, `Header` user menu, and `LanguageSelector`) must render via `createPortal(..., document.body)` with `position: fixed` and coordinates calculated via `computePopoverPosition` (`src/utils/popover-position.ts`) so they are never clipped by page or container boundaries.
+   - Floating menus/popovers inside scrollable or `overflow-hidden` containers (such as `CandidatePicker`, `PersonCard` shift balloon, `CalendarGrid` options menu, and `LanguageSelector`) must render via `createPortal(..., document.body)` with `position: fixed` and coordinates calculated via `computePopoverPosition` (`src/utils/popover-position.ts`) so they are never clipped by page or container boundaries.
 4. **Dark Mode Parity**:
    - Every component must include `dark:*` Tailwind classes for backgrounds, borders, and text contrast, plus `print:*` overrides where applicable.
+5. **Calendar Cell Parity**:
+   - `FullScreenCalendarModal` renders its own day cells instead of reusing `DayCell`, so calendar cell changes must be applied to both.
 
 ---
 
@@ -232,6 +257,6 @@ pnpm test:run     # Run all Vitest unit & integration tests once
 pnpm lint         # Run ESLint validation (including i18n literal checks)
 pnpm typecheck    # Run tsc --noEmit
 pnpm build        # Run tsc -b && vite build
-pnpm validate     # Run typecheck + lint + test:run
+pnpm validate     # Run typecheck + lint + test
 ```
 

@@ -222,6 +222,63 @@ describe('MonthPaymentsModal', () => {
     expect(screen.getByText('15/10/2026')).toBeInTheDocument()
   })
 
+  it('names a reimbursement of a removed professional in the active language and keeps it in the total', async () => {
+    await i18n.changeLanguage('en-US')
+
+    useScheduleStore.setState({
+      persons: [],
+      dayShiftAssignments: {},
+      assignments: {},
+      availabilities: [],
+      expenses: [
+        {
+          id: 'exp-removed',
+          date: '2026-10-05',
+          description: 'Old reimbursement',
+          amount: 120.0,
+          personId: 'removed-person',
+          createdAt: '2026-10-05T10:00:00Z',
+          updatedAt: '2026-10-05T10:00:00Z',
+        },
+      ],
+    })
+
+    render(
+      <MonthPaymentsModal
+        isOpen={true}
+        onClose={vi.fn()}
+        currentMonth="2026-10"
+      />
+    )
+
+    expect(screen.getByText('Removed professional')).toBeInTheDocument()
+    expect(screen.getByTestId('person-reimbursement-badge-removed-person')).toHaveTextContent(/120[,.]00/)
+  })
+
+  it('names a shift of a removed professional in the active language', async () => {
+    await i18n.changeLanguage('en-US')
+
+    useScheduleStore.setState({
+      persons: [],
+      dayShiftAssignments: {
+        '2026-10-01': { shift_d12: 'removed-person' },
+      },
+      assignments: {},
+      availabilities: [],
+      expenses: [],
+    })
+
+    render(
+      <MonthPaymentsModal
+        isOpen={true}
+        onClose={vi.fn()}
+        currentMonth="2026-10"
+      />
+    )
+
+    expect(screen.getByText('Removed professional')).toBeInTheDocument()
+  })
+
   it('formats expense dates in American format (MM/DD/YYYY) when language is English', async () => {
     await i18n.changeLanguage('en-US')
 
