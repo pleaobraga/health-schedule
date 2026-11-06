@@ -229,6 +229,8 @@
     "deleteConfirm": "Do you really want to delete this rule? This action is irreversible.",
     "totalRegistered": "Total Registered: {{count}}",
     "searchPlaceholder": "Search rules by name or description...",
-    "noSearchResults": "No rules found for this search"
+    "noSearchResults": "No rules found for this search",
+    "parametersTitle": "Rule Parameters",
+    "daysOfWeekTitle": "Select the days of the week"
   }
 }

@@ -712,7 +712,7 @@ export function RulesManagementView() {
                 {/* Conditional Parameter Inputs */}
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-3">
                   <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    {t('settings:rules.parametersTitle', { defaultValue: 'Parâmetros da Regra' })}
+                    {t('settings:rules.parametersTitle')}
                   </span>
 
                   {(type === 'MAX_SHIFTS_PER_PERIOD' || type === 'MAX_HOURS_PER_PERIOD') && (
@@ -866,7 +866,7 @@ export function RulesManagementView() {
                       {dayFilterType === 'SPECIFIC_DAYS' && (
                         <div>
                           <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1.5">
-                            {t('settings:rules.daysOfWeekTitle', { defaultValue: 'Selecione os dias aplicáveis:' })}
+                            {t('settings:rules.daysOfWeekTitle')}
                           </label>
                           <div className="flex flex-wrap gap-1.5">
                             {[

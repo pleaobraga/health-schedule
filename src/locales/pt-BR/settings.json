@@ -229,6 +229,8 @@
     "deleteConfirm": "Deseja realmente excluir esta regra? A ação é irreversível.",
     "totalRegistered": "Total Cadastrado: {{count}}",
     "searchPlaceholder": "Buscar regras por nome ou descrição...",
-    "noSearchResults": "Nenhuma regra encontrada para a busca"
+    "noSearchResults": "Nenhuma regra encontrada para a busca",
+    "parametersTitle": "Parâmetros da Regra",
+    "daysOfWeekTitle": "Selecione os dias aplicáveis:"
   }
 }
