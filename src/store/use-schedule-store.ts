@@ -1072,6 +1072,7 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
 
   assignPersonToShift: (dateStr, shiftId, personId) => {
     const currentDayShifts = { ...(get().dayShiftAssignments[dateStr] || {}) }
+    const replacedPersonId = currentDayShifts[shiftId]
     currentDayShifts[shiftId] = personId
 
     const updatedDayShiftAssignments = {
@@ -1079,7 +1080,11 @@ export const useScheduleStore = create<ScheduleStore>((set, get) => ({
       [dateStr]: currentDayShifts,
     }
 
-    const currentAssigned = get().assignments[dateStr] || []
+    const isReplacedStillAssigned =
+      !replacedPersonId || Object.values(currentDayShifts).includes(replacedPersonId)
+    const currentAssigned = (get().assignments[dateStr] || []).filter(
+      (id) => isReplacedStillAssigned || id !== replacedPersonId,
+    )
     const updatedAssigned = currentAssigned.includes(personId)
       ? currentAssigned
       : [...currentAssigned, personId]
