@@ -29,17 +29,30 @@ import {
   getCurrentMedicationVersion,
   getMedicationFileBaseName,
   getMedicationSpecialties,
+  getMedicationSpecialtyIndex,
   getMedicationVersionHistory,
   groupMedicationsBySource,
   matchesMedicationSpecialty,
   sortMedicationVersions,
 } from '../utils/medication-schedule-utils'
 
-import type { MedicationScheduleVersion } from '../types'
+import type { MedicationColumn, MedicationScheduleVersion } from '../types'
 import type { MedicationVersionChange } from '../utils/medication-schedule-utils'
 
 const DATE_FORMAT_PT = 'dd/MM/yyyy'
 const DATE_FORMAT_EN = 'MM/dd/yyyy'
+
+// Emerald and amber stay out: they mark the specialty and time highlights
+const SPECIALTY_TAG_CLASSES = [
+  'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+  'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+  'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800',
+  'bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800',
+  'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800',
+  'bg-fuchsia-50 dark:bg-fuchsia-950/60 text-fuchsia-700 dark:text-fuchsia-300 border-fuchsia-200 dark:border-fuchsia-800',
+  'bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
+  'bg-lime-50 dark:bg-lime-950/60 text-lime-700 dark:text-lime-300 border-lime-200 dark:border-lime-800',
+]
 
 function formatDisplayDate(dateStr: string, language: string): string {
   try {
@@ -57,6 +70,7 @@ export function MedicationsView() {
 
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const [specialtyKey, setSpecialtyKey] = useState('')
+  const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [formMode, setFormMode] = useState<'NEW' | 'CORRECTION'>('NEW')
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -101,6 +115,22 @@ export function MedicationsView() {
   const activeSpecialtyKey = specialties.some((s) => s.key === specialtyKey)
     ? specialtyKey
     : ''
+  const activeTime =
+    selectedTime && displayedVersion?.times.includes(selectedTime)
+      ? selectedTime
+      : null
+
+  const getColumnHighlight = (med: MedicationColumn, time: string | null) => {
+    if (time && time === activeTime && displayedVersion?.doses[med.id]?.[time]?.trim()) {
+      return 'time'
+    }
+    return matchesMedicationSpecialty(med, activeSpecialtyKey) ? 'specialty' : undefined
+  }
+
+  const getSpecialtyTagClass = (specialty: string) => {
+    const index = getMedicationSpecialtyIndex(specialty, medicationVersions)
+    return SPECIALTY_TAG_CLASSES[Math.max(index, 0) % SPECIALTY_TAG_CLASSES.length]
+  }
 
   const latestVersion = sortedVersions[sortedVersions.length - 1]
   const isLatestVersion = Boolean(
@@ -129,6 +159,10 @@ export function MedicationsView() {
 
   const handleBackToCurrent = () => {
     setSelectedVersionId(null)
+  }
+
+  const handleToggleTime = (time: string) => {
+    setSelectedTime(time === activeTime ? null : time)
   }
 
   const handlePrint = () => {
@@ -438,7 +472,7 @@ export function MedicationsView() {
                   >
                     <table
                       data-testid="medications-schedule-table"
-                      className="w-full text-left border-collapse"
+                      className="w-full text-center border-collapse"
                     >
                       <thead>
                         <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -449,12 +483,10 @@ export function MedicationsView() {
                             <th
                               key={med.id}
                               data-testid={`medication-col-header-${med.id}`}
-                              data-highlighted={
-                                matchesMedicationSpecialty(med, activeSpecialtyKey) || undefined
-                              }
-                              className="p-3.5 sm:p-4 min-w-[180px] max-w-[240px] border-r border-slate-200/70 dark:border-slate-800 last:border-r-0 align-top data-highlighted:bg-emerald-100 dark:data-highlighted:bg-emerald-950/70"
+                              data-highlighted={getColumnHighlight(med, activeTime)}
+                              className="p-3.5 sm:p-4 min-w-[180px] max-w-[240px] border-r border-slate-200/70 dark:border-slate-800 last:border-r-0 align-top data-[highlighted=specialty]:bg-emerald-100 dark:data-[highlighted=specialty]:bg-emerald-950/70 data-[highlighted=time]:bg-amber-100 dark:data-[highlighted=time]:bg-amber-900/50"
                             >
-                              <div className="flex flex-col items-start gap-1.5">
+                              <div className="flex flex-col items-center gap-1.5">
                                 <span className="font-extrabold text-sm text-slate-900 dark:text-white">
                                   {med.name}
                                   {med.dosage && (
@@ -469,7 +501,10 @@ export function MedicationsView() {
                                 {med.specialty && (
                                   <span
                                     data-testid={`medication-col-specialty-${med.id}`}
-                                    className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                                    className={cn(
+                                      'px-2 py-0.5 rounded-full text-[10px] font-semibold border',
+                                      getSpecialtyTagClass(med.specialty),
+                                    )}
                                   >
                                     {med.specialty}
                                   </span>
@@ -485,8 +520,18 @@ export function MedicationsView() {
                             key={time}
                             className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
                           >
-                            <td className="p-3.5 sm:p-4 font-bold text-slate-900 dark:text-white sticky left-0 z-10 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
-                              {time}
+                            <td
+                              data-highlighted={time === activeTime ? 'time' : undefined}
+                              className="p-0 font-bold text-slate-900 dark:text-white sticky left-0 z-10 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 data-[highlighted=time]:bg-amber-100 dark:data-[highlighted=time]:bg-amber-900"
+                            >
+                              <button
+                                type="button"
+                                aria-pressed={time === activeTime}
+                                onClick={() => handleToggleTime(time)}
+                                className="w-full p-3.5 sm:p-4 font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 aria-pressed:hover:bg-transparent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/50 transition-colors"
+                              >
+                                {time}
+                              </button>
                             </td>
                             {displayedVersion.medications.map((med) => {
                               const dose = displayedVersion.doses[med.id]?.[time]
@@ -494,10 +539,8 @@ export function MedicationsView() {
                                 <td
                                   key={med.id}
                                   data-testid={`medication-dose-cell-${med.id}-${time}`}
-                                  data-highlighted={
-                                    matchesMedicationSpecialty(med, activeSpecialtyKey) || undefined
-                                  }
-                                  className="p-3.5 sm:p-4 border-r border-slate-100 dark:border-slate-800/80 last:border-r-0 font-medium text-slate-700 dark:text-slate-300 text-center align-middle data-highlighted:bg-emerald-50 dark:data-highlighted:bg-emerald-950/40"
+                                  data-highlighted={getColumnHighlight(med, time)}
+                                  className="p-3.5 sm:p-4 border-r border-slate-100 dark:border-slate-800/80 last:border-r-0 font-medium text-slate-700 dark:text-slate-300 align-middle data-[highlighted=specialty]:bg-emerald-50 dark:data-[highlighted=specialty]:bg-emerald-950/40 data-[highlighted=time]:bg-amber-100 dark:data-[highlighted=time]:bg-amber-900/50"
                                 >
                                   {dose?.trim() && (
                                     <span className="px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-semibold inline-block">
@@ -748,7 +791,7 @@ export function MedicationsView() {
 
             <table
               data-testid="medication-print-table"
-              className="w-full text-left border-collapse border border-slate-300"
+              className="w-full text-center border-collapse border border-slate-300"
             >
               <thead>
                 <tr className="bg-slate-100 border-b border-slate-300 text-xs font-bold text-slate-900">
@@ -760,7 +803,7 @@ export function MedicationsView() {
                       key={med.id}
                       className="p-3 border border-slate-300 align-top"
                     >
-                      <div className="flex flex-col items-start gap-1">
+                      <div className="flex flex-col items-center gap-1">
                         <span className="font-extrabold text-sm text-slate-900">
                           {med.name}
                           {med.dosage && (
@@ -790,7 +833,7 @@ export function MedicationsView() {
                       return (
                         <td
                           key={med.id}
-                          className="p-3 border border-slate-300 font-medium text-slate-800 text-center"
+                          className="p-3 border border-slate-300 font-medium text-slate-800"
                         >
                           {dose?.trim() && <span>{dose}</span>}
                         </td>

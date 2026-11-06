@@ -50,9 +50,10 @@
    - Matrix schedule view with medications in columns and time slots (HH:mm) in rows, supporting free-text doses (e.g. "1 comprimido", "1.5 comprimidos", "2 gotas") without numeric coercion.
    - Prescription versions with a required `effectiveDate` and `explanation`, and an optional `professional`.
    - Each version can hold any number of additional information entries (`notes`), with a required text and optional date and professional. They hold history from before the first version, may be dated before it, and are not copied into new versions.
-   - Each medication can record the responsible doctor (`responsible`) and their specialty (`specialty`). The table shows the dosage beside the name and only the specialty as a tag; the doctor's name and the source stay out of it.
+   - Each medication can record the responsible doctor (`responsible`) and their specialty (`specialty`). The table shows the dosage beside the name and only the specialty as a tag, colored per specialty (`getMedicationSpecialtyIndex`) on screen and neutral in print; the doctor's name and the source stay out of it.
    - Automatic version comparison and change summaries (`MedicationVersionChange`) in version history (`getMedicationVersionHistory`), listed newest to oldest.
    - Version select in the table card, newest first, with instant return to current version (`getCurrentMedicationVersion`).
+   - Clicking a time highlights it, its doses, and the headers of the medications dosed at that time. It keeps the other columns visible, changes no data, and does not affect the print sheet.
    - Specialty filter in the table card (`getMedicationSpecialties`, `matchesMedicationSpecialty`) that highlights the matching columns on screen. It keeps the other columns visible, changes no data, and does not affect the print sheet.
    - Grouping of medications by pharmacy/origin source (`groupMedicationsBySource`).
    - Professional autocomplete suggestions (`searchMedicationProfessionals`) based on past recorded versions.

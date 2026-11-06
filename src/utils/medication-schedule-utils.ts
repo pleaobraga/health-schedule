@@ -527,6 +527,19 @@ export function getMedicationSpecialties(
   return Array.from(specialties.values())
 }
 
+export function getMedicationSpecialtyIndex(
+  specialty: string,
+  versions: MedicationScheduleVersion[],
+): number {
+  const keys = new Set(
+    sortMedicationVersions(versions).flatMap((version) =>
+      getMedicationSpecialties(version).map(({ key }) => key),
+    ),
+  )
+
+  return Array.from(keys).indexOf(normalizeItemName(specialty))
+}
+
 export function matchesMedicationSpecialty(
   medication: MedicationColumn,
   specialtyKey: string,

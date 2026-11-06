@@ -203,7 +203,7 @@ Requisitos de produto, com a forma definida pela IA executora:
 - O select de versões, o filtro de especialidade e a indicação da versão ficam no cartão da tabela, e a tabela fica logo abaixo do cabeçalho.
 - A tabela tem uma ação de tela cheia, que sai pelo mesmo botão ou pela tecla Esc.
 - Os horários usam `<input type="time">`, como nos eventos do dia, e são ordenados quando o campo perde o foco.
-- A especialidade aparece como uma etiqueta, logo abaixo do nome e da dosagem, quando existir. O nome do médico fica no cadastro e no histórico de mudanças, fora da tabela.
+- A especialidade aparece como uma etiqueta, logo abaixo do nome e da dosagem, quando existir. Cada especialidade tem sua cor na tela, a mesma em todas as versões, e a etiqueta impressa é neutra. O nome do médico fica no cadastro e no histórico de mudanças, fora da tabela.
 - A dosagem aparece na frente do nome do medicamento quando existir.
 - A origem não aparece na tabela, na tela ou na impressão; ela fica no cadastro e no agrupamento por origem.
 - Cada célula aceita texto livre, como "1.5 comprimidos" ou "2 gotas".
@@ -213,6 +213,7 @@ Requisitos de produto, com a forma definida pela IA executora:
 - O usuário vê a lista de versões, da mais recente para a mais antiga, com data, profissional, explicação e resumo das mudanças.
 - Escolher uma versão exibe a tabela dela.
 - Um select no cartão da tabela lista as versões, da mais recente para a mais antiga, e exibe a escolhida. Cada opção mostra a data e, quando existir, o profissional.
+- Clicar em um horário destaca esse horário, as doses da linha e os cabeçalhos dos medicamentos com dose nele. Clicar de novo tira o destaque, e clicar em outro horário troca o destaque. O destaque some quando a versão exibida não tem o horário, não altera nenhum dado e não afeta a impressão.
 - Um filtro no cartão da tabela lista as especialidades da versão exibida, sem repetir grafias, e destaca as colunas dos medicamentos da especialidade escolhida. As demais colunas continuam visíveis. O filtro não aparece quando nenhum medicamento tem especialidade, volta para "Todas" quando a versão exibida não tem a especialidade escolhida, não altera nenhum dado e não afeta a impressão.
 - Olhar uma versão antiga não altera nenhum dado, e há um caminho direto de volta à vigente.
 
@@ -241,6 +242,7 @@ Requisitos de produto, com a forma definida pela IA executora:
 | Versão vigente | `getCurrentMedicationVersion` |
 | Versão em uma data | `getMedicationVersionAt` |
 | Filtro por especialidade | `getMedicationSpecialties`, `matchesMedicationSpecialty` |
+| Cor da etiqueta de especialidade | `getMedicationSpecialtyIndex` |
 | Lista de versões com resumo | `getMedicationVersionHistory` |
 | Agrupar por origem | `groupMedicationsBySource` |
 | Sugerir profissionais | `searchMedicationProfessionals` |
@@ -322,6 +324,10 @@ export function groupMedicationsBySource(
 export function getMedicationSpecialties(
   version: Pick<MedicationScheduleVersion, 'medications'>,
 ): MedicationSpecialty[]
+export function getMedicationSpecialtyIndex(
+  specialty: string,
+  versions: MedicationScheduleVersion[],
+): number
 export function matchesMedicationSpecialty(
   medication: MedicationColumn,
   specialtyKey: string,
@@ -421,6 +427,8 @@ Testes de interface:
 - `router.test.tsx`: a rota `/medicamentos` abre a tela
 - Abertura na versão vigente, troca de versão pelo select e volta à vigente
 - Filtro de especialidade: opções sem repetição, destaque das colunas, volta para "Todas" e impressão sem destaque
+- Destaque por horário: linha e cabeçalhos, troca, remoção e prioridade sobre a especialidade
+- Etiquetas: cor por especialidade, igual entre grafias e entre versões
 - Nova versão começa com o conteúdo vigente e com data, profissional e explicação vazios
 - Medicamento aparece com e sem dosagem
 - Célula salva texto livre

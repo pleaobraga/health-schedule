@@ -5,6 +5,7 @@ import {
   getCurrentMedicationVersion,
   getMedicationFileBaseName,
   getMedicationSpecialties,
+  getMedicationSpecialtyIndex,
   getMedicationVersionAt,
   getMedicationVersionChanges,
   getMedicationVersionHistory,
@@ -813,6 +814,29 @@ describe('medication-schedule-utils', () => {
       expect(
         matchesMedicationSpecialty({ id: 'a', name: 'A', specialty }, key),
       ).toBe(expected)
+    })
+  })
+
+  describe('getMedicationSpecialtyIndex', () => {
+    const versions = [
+      version('v2', '2026-02-01', {
+        medications: [
+          { id: 'a', name: 'A', specialty: 'Urologista' },
+          { id: 'b', name: 'B', specialty: 'Psiquiatra' },
+        ],
+      }),
+      version('v1', '2026-01-01', {
+        medications: [{ id: 'c', name: 'C', specialty: 'Psiquiatra' }],
+      }),
+    ]
+
+    it.each([
+      ['the oldest version first', 'Psiquiatra', 0],
+      ['a later version after it', 'Urologista', 1],
+      ['another spelling of a specialty', ' PSIQUIÁTRA ', 0],
+      ['an unknown specialty', 'Cardiologista', -1],
+    ])('numbers %s', (_case, specialty, expected) => {
+      expect(getMedicationSpecialtyIndex(specialty, versions)).toBe(expected)
     })
   })
 })

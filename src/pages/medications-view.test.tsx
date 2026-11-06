@@ -600,25 +600,201 @@ describe('MedicationsView', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('centers the dose and leaves a cell without a dose blank, on screen and in print', () => {
+  it('centers the table and leaves a cell without a dose blank, on screen and in print', () => {
     useScheduleStore.setState({ medicationVersions: [version2] })
 
     render(<MedicationsView />)
 
-    const doseCell = screen.getByTestId('medication-dose-cell-med_lamo-08:00')
-    expect(doseCell).toHaveTextContent('1.5 comprimidos')
-    expect(doseCell).toHaveClass('text-center')
+    expect(screen.getByTestId('medications-schedule-table')).toHaveClass(
+      'text-center',
+    )
+    expect(
+      screen.getByTestId('medication-col-header-med_lamo').firstElementChild,
+    ).toHaveClass('items-center')
+    expect(
+      screen.getByTestId('medication-dose-cell-med_lamo-08:00'),
+    ).toHaveTextContent('1.5 comprimidos')
     expect(
       screen.getByTestId('medication-dose-cell-med_vitd-20:00'),
     ).toBeEmptyDOMElement()
 
     const printTable = screen.getByTestId('medication-print-table')
+    expect(printTable).toHaveClass('text-center')
+    expect(
+      within(printTable).getByText('Lamotrigina').parentElement,
+    ).toHaveClass('items-center')
     const printRow = within(printTable).getByText('20:00').closest('tr')
     const printCells = printRow?.querySelectorAll('td') as NodeListOf<HTMLTableCellElement>
     // Columns: time, Lamotrigina, Vitamina D, Melatonina
     expect(printCells[1]).toHaveTextContent('1 comprimido')
-    expect(printCells[1]).toHaveClass('text-center')
     expect(printCells[2]).toBeEmptyDOMElement()
+  })
+
+  describe('time highlight', () => {
+    const timeButton = (time: string) =>
+      within(screen.getByTestId('medications-schedule-table')).getByRole(
+        'button',
+        { name: time },
+      )
+    const cellHighlight = (medicationId: string, time: string) =>
+      screen.getByTestId(`medication-dose-cell-${medicationId}-${time}`).dataset
+        .highlighted
+    const headerHighlight = (medicationId: string) =>
+      screen.getByTestId(`medication-col-header-${medicationId}`).dataset
+        .highlighted
+
+    it('highlights the doses and medications of the clicked time only', () => {
+      useScheduleStore.setState({ medicationVersions: [version2] })
+
+      render(<MedicationsView />)
+
+      fireEvent.click(timeButton('08:00'))
+
+      expect(timeButton('08:00')).toHaveAttribute('aria-pressed', 'true')
+      expect(timeButton('20:00')).toHaveAttribute('aria-pressed', 'false')
+      expect(cellHighlight('med_lamo', '08:00')).toBe('time')
+      expect(cellHighlight('med_vitd', '08:00')).toBe('time')
+      expect(headerHighlight('med_lamo')).toBe('time')
+      expect(headerHighlight('med_vitd')).toBe('time')
+      // Melatonina has no dose at 08:00
+      expect(cellHighlight('med_mela', '08:00')).toBeUndefined()
+      expect(headerHighlight('med_mela')).toBeUndefined()
+      // Same medication, another time
+      expect(cellHighlight('med_lamo', '20:00')).toBeUndefined()
+    })
+
+    it('clears the highlight on a second click and moves it on another time', () => {
+      useScheduleStore.setState({ medicationVersions: [version2] })
+
+      render(<MedicationsView />)
+
+      fireEvent.click(timeButton('08:00'))
+      fireEvent.click(timeButton('20:00'))
+
+      expect(timeButton('08:00')).toHaveAttribute('aria-pressed', 'false')
+      expect(cellHighlight('med_lamo', '08:00')).toBeUndefined()
+      expect(cellHighlight('med_lamo', '20:00')).toBe('time')
+      // Vitamina D has no dose at 20:00
+      expect(headerHighlight('med_vitd')).toBeUndefined()
+
+      fireEvent.click(timeButton('20:00'))
+
+      expect(timeButton('20:00')).toHaveAttribute('aria-pressed', 'false')
+      expect(cellHighlight('med_lamo', '20:00')).toBeUndefined()
+      expect(headerHighlight('med_lamo')).toBeUndefined()
+    })
+
+    it('drops the highlight when the displayed version lacks that time', () => {
+      useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+      render(<MedicationsView />)
+
+      fireEvent.click(timeButton('22:00'))
+      expect(headerHighlight('med_mela')).toBe('time')
+
+      fireEvent.change(screen.getByTestId('medications-version-select'), {
+        target: { value: 'medver_1' },
+      })
+
+      expect(headerHighlight('med_lamo')).toBeUndefined()
+      expect(headerHighlight('med_vitd')).toBeUndefined()
+    })
+
+    it('wins over the specialty highlight only where both apply', () => {
+      useScheduleStore.setState({
+        medicationVersions: [
+          {
+            ...version2,
+            medications: [
+              { id: 'med_lamo', name: 'Lamotrigina', specialty: 'Psiquiatra' },
+              { id: 'med_vitd', name: 'Vitamina D' },
+              { id: 'med_mela', name: 'Melatonina', specialty: 'Psiquiatra' },
+            ],
+          },
+        ],
+      })
+
+      render(<MedicationsView />)
+
+      fireEvent.change(screen.getByTestId('medications-specialty-filter'), {
+        target: { value: 'psiquiatra' },
+      })
+      fireEvent.click(timeButton('08:00'))
+
+      expect(cellHighlight('med_lamo', '08:00')).toBe('time')
+      expect(cellHighlight('med_lamo', '20:00')).toBe('specialty')
+      expect(cellHighlight('med_mela', '08:00')).toBe('specialty')
+      expect(headerHighlight('med_mela')).toBe('specialty')
+    })
+
+    it('leaves the print sheet and the stored data untouched', () => {
+      useScheduleStore.setState({ medicationVersions: [version2] })
+
+      render(<MedicationsView />)
+
+      fireEvent.click(timeButton('08:00'))
+
+      expect(
+        screen
+          .getByTestId('medication-print-table')
+          .querySelector('[data-highlighted]'),
+      ).toBeNull()
+      expect(useScheduleStore.getState().medicationVersions).toEqual([version2])
+    })
+  })
+
+  describe('specialty tag colors', () => {
+    const tagClass = (medicationId: string) =>
+      screen.getByTestId(`medication-col-specialty-${medicationId}`).className
+
+    it('gives different specialties different colors and spellings of one specialty the same color', () => {
+      useScheduleStore.setState({
+        medicationVersions: [
+          {
+            ...version2,
+            medications: [
+              { id: 'med_lamo', name: 'Lamotrigina', specialty: 'Psiquiatra' },
+              { id: 'med_vitd', name: 'Vitamina D', specialty: 'Urologista' },
+              { id: 'med_mela', name: 'Melatonina', specialty: 'psiquiatra' },
+            ],
+          },
+        ],
+      })
+
+      render(<MedicationsView />)
+
+      expect(tagClass('med_lamo')).not.toBe(tagClass('med_vitd'))
+      expect(tagClass('med_lamo')).toBe(tagClass('med_mela'))
+    })
+
+    it('keeps the color of a specialty when another version is displayed', () => {
+      useScheduleStore.setState({
+        medicationVersions: [
+          {
+            ...version1,
+            medications: [
+              { id: 'med_lamo', name: 'Lamotrigina', specialty: 'Neurologista' },
+              { id: 'med_vitd', name: 'Vitamina D', specialty: 'Urologista' },
+            ],
+          },
+          {
+            ...version2,
+            medications: [
+              { id: 'med_vitd', name: 'Vitamina D', specialty: 'Urologista' },
+            ],
+          },
+        ],
+      })
+
+      render(<MedicationsView />)
+      const currentColor = tagClass('med_vitd')
+
+      fireEvent.change(screen.getByTestId('medications-version-select'), {
+        target: { value: 'medver_1' },
+      })
+
+      expect(tagClass('med_vitd')).toBe(currentColor)
+    })
   })
 
   describe('specialty filter', () => {
@@ -636,7 +812,7 @@ describe('MedicationsView', () => {
       ['med_lamo', 'med_vitd', 'med_mela', 'med_uro'].filter(
         (id) =>
           screen.getByTestId(`medication-col-header-${id}`).dataset
-            .highlighted === 'true',
+            .highlighted === 'specialty',
       )
 
     it('offers all specialties plus the ones of the displayed version, without repeats', () => {
@@ -666,11 +842,11 @@ describe('MedicationsView', () => {
       expect(
         screen.getByTestId('medication-dose-cell-med_lamo-08:00').dataset
           .highlighted,
-      ).toBe('true')
+      ).toBe('specialty')
       expect(
         screen.getByTestId('medication-dose-cell-med_mela-08:00').dataset
           .highlighted,
-      ).toBe('true')
+      ).toBe('specialty')
       expect(
         screen.getByTestId('medication-dose-cell-med_vitd-08:00').dataset
           .highlighted,
