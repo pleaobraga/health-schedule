@@ -24,6 +24,14 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'json-summary', 'json'],
+      include: ['src/**'],
+      exclude: ['src/**/*.stories.tsx', 'src/**/*.{test,spec}.{ts,tsx}', 'src/test/**', 'src/locales/**'],
+      // Floors against regressions, not targets
+      thresholds: { lines: 80, branches: 70 },
+    },
     // Fixed values so tests never depend on .env.local. Guest mode without Firebase has its own spec.
     env: {
       VITE_FIREBASE_API_KEY: 'test-api-key',
