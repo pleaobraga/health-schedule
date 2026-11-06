@@ -8,7 +8,6 @@ import { MonthShiftConfigModal } from './modals/month-shift-config-modal'
 import { GlobalPersonModal } from './people-management/global-person-modal'
 import { ItemMaintenance } from './purchases/item-maintenance'
 import { PurchaseForm } from './purchases/purchase-form'
-import { PersonModal } from './sidebar/person-modal'
 import { DatePicker } from './ui/date-picker'
 import { Select } from './ui/select'
 import { CreateUserModal } from './users/create-user-modal'
@@ -24,8 +23,6 @@ import ptPurchases from '../locales/pt-BR/purchases.json'
 import { AddressManagementView } from '../pages/address-management-view'
 import { LoginPage } from '../pages/login-page'
 import { useScheduleStore } from '../store/use-schedule-store'
-
-const NO_DAYS: number[] = []
 
 const labelTextOf = (input: Element): string => {
   let parent = input.parentElement
@@ -285,18 +282,6 @@ describe('invalid required fields', () => {
   })
 
   it.each([
-    [
-      'PersonModal',
-      () => (
-        <PersonModal
-          isOpen
-          onClose={vi.fn()}
-          currentMonth="2026-10"
-          initialAvailableDays={NO_DAYS}
-          onSave={vi.fn()}
-        />
-      ),
-    ],
     ['GlobalPersonModal', () => <GlobalPersonModal isOpen onClose={vi.fn()} onSave={vi.fn()} />],
   ])('flags the empty name in %s', (_, renderModal) => {
     render(renderModal())

@@ -267,22 +267,5 @@
     "removeRateTooltip": "Remove rate for this group",
     "currencySymbol": "R$",
     "calendarRemovalWarning": "Warning: If this availability is already linked to the calendar, it will be removed from the schedule upon saving changes."
-  },
-  "personModal": {
-    "editTitle": "Edit Person",
-    "newTitle": "Add New Person",
-    "nameRequired": "Please enter the person's name.",
-    "deleteTitle": "Remove professional",
-    "deleteConfirm": "Are you sure you want to remove {{name}}? This action will also remove associated schedules.",
-    "nameLabel": "Full Name / Identification *",
-    "namePlaceholder": "E.g.: Dr. Camila Santos",
-    "colorLabel": "Identification Color",
-    "customColor": "Custom Color",
-    "pickColorTooltip": "Select custom color",
-    "colorPickerAria": "Select color",
-    "delete": "Delete",
-    "cancel": "Cancel",
-    "save": "Save Changes",
-    "create": "Register Person"
   }
 }

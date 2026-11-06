@@ -267,22 +267,5 @@
     "removeRateTooltip": "Remover valor deste grupo",
     "currencySymbol": "R$",
     "calendarRemovalWarning": "Atenção: Se a disponibilidade já estiver vinculada ao calendário, ela será removida da escala ao salvar as alterações."
-  },
-  "personModal": {
-    "editTitle": "Editar Pessoa",
-    "newTitle": "Adicionar Nova Pessoa",
-    "nameRequired": "Por favor, informe o nome da pessoa.",
-    "deleteTitle": "Remover profissional",
-    "deleteConfirm": "Tem certeza que deseja remover {{name}}? Esta ação removerá também as escalas associadas.",
-    "nameLabel": "Nome Completo / Identificação *",
-    "namePlaceholder": "Ex: Dra. Camila Santos",
-    "colorLabel": "Cor de Identificação",
-    "customColor": "Cor Personalizada",
-    "pickColorTooltip": "Selecionar cor personalizada",
-    "colorPickerAria": "Selecionar cor",
-    "delete": "Excluir",
-    "cancel": "Cancelar",
-    "save": "Salvar Alterações",
-    "create": "Cadastrar Pessoa"
   }
 }
