@@ -9,6 +9,9 @@ import { ConfirmDialog } from '../common/confirm-dialog'
 
 import type { Person } from '../../types'
 
+// Stable default: a new array on each render would retrigger the effect below forever
+const NO_AVAILABLE_DAYS: number[] = []
+
 export interface PersonModalProps {
   isOpen: boolean
   onClose: () => void
@@ -24,7 +27,7 @@ export function PersonModal({
   onClose,
   personToEdit,
   currentMonth,
-  initialAvailableDays = [],
+  initialAvailableDays = NO_AVAILABLE_DAYS,
   onSave,
   onDelete,
 }: PersonModalProps) {

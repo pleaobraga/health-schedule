@@ -1,15 +1,20 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, it, expect, beforeEach } from 'vitest'
 
 import { Sidebar } from './sidebar'
 import { StorageService } from '../../services/storage-service'
 import { useScheduleStore } from '../../store/use-schedule-store'
 
+function CurrentPath() {
+  return <output data-testid="current-path">{useLocation().pathname}</output>
+}
+
 const renderSidebar = () =>
   render(
     <MemoryRouter>
       <Sidebar />
+      <CurrentPath />
     </MemoryRouter>
   )
 
@@ -223,5 +228,32 @@ describe('Sidebar (month panel)', () => {
     expect(screen.getByTestId('drag-handle-p1')).toHaveAccessibleName(
       'Arrastar para reordenar Dra. Camila Santos',
     )
+  })
+
+  it.each([
+    ['Gerenciar Turnos', '/configuracoes/turnos'],
+    ['Gerenciar Regras', '/configuracoes/regras'],
+    ['Gerenciar Pessoas', '/pessoas'],
+  ])('opens the registry screen from "%s"', (label, path) => {
+    renderSidebar()
+
+    fireEvent.click(screen.getByRole('button', { name: label }))
+
+    expect(screen.getByTestId('current-path')).toHaveTextContent(path)
+  })
+
+  it('counts the days each person works in the current month only', () => {
+    useScheduleStore.setState({
+      assignments: {
+        '2026-10-01': ['p1'],
+        '2026-10-02': ['p1', 'p2'],
+        '2026-11-01': ['p1'],
+      },
+    })
+
+    renderSidebar()
+
+    expect(screen.getByText('2 trab.')).toBeInTheDocument()
+    expect(screen.getByText('1 trab.')).toBeInTheDocument()
   })
 })

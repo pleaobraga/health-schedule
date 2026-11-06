@@ -1,9 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { RulesManagementView } from './rules-management-view'
 import { useScheduleStore } from '../../store/use-schedule-store'
+
+import type { ShiftRule } from '../../types'
 
 const renderRulesView = () => {
   return render(
@@ -195,5 +197,173 @@ describe('RulesManagementView', () => {
     expect(screen.getByTestId('drag-handle-rule_max_1_day')).toHaveAccessibleName(
       'Arrastar para reordenar Máximo 1 turno por dia',
     )
+  })
+
+  const storeRule = (overrides: Partial<ShiftRule>) => {
+    const rule: ShiftRule = {
+      id: 'rule_test',
+      name: 'Regra de teste',
+      type: 'MAX_SHIFTS_PER_PERIOD',
+      enabledByDefault: true,
+      severity: 'WARNING',
+      parameters: {},
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-01',
+      ...overrides,
+    }
+    useScheduleStore.setState({ shiftRules: [rule] })
+  }
+
+  const openEditForm = () => {
+    fireEvent.click(screen.getByTitle('Editar'))
+    return screen.getByTestId('rule-form')
+  }
+
+  describe('trigger criterion', () => {
+    it.each<[string, Pick<ShiftRule, 'type' | 'parameters'>, RegExp]>([
+      [
+        'shifts per week',
+        { type: 'MAX_SHIFTS_PER_PERIOD', parameters: { scope: 'WEEK', maxOccurrences: 3 } },
+        /mais de 3 plantão\(ões\) na mesma semana/,
+      ],
+      [
+        'shifts per month',
+        { type: 'MAX_SHIFTS_PER_PERIOD', parameters: { scope: 'MONTH', maxOccurrences: 9 } },
+        /mais de 9 plantão\(ões\) no mesmo mês/,
+      ],
+      [
+        'shifts with default values',
+        { type: 'MAX_SHIFTS_PER_PERIOD', parameters: {} },
+        /mais de 1 plantão\(ões\) no mesmo dia/,
+      ],
+      [
+        'hours per day',
+        { type: 'MAX_HOURS_PER_PERIOD', parameters: { scope: 'DAY', maxHours: 12 } },
+        /no mesmo dia ultrapassar 12h/,
+      ],
+      [
+        'hours per week',
+        { type: 'MAX_HOURS_PER_PERIOD', parameters: { scope: 'WEEK', maxHours: 44 } },
+        /na semana ultrapassar 44h/,
+      ],
+      [
+        'hours per month',
+        { type: 'MAX_HOURS_PER_PERIOD', parameters: { scope: 'MONTH', maxHours: 180 } },
+        /no mês ultrapassar 180h/,
+      ],
+      ['minimum rest', { type: 'MIN_REST_HOURS', parameters: { minRestHours: 36 } }, /menor que 36h/],
+      [
+        'consecutive days',
+        { type: 'CONSECUTIVE_DAYS_LIMIT', parameters: { consecutiveDaysLimit: 2 } },
+        /mais de 2 dia\(s\) seguidos/,
+      ],
+      [
+        'people per shift',
+        { type: 'MAX_PEOPLE_PER_SHIFT', parameters: { maxPeople: 2 } },
+        /mais de 2 profissional\(is\)/,
+      ],
+      [
+        'people per shift from an older rule',
+        { type: 'MAX_PEOPLE_PER_SHIFT', parameters: { maxOccurrences: 4 } },
+        /mais de 4 profissional\(is\)/,
+      ],
+      [
+        'exact daily hours',
+        { type: 'DAILY_SHIFT_HOURS', parameters: { targetDailyHours: 24, dayFilterType: 'WEEKENDS' } },
+        /diferente de exatamente 24h em finais de semana/,
+      ],
+      [
+        'maximum daily hours',
+        {
+          type: 'DAILY_SHIFT_HOURS',
+          parameters: { targetDailyHours: 12, dailyHoursComparison: 'MAX', dayFilterType: 'WEEKDAYS' },
+        },
+        /ultrapassar 12h em dias de semana/,
+      ],
+      [
+        'minimum daily hours',
+        { type: 'DAILY_SHIFT_HOURS', parameters: { targetDailyHours: 6, dailyHoursComparison: 'MIN' } },
+        /menor que 6h em todos os dias/,
+      ],
+    ])('explains %s', (_case, rule, expected) => {
+      storeRule(rule)
+
+      renderRulesView()
+
+      expect(screen.getByText(expected)).toBeInTheDocument()
+    })
+  })
+
+  describe('editing a rule', () => {
+    it('fills the form with the rule and saves the changes on the same rule', () => {
+      storeRule({ name: 'Antiga', description: 'Texto', parameters: { minRestHours: 36 }, type: 'MIN_REST_HOURS' })
+      renderRulesView()
+
+      const form = openEditForm()
+      expect(within(form).getByDisplayValue('Texto')).toBeInTheDocument()
+      expect(within(form).getByDisplayValue('36')).toBeInTheDocument()
+
+      fireEvent.change(within(form).getByDisplayValue('Antiga'), { target: { value: ' Nova ' } })
+      fireEvent.click(within(form).getByRole('button', { name: 'Salvar Regra' }))
+
+      const { shiftRules } = useScheduleStore.getState()
+      expect(shiftRules).toHaveLength(1)
+      expect(shiftRules[0]).toMatchObject({
+        id: 'rule_test',
+        name: 'Nova',
+        description: 'Texto',
+        parameters: { minRestHours: 36 },
+      })
+    })
+
+    it('keeps the specific days of a daily hours rule', () => {
+      storeRule({
+        type: 'DAILY_SHIFT_HOURS',
+        parameters: {
+          targetDailyHours: 12,
+          dailyHoursComparison: 'MIN',
+          dayFilterType: 'SPECIFIC_DAYS',
+          specificDaysOfWeek: [1, 3],
+        },
+      })
+      renderRulesView()
+
+      fireEvent.click(within(openEditForm()).getByRole('button', { name: 'Salvar Regra' }))
+
+      expect(useScheduleStore.getState().shiftRules[0]?.parameters).toEqual({
+        targetDailyHours: 12,
+        dailyHoursComparison: 'MIN',
+        dayFilterType: 'SPECIFIC_DAYS',
+        specificDaysOfWeek: [1, 3],
+      })
+    })
+
+    it('limits the rule to the chosen shifts, and removes the limit when unchosen', () => {
+      storeRule({ type: 'MIN_REST_HOURS', parameters: { minRestHours: 12 } })
+      renderRulesView()
+
+      let form = openEditForm()
+      fireEvent.click(within(form).getByRole('button', { name: /Plantão Diurno 12h \(D12\)/ }))
+      fireEvent.click(within(form).getByRole('button', { name: 'Salvar Regra' }))
+      expect(useScheduleStore.getState().shiftRules[0]?.parameters.targetShiftIds).toEqual([
+        'shift_d12',
+      ])
+
+      form = openEditForm()
+      fireEvent.click(within(form).getByRole('button', { name: /Plantão Diurno 12h \(D12\)/ }))
+      fireEvent.click(within(form).getByRole('button', { name: 'Salvar Regra' }))
+      expect(useScheduleStore.getState().shiftRules[0]?.parameters.targetShiftIds).toBeUndefined()
+    })
+
+    it('does not save a rule with a blank name', () => {
+      storeRule({ name: 'Antiga' })
+      renderRulesView()
+
+      const form = openEditForm()
+      fireEvent.change(within(form).getByDisplayValue('Antiga'), { target: { value: '   ' } })
+      fireEvent.submit(form)
+
+      expect(useScheduleStore.getState().shiftRules[0]?.name).toBe('Antiga')
+    })
   })
 })

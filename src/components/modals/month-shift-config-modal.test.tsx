@@ -122,4 +122,97 @@ describe('MonthShiftConfigModal', () => {
     const defs = useScheduleStore.getState().shiftDefinitions
     expect(defs.some((d) => d.name === 'Plantão Fim de Semana 24h' && d.durationHours === 24)).toBe(true)
   })
+
+  const openModal = () => {
+    const handleClose = vi.fn()
+    render(
+      <MonthShiftConfigModal isOpen={true} onClose={handleClose} currentMonth={currentMonth} />,
+    )
+    return handleClose
+  }
+
+  const save = () => fireEvent.click(screen.getByRole('button', { name: /salvar configuração/i }))
+  const savedDays = (shiftId = 'shift_d12') =>
+    useScheduleStore.getState().monthDailyShifts[currentMonth]?.[shiftId]
+
+  // October 2026 starts on a Thursday and has 31 days
+  it.each([
+    ['Dias Úteis', 22, [1, 2, 5]],
+    ['Finais de Semana', 9, [3, 4, 10]],
+    ['Pares', 15, [2, 4, 6]],
+    ['Ímpares', 16, [1, 3, 5]],
+  ])('selects the days of the "%s" shortcut', (label, count, firstDays) => {
+    openModal()
+
+    fireEvent.click(screen.getByRole('button', { name: label }))
+    save()
+
+    expect(savedDays()).toHaveLength(count)
+    expect(savedDays()?.slice(0, 3)).toEqual(firstDays)
+  })
+
+  it('clears the selected days', () => {
+    useScheduleStore.setState({ monthDailyShifts: { [currentMonth]: { shift_d12: [1, 2] } } })
+    openModal()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
+    save()
+
+    expect(savedDays()).toEqual([])
+  })
+
+  it('toggles a single day and keeps the days in order', () => {
+    useScheduleStore.setState({ monthDailyShifts: { [currentMonth]: { shift_d12: [1, 20] } } })
+    openModal()
+
+    fireEvent.click(screen.getByRole('button', { name: /^10/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^1(?!\d)/ }))
+    save()
+
+    expect(savedDays()).toEqual([10, 20])
+  })
+
+  it('changes the days of the shift picked in the list only', () => {
+    openModal()
+
+    fireEvent.click(screen.getAllByText('N12')[0] as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Pares' }))
+    save()
+
+    expect(savedDays('shift_n12')).toHaveLength(15)
+    expect(savedDays('shift_d12')).toEqual([])
+  })
+
+  it('removes a shift from the month and moves to the next one', () => {
+    openModal()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Remover plantão deste mês' })[0] as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Pares' }))
+    save()
+
+    expect(savedDays('shift_d12')).toBeUndefined()
+    expect(savedDays('shift_n12')).toHaveLength(15)
+  })
+
+  it('adds back a registered shift that is out of the month', () => {
+    useScheduleStore.setState({ monthDailyShifts: { [currentMonth]: { shift_d12: [1] } } })
+    openModal()
+
+    fireEvent.click(screen.getByRole('button', { name: /Plantão Noturno 12h/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ímpares' }))
+    save()
+
+    expect(savedDays('shift_n12')).toHaveLength(16)
+    expect(savedDays('shift_d12')).toEqual([1])
+  })
+
+  it('does not save anything when closed without saving', () => {
+    const handleClose = openModal()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pares' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+
+    expect(handleClose).toHaveBeenCalled()
+    expect(savedDays()).toBeUndefined()
+  })
 })

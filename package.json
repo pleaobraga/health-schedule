@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:firebase": "node --env-file-if-exists=.env.local scripts/firebase-smoke.mjs",
     "validate": "pnpm typecheck && pnpm lint && pnpm test",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",

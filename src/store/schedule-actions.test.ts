@@ -271,7 +271,7 @@ describe('schedule actions', () => {
     it('copies a shift with a new id, marked name and code', () => {
       store().duplicateShiftDefinition('d12')
 
-      const copy = store().shiftDefinitions.at(-1)
+      const copy = store().shiftDefinitions[2]
       expect(store().shiftDefinitions).toHaveLength(3)
       expect(copy).toMatchObject({ name: 'Turno d12 (Cópia)', code: 'D12C' })
       expect(copy?.id).not.toBe('d12')
@@ -281,7 +281,7 @@ describe('schedule actions', () => {
     it('copies a rule with a new id and marked name', () => {
       store().duplicateShiftRule('r1')
 
-      const copy = store().shiftRules.at(-1)
+      const copy = store().shiftRules[2]
       expect(store().shiftRules).toHaveLength(3)
       expect(copy).toMatchObject({ name: 'Regra r1 (Cópia)', type: 'MAX_SHIFTS_PER_PERIOD' })
       expect(copy?.id).not.toBe('r1')
