@@ -14,6 +14,8 @@ pnpm lint                                      # pnpm lint:fix to autofix
 pnpm test:run                                  # all tests once (pnpm test:watch for watch mode)
 pnpm vitest run src/utils/date-utils.test.ts   # one test file
 pnpm vitest run <file> -t 'test name'          # tests matching a name
+pnpm test:e2e                                  # Playwright (pnpm test:e2e:ui for the UI runner)
+pnpm exec playwright test e2e/print.spec.ts    # one E2E spec
 pnpm build                                     # tsc -b && vite build
 pnpm storybook                                 # Storybook on :6006
 ```
@@ -52,6 +54,8 @@ The app runs in guest mode without Firebase credentials: `isFirebaseConfigured` 
 - Routes are in [src/router/index.tsx](src/router/index.tsx) with `HashRouter`, which GitHub Pages requires. `route-config.ts` is metadata only.
 
 **Testing.** Vitest uses jsdom and globals. `src/test/setup.ts` forces `pt-BR` and clears `localStorage` after each test. Use `TestAppRouter` for routed tests; it defaults to an authenticated admin. Both `.test` and `.spec` suffixes exist.
+
+**E2E.** Specs live in `e2e/`, and Vitest only reads `src`. They run the production build with no Firebase values, so everything goes through guest mode, on desktop and on a 390px viewport (`mobile` project in `playwright.config.ts`). The fixtures in `e2e/support/fixtures.ts` fix the date at 2026-06-15 and fail a test on any uncaught page error or request that leaves localhost. Import from there, not from `@playwright/test`. Use E2E for what jsdom can't see: real CSS, scrolling, downloads, reloads, and print. Run `pnpm exec playwright install chromium` once. CI runs them in the `e2e` job, which only warns for now. Firebase login and sync stay out of E2E.
 
 ## Conventions
 

@@ -175,6 +175,7 @@ _(Note: Without these values the app runs in guest mode, entirely on local stora
 | `pnpm build`     | Compiles TypeScript and creates optimized production bundle |
 | `pnpm test`      | Runs unit and integration tests with Vitest                 |
 | `pnpm test:run`  | Executes tests once in headless mode                        |
+| `pnpm test:e2e`  | Runs the Playwright E2E specs in `e2e/`                     |
 | `pnpm lint`      | Runs ESLint flat config validation                          |
 | `pnpm lint:fix`  | Automatically fixes linting and formatting issues           |
 | `pnpm typecheck` | Validates TypeScript types across the codebase              |

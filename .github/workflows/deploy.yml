@@ -65,6 +65,47 @@ jobs:
         with:
           path: './dist'
 
+  # Por enquanto só avisa: uma falha aqui não impede o deploy.
+  # Para bloquear, remova continue-on-error e use needs: [build, e2e] no job deploy.
+  e2e:
+    name: Testes E2E (Playwright)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: 1. Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: 2. Setup do pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.14.0
+          run_install: false
+
+      - name: 3. Setup do Node.js com cache do pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: 4. Instalação estrita de dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: 5. Instalação do Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: 6. Execução dos testes E2E
+        run: pnpm test:e2e
+
+      - name: 7. Upload do relatório e dos traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
   deploy:
     name: Publicação no GitHub Pages
     environment:

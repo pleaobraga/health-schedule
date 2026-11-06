@@ -12,7 +12,7 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   [
-    globalIgnores(['dist', 'storybook-static']),
+    globalIgnores(['dist', 'dist-e2e', 'playwright-report', 'storybook-static', 'test-results']),
     {
       files: ['**/*.{ts,tsx}'],
       extends: [

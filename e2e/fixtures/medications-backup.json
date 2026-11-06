@@ -1,0 +1,138 @@
+{
+  "people": [],
+  "medicationVersions": [
+    {
+      "id": "medver_e2e_1",
+      "effectiveDate": "2026-03-01",
+      "professional": "Dra. Marina",
+      "explanation": "Início do tratamento",
+      "medications": [
+        {
+          "id": "med_lamo",
+          "name": "Lamotrigina",
+          "source": "Farmácia Popular",
+          "dosage": "100 mg",
+          "specialty": "Neurologista"
+        },
+        {
+          "id": "med_quet",
+          "name": "Quetiapina",
+          "source": "Farmácia Popular",
+          "dosage": "200 mg",
+          "specialty": "Psiquiatra"
+        }
+      ],
+      "times": [
+        "08:00",
+        "21:00"
+      ],
+      "doses": {
+        "med_lamo": {
+          "08:00": "1 comprimido"
+        },
+        "med_quet": {
+          "21:00": "1 comprimido"
+        }
+      },
+      "createdAt": "2026-03-01T10:00:00.000Z",
+      "updatedAt": "2026-03-01T10:00:00.000Z"
+    },
+    {
+      "id": "medver_e2e_2",
+      "effectiveDate": "2026-05-10",
+      "professional": "Dr. Carlos",
+      "explanation": "Inclusão de novos medicamentos",
+      "medications": [
+        {
+          "id": "med_lamo",
+          "name": "Lamotrigina",
+          "source": "Farmácia Popular",
+          "dosage": "100 mg",
+          "specialty": "Neurologista"
+        },
+        {
+          "id": "med_quet",
+          "name": "Quetiapina",
+          "source": "Farmácia Popular",
+          "dosage": "200 mg",
+          "specialty": "Psiquiatra"
+        },
+        {
+          "id": "med_dut",
+          "name": "Dutam",
+          "source": "Farmácia Popular",
+          "dosage": "0,5 mg",
+          "specialty": "Urologista"
+        },
+        {
+          "id": "med_mela",
+          "name": "Melatonina",
+          "source": "Farmácia Popular",
+          "dosage": "3 mg",
+          "specialty": "psiquiatra"
+        },
+        {
+          "id": "med_vitd",
+          "name": "Vitamina D",
+          "source": "Farmácia Popular"
+        },
+        {
+          "id": "med_prol",
+          "name": "Prolopa",
+          "source": "Farmácia Popular",
+          "dosage": "100/25",
+          "specialty": "Neurologista"
+        },
+        {
+          "id": "med_omep",
+          "name": "Omeprazol",
+          "source": "Farmácia Popular",
+          "dosage": "20 mg",
+          "specialty": "Gastroenterologista"
+        },
+        {
+          "id": "med_losa",
+          "name": "Losartana",
+          "source": "Farmácia Popular",
+          "dosage": "50 mg",
+          "specialty": "Cardiologista"
+        }
+      ],
+      "times": [
+        "08:00",
+        "12:00",
+        "21:00"
+      ],
+      "doses": {
+        "med_lamo": {
+          "08:00": "1 comprimido",
+          "21:00": "1 comprimido"
+        },
+        "med_quet": {
+          "21:00": "1.5 comprimidos"
+        },
+        "med_dut": {
+          "12:00": "1 comprimido"
+        },
+        "med_mela": {
+          "21:00": "1 cápsula"
+        },
+        "med_vitd": {
+          "08:00": "2 gotas"
+        },
+        "med_prol": {
+          "08:00": "1 comprimido",
+          "12:00": "1 comprimido"
+        },
+        "med_omep": {
+          "08:00": "1 cápsula"
+        },
+        "med_losa": {
+          "08:00": "1 comprimido"
+        }
+      },
+      "createdAt": "2026-05-10T10:00:00.000Z",
+      "updatedAt": "2026-05-10T10:00:00.000Z"
+    }
+  ]
+}

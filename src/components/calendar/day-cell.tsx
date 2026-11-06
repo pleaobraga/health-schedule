@@ -106,6 +106,7 @@ export function DayCell({
 
   return (
     <div
+      data-testid={`day-cell-${dateStr}`}
       className={`min-h-[110px] md:min-h-[125px] border-b border-r border-slate-200 dark:border-slate-800 p-2 mobile:p-0 flex flex-col justify-between transition-all relative ${
         !isCurrentMonth
           ? 'bg-slate-50/70 dark:bg-slate-950/40 text-slate-400 dark:text-slate-600'
