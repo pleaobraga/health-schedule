@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CreateUserModal } from '../components/users/create-user-modal'
-import { db } from '../services/firebase'
+import { requireDb } from '../services/firebase'
 
 import type { UserRole } from '../context/auth-context'
 
@@ -35,7 +35,7 @@ export function UserManagementView() {
     try {
       setIsLoading(true)
       setErrorFeedback(null)
-      const usersRef = collection(db, 'users')
+      const usersRef = collection(requireDb(), 'users')
       const q = query(usersRef, orderBy('createdAt', 'desc'))
       const snapshot = await getDocs(q)
 

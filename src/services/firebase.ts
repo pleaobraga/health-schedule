@@ -26,21 +26,33 @@ export const firebaseConfig = {
 }
 
 /**
+ * False when the VITE_FIREBASE_* values are missing. Guest mode runs entirely on local storage,
+ * so the app still starts: auth and db stay null, and login and cloud sync are unavailable.
+ */
+export const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey && firebaseConfig.projectId,
+)
+
+/**
  * Singleton Firebase app instance.
  */
-export const app: FirebaseApp =
-  getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
+const app: FirebaseApp | null = isFirebaseConfigured
+  ? getApps().length > 0
+    ? getApp()
+    : initializeApp(firebaseConfig)
+  : null
 
 /**
  * Firebase Authentication instance.
  */
-export const auth: Auth = getAuth(app)
+export const auth: Auth | null = app ? getAuth(app) : null
 
 /**
  * Firestore database instance with multi-tab offline persistence enabled.
  * Falls back to default Firestore if running in environments without IndexedDB (e.g. Node/Vitest).
  */
-export const db: Firestore = (() => {
+export const db: Firestore | null = (() => {
+  if (!app) return null
   try {
     return initializeFirestore(app, {
       localCache: persistentLocalCache({
@@ -53,3 +65,15 @@ export const db: Firestore = (() => {
   }
 })()
 
+/**
+ * For code that only runs with a signed-in account, which requires a configured Firebase.
+ */
+export function requireAuth(): Auth {
+  if (!auth) throw new Error('Firebase is not configured')
+  return auth
+}
+
+export function requireDb(): Firestore {
+  if (!db) throw new Error('Firebase is not configured')
+  return db
+}

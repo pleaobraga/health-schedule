@@ -5,7 +5,7 @@ import { X, UserPlus, Mail, Lock, User as UserIcon, ShieldCheck, Eye, EyeOff, Al
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { firebaseConfig, db } from '../../services/firebase'
+import { firebaseConfig, requireDb } from '../../services/firebase'
 
 import type { UserRole } from '../../context/auth-context'
 
@@ -64,7 +64,7 @@ export function CreateUserModal({
       const newUid = credential.user.uid
 
       // 2. Persist the user profile and role inside Firestore 'users' collection
-      await setDoc(doc(db, 'users', newUid), {
+      await setDoc(doc(requireDb(), 'users', newUid), {
         uid: newUid,
         name: trimmedName,
         email: trimmedEmail,

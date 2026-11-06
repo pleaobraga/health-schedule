@@ -24,7 +24,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
-    // Firebase throws on import without an API key, so tests must not rely on .env.local
+    // Fixed values so tests never depend on .env.local. Guest mode without Firebase has its own spec.
     env: {
       VITE_FIREBASE_API_KEY: 'test-api-key',
       VITE_FIREBASE_AUTH_DOMAIN: 'test.firebaseapp.com',

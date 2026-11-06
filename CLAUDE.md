@@ -18,7 +18,7 @@ pnpm build                                     # tsc -b && vite build
 pnpm storybook                                 # Storybook on :6006
 ```
 
-The app needs `VITE_FIREBASE_*` values to start: without them `getAuth` throws on import and the page stays blank. Copy `.env.example` to `.env.local`. Any non-empty values work for guest mode, which never calls Firebase, and the tests set their own. `pre-commit` runs lint-staged; `pre-push` and CI run typecheck, lint, and tests, and a push to `main` deploys to GitHub Pages.
+The app runs in guest mode without Firebase credentials: `isFirebaseConfigured` is false, `auth` and `db` are null, and the login page offers only the guest entry. Use `requireAuth` / `requireDb` only in code that needs an account. `pre-commit` runs lint-staged; `pre-push` and CI run typecheck, lint, and tests, and a push to `main` deploys to GitHub Pages.
 
 ## Architecture
 

@@ -8,7 +8,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore'
 
-import { auth, db } from './firebase'
+import { auth, isFirebaseConfigured, requireDb } from './firebase'
 import { StorageService } from './storage-service'
 
 import type {
@@ -254,6 +254,7 @@ export class CloudSyncService {
    * Defaults to false (offline/local-only).
    */
   static isSyncEnabled(): boolean {
+    if (!isFirebaseConfigured) return false
     try {
       if (typeof localStorage === 'undefined') return false
       const key = this.getSyncStorageKey()
@@ -308,11 +309,11 @@ export class CloudSyncService {
    * No emails are hardcoded.
    */
   static async isCurrentUserAdmin(): Promise<boolean> {
-    const uid = auth.currentUser?.uid
+    const uid = auth?.currentUser?.uid
     if (!uid) return false
     if (this.adminStatusCache?.uid === uid) return this.adminStatusCache.isAdmin
     try {
-      const userDoc = await getDoc(doc(db, 'users', uid))
+      const userDoc = await getDoc(doc(requireDb(), 'users', uid))
       const isAdmin = userDoc.exists() && userDoc.data()?.role === 'admin'
       this.setCachedAdminStatus(uid, isAdmin)
       return isAdmin
@@ -349,7 +350,7 @@ export class CloudSyncService {
    * can't silently replace local data with a stale cached copy.
    */
   private static async fetchScheduleDocsFromServer(): Promise<QueryDocumentSnapshot[]> {
-    const snapshot = await getDocsFromServer(collection(db, SCHEDULES_COLLECTION))
+    const snapshot = await getDocsFromServer(collection(requireDb(), SCHEDULES_COLLECTION))
     return snapshot.docs
   }
 
@@ -379,7 +380,7 @@ export class CloudSyncService {
     if (!this.isOnline() || !this.isSyncEnabled()) return null
     try {
       return onSnapshot(
-        doc(db, SCHEDULES_COLLECTION, month),
+        doc(requireDb(), SCHEDULES_COLLECTION, month),
         (snapshot) => {
           if (!snapshot.exists()) return
           onUpdate(toMonthScheduleDoc(month, snapshot.data()))
@@ -459,7 +460,7 @@ export class CloudSyncService {
 
     const slice = JSON.parse(JSON.stringify(sliceMonthScheduleData(data, month)))
     return this.commitWrite(
-      setDoc(doc(db, SCHEDULES_COLLECTION, month), {
+      setDoc(doc(requireDb(), SCHEDULES_COLLECTION, month), {
         ...slice,
         month,
         schemaVersion: MONTH_DOC_SCHEMA_VERSION,
@@ -496,7 +497,7 @@ export class CloudSyncService {
     if (!(await this.isAllowed(isAdmin, ignoreSyncEnabled))) return false
 
     return this.commitWrite(
-      setDoc(doc(db, SCHEDULES_COLLECTION, docId), {
+      setDoc(doc(requireDb(), SCHEDULES_COLLECTION, docId), {
         [field]: JSON.parse(JSON.stringify(items)),
         updatedAt: serverTimestamp(),
       }),

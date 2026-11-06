@@ -12,7 +12,7 @@ import {
   useAuth,
 } from './auth-context-base'
 import { CloudSyncService } from '../services/cloud-sync-service'
-import { auth, db } from '../services/firebase'
+import { auth, requireAuth, requireDb } from '../services/firebase'
 import { isGuestDataEmpty, loadGuestSeedData } from '../services/seed/guestSeedLoader'
 import { StorageService } from '../services/storage-service'
 import { useScheduleStore } from '../store/use-schedule-store'
@@ -144,6 +144,11 @@ export function AuthProvider({
       }
     }
 
+    if (!auth) {
+      setLoading(false)
+      return
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       try {
         if (!currentUser) {
@@ -175,7 +180,7 @@ export function AuthProvider({
         // Retrieve user role dynamically from Firestore 'users' collection
         let userIsAdmin = false
         try {
-          const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
+          const userDoc = await getDoc(doc(requireDb(), 'users', currentUser.uid))
 
           if (userDoc.exists()) {
             userIsAdmin = userDoc.data()?.role === 'admin'
@@ -184,7 +189,7 @@ export function AuthProvider({
           } else {
             // Se o documento ainda não existir, cria o registro inicial com role 'user'
             try {
-              await setDoc(doc(db, 'users', currentUser.uid), {
+              await setDoc(doc(requireDb(), 'users', currentUser.uid), {
                 email: currentUser.email,
                 role: 'user',
                 displayName:
@@ -217,6 +222,8 @@ export function AuthProvider({
   }, [value])
 
   const login = async (email: string, password: string): Promise<void> => {
+    const firebaseAuth = requireAuth()
+
     if (StorageService.getActiveGuestId()) {
       StorageService.snapshotActiveGuest()
       StorageService.setActiveGuestId(null)
@@ -224,7 +231,7 @@ export function AuthProvider({
       useScheduleStore.getState().reloadFromStorage()
     } else {
       const currentActiveUid =
-        StorageService.getActiveUserId() || user?.uid || auth.currentUser?.uid
+        StorageService.getActiveUserId() || user?.uid || auth?.currentUser?.uid
       if (currentActiveUid) {
         StorageService.saveUserDataset(
           currentActiveUid,
@@ -239,12 +246,12 @@ export function AuthProvider({
     setIsGuest(false)
     useScheduleStore.setState({ currentMonth: getCurrentMonth() })
 
-    const credential = await signInWithEmailAndPassword(auth, email, password)
+    const credential = await signInWithEmailAndPassword(firebaseAuth, email, password)
     const authenticatedUser = credential.user
 
     let userIsAdmin = false
     try {
-      const userDoc = await getDoc(doc(db, 'users', authenticatedUser.uid))
+      const userDoc = await getDoc(doc(requireDb(), 'users', authenticatedUser.uid))
       if (userDoc.exists()) {
         userIsAdmin = userDoc.data()?.role === 'admin'
         CloudSyncService.setCachedAdminStatus(authenticatedUser.uid, userIsAdmin)
@@ -267,7 +274,7 @@ export function AuthProvider({
       StorageService.snapshotActiveGuest()
     } else {
       const uid =
-        StorageService.getActiveUserId() || user?.uid || auth.currentUser?.uid
+        StorageService.getActiveUserId() || user?.uid || auth?.currentUser?.uid
       if (uid) {
         StorageService.saveUserDataset(uid, StorageService.getCurrentDataset())
       }
@@ -375,7 +382,7 @@ export function AuthProvider({
 
     // Authenticated user logout: snapshot and isolate their data locally
     const uid =
-      StorageService.getActiveUserId() || user?.uid || auth.currentUser?.uid
+      StorageService.getActiveUserId() || user?.uid || auth?.currentUser?.uid
     if (uid) {
       StorageService.saveUserDataset(uid, StorageService.getCurrentDataset())
     }
@@ -385,7 +392,9 @@ export function AuthProvider({
     useScheduleStore.setState({ currentMonth: getCurrentMonth() })
 
     CloudSyncService.clearCachedAdminStatus()
-    await signOut(auth)
+    if (auth) {
+      await signOut(auth)
+    }
     setUser(null)
     setRole(null)
     setIsGuest(false)

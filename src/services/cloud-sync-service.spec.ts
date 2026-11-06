@@ -13,7 +13,11 @@ import { StorageService } from './storage-service'
 
 const mockAuth = vi.hoisted(() => ({ currentUser: null as { uid: string } | null }))
 
-vi.mock('./firebase', () => ({ auth: mockAuth, db: {} }))
+vi.mock('./firebase', () => ({
+  auth: mockAuth,
+  isFirebaseConfigured: true,
+  requireDb: () => ({}),
+}))
 
 vi.mock('firebase/firestore', async (importOriginal) => {
   const actual = await importOriginal<typeof firestoreModule>()
