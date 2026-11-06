@@ -27,6 +27,11 @@ export type MedicationValidationCode =
   | 'DUPLICATE_TIME'
   | 'VERSION_NOT_FOUND'
 
+export interface MedicationSpecialty {
+  key: string
+  label: string
+}
+
 export interface MedicationValidationError {
   code: MedicationValidationCode
   medicationId?: string
@@ -504,6 +509,32 @@ export function getMedicationVersionHistory(
     }
   })
   return entries.reverse()
+}
+
+export function getMedicationSpecialties(
+  version: Pick<MedicationScheduleVersion, 'medications'>,
+): MedicationSpecialty[] {
+  const specialties = new Map<string, MedicationSpecialty>()
+
+  for (const med of version.medications ?? []) {
+    const label = med.specialty?.trim() ?? ''
+    const key = normalizeItemName(label)
+    if (key && !specialties.has(key)) {
+      specialties.set(key, { key, label })
+    }
+  }
+
+  return Array.from(specialties.values())
+}
+
+export function matchesMedicationSpecialty(
+  medication: MedicationColumn,
+  specialtyKey: string,
+): boolean {
+  return (
+    specialtyKey !== '' &&
+    normalizeItemName(medication.specialty ?? '') === specialtyKey
+  )
 }
 
 export function groupMedicationsBySource(

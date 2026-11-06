@@ -4,6 +4,8 @@ import {
   ChevronRight,
   Clock,
   History,
+  Maximize2,
+  Minimize2,
   Pencil,
   Pill,
   Plus,
@@ -12,23 +14,24 @@ import {
   Sparkles,
   Trash2,
   User as UserIcon,
-  X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { ConfirmDialog } from '../components/common/confirm-dialog'
 import { MedicationVersionForm } from '../components/medications/medication-version-form'
 import { MedicationVersionNotes } from '../components/medications/medication-version-notes'
-import { DatePicker } from '../components/ui/date-picker'
+import { Select } from '../components/ui/select'
 import { useScheduleStore } from '../store/use-schedule-store'
+import { cn } from '../utils/cn'
 import {
   getCurrentMedicationVersion,
   getMedicationFileBaseName,
-  getMedicationVersionAt,
+  getMedicationSpecialties,
   getMedicationVersionHistory,
   groupMedicationsBySource,
+  matchesMedicationSpecialty,
   sortMedicationVersions,
 } from '../utils/medication-schedule-utils'
 
@@ -53,11 +56,25 @@ export function MedicationsView() {
   const { medicationVersions, deleteLatestMedicationVersion } = useScheduleStore()
 
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
-  const [queryDate, setQueryDate] = useState<string>('')
+  const [specialtyKey, setSpecialtyKey] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [formMode, setFormMode] = useState<'NEW' | 'CORRECTION'>('NEW')
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isTableFullscreen, setIsTableFullscreen] = useState(false)
+
+  useEffect(() => {
+    if (!isTableFullscreen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsTableFullscreen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isTableFullscreen])
 
   const today = useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
 
@@ -71,22 +88,19 @@ export function MedicationsView() {
     [medicationVersions],
   )
 
-  const firstVersion = sortedVersions[0]
-
-  const queriedVersion = useMemo(() => {
-    if (!queryDate) return undefined
-    return getMedicationVersionAt(medicationVersions, queryDate)
-  }, [medicationVersions, queryDate])
-
   const displayedVersion: MedicationScheduleVersion | undefined = useMemo(() => {
-    if (queryDate) {
-      return queriedVersion
-    }
     if (selectedVersionId) {
       return medicationVersions.find((v) => v.id === selectedVersionId)
     }
     return currentVersion
-  }, [queryDate, queriedVersion, selectedVersionId, medicationVersions, currentVersion])
+  }, [selectedVersionId, medicationVersions, currentVersion])
+
+  const specialties = displayedVersion
+    ? getMedicationSpecialties(displayedVersion)
+    : []
+  const activeSpecialtyKey = specialties.some((s) => s.key === specialtyKey)
+    ? specialtyKey
+    : ''
 
   const latestVersion = sortedVersions[sortedVersions.length - 1]
   const isLatestVersion = Boolean(
@@ -95,10 +109,6 @@ export function MedicationsView() {
 
   const isViewingHistorical = Boolean(
     displayedVersion && currentVersion && displayedVersion.id !== currentVersion.id,
-  )
-
-  const hasNoVersionAtDate = Boolean(
-    queryDate && queriedVersion === undefined && medicationVersions.length > 0,
   )
 
   const sourceGroups = useMemo(
@@ -118,7 +128,6 @@ export function MedicationsView() {
   }, [history, displayedVersion])
 
   const handleBackToCurrent = () => {
-    setQueryDate('')
     setSelectedVersionId(null)
   }
 
@@ -285,9 +294,16 @@ export function MedicationsView() {
       {/* Version content */}
       {medicationVersions.length > 0 && (
         <>
-          {/* 3. Schedule: version status, date lookup and table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden flex flex-col">
-            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* 3. Schedule: version status, version select, specialty filter and table */}
+          <div
+            data-testid="medications-schedule-card"
+            className={cn(
+              'bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden flex flex-col',
+              isTableFullscreen &&
+                'fixed inset-0 z-120 rounded-none md:rounded-none border-0',
+            )}
+          >
+            <div className="shrink-0 p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2.5">
                   <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -313,7 +329,7 @@ export function MedicationsView() {
                   </span>
                 )}
 
-                {(isViewingHistorical || queryDate) && (
+                {isViewingHistorical && (
                   <button
                     type="button"
                     data-testid="medications-back-to-current"
@@ -326,75 +342,99 @@ export function MedicationsView() {
                 )}
               </div>
 
-              {/* Date Lookup */}
-              <div className="flex items-center gap-2 mobile:flex-col mobile:items-stretch">
-                <label
-                  htmlFor="medications-lookup-date-input"
-                  className="text-xs font-bold text-slate-600 dark:text-slate-400 shrink-0"
-                >
-                  {t('medications:lookupByDateLabel')}:
-                </label>
-                <div className="relative flex items-center">
-                  <DatePicker
-                    id="medications-lookup-date-input"
-                    data-testid="medications-lookup-date-input"
-                    value={queryDate}
-                    placeholder={t('medications:lookupByDatePlaceholder')}
-                    className="w-52 mobile:w-full"
-                    onChange={(val) => {
-                      setQueryDate(val)
-                      setSelectedVersionId(null)
-                    }}
-                  />
-                  {queryDate && (
-                    <button
-                      type="button"
-                      onClick={() => setQueryDate('')}
-                      title={t('medications:clearDateLookup')}
-                      aria-label={t('medications:clearDateLookup')}
-                      className="ml-1 p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              <div className="flex flex-wrap items-end md:items-center gap-3">
+                {/* Version Select */}
+                <div className="flex items-center gap-2 mobile:flex-1 mobile:min-w-0 mobile:flex-col mobile:items-stretch">
+                  <label
+                    htmlFor="medications-version-select"
+                    className="text-xs font-bold text-slate-600 dark:text-slate-400 shrink-0"
+                  >
+                    {t('medications:versionSelectLabel')}:
+                  </label>
+                  <div className="w-64 mobile:w-full">
+                    <Select
+                      id="medications-version-select"
+                      data-testid="medications-version-select"
+                      value={displayedVersion?.id ?? ''}
+                      className="w-full"
+                      onValueChange={setSelectedVersionId}
                     >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                      {history.map(({ version }) => (
+                        <option key={version.id} value={version.id}>
+                          {[
+                            formatDisplayDate(version.effectiveDate, i18n.language),
+                            version.professional,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {hasNoVersionAtDate && (
-              <div
-                data-testid="medications-no-version-at-date"
-                className="m-4 p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 flex flex-col gap-2"
-              >
-                <h3 className="text-sm font-bold">
-                  {t('medications:noVersionAtDateTitle', {
-                    date: formatDisplayDate(queryDate, i18n.language),
-                  })}
-                </h3>
-                <p className="text-xs text-amber-800 dark:text-amber-300">
-                  {t('medications:noVersionAtDateDescription', {
-                    firstDate: firstVersion
-                      ? formatDisplayDate(firstVersion.effectiveDate, i18n.language)
-                      : '',
-                  })}
-                </p>
-                <div>
+                {/* Specialty Filter */}
+                {specialties.length > 0 && (
+                  <div className="flex items-center gap-2 mobile:order-last mobile:basis-full mobile:flex-col mobile:items-stretch">
+                    <label
+                      htmlFor="medications-specialty-filter"
+                      className="text-xs font-bold text-slate-600 dark:text-slate-400 shrink-0"
+                    >
+                      {t('medications:specialtyFilterLabel')}:
+                    </label>
+                    <div className="w-56 mobile:w-full">
+                      <Select
+                        id="medications-specialty-filter"
+                        data-testid="medications-specialty-filter"
+                        value={activeSpecialtyKey}
+                        className="w-full"
+                        onValueChange={setSpecialtyKey}
+                      >
+                        <option value="">{t('medications:allSpecialties')}</option>
+                        {specialties.map((specialty) => (
+                          <option key={specialty.key} value={specialty.key}>
+                            {specialty.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {displayedVersion && (
                   <button
                     type="button"
-                    onClick={handleBackToCurrent}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-950 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 transition cursor-pointer"
+                    data-testid="medications-fullscreen-toggle"
+                    onClick={() => setIsTableFullscreen((prev) => !prev)}
+                    title={t(
+                      isTableFullscreen
+                        ? 'medications:exitFullscreen'
+                        : 'medications:enterFullscreen',
+                    )}
+                    aria-label={t(
+                      isTableFullscreen
+                        ? 'medications:exitFullscreen'
+                        : 'medications:enterFullscreen',
+                    )}
+                    className="shrink-0 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition cursor-pointer"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>{t('medications:backToCurrent')}</span>
+                    {isTableFullscreen ? (
+                      <Minimize2 className="w-4 h-4" />
+                    ) : (
+                      <Maximize2 className="w-4 h-4" />
+                    )}
                   </button>
-                </div>
+                )}
               </div>
-            )}
+            </div>
 
             {displayedVersion && (
                   <div
                     data-testid="medications-table-scroll-container"
-                    className="overflow-x-auto custom-scrollbar"
+                    className={cn(
+                      'overflow-x-auto custom-scrollbar',
+                      isTableFullscreen && 'flex-1 overflow-y-auto',
+                    )}
                   >
                     <table
                       data-testid="medications-schedule-table"
@@ -409,7 +449,10 @@ export function MedicationsView() {
                             <th
                               key={med.id}
                               data-testid={`medication-col-header-${med.id}`}
-                              className="p-3.5 sm:p-4 min-w-[180px] max-w-[240px] border-r border-slate-200/70 dark:border-slate-800 last:border-r-0 align-top"
+                              data-highlighted={
+                                matchesMedicationSpecialty(med, activeSpecialtyKey) || undefined
+                              }
+                              className="p-3.5 sm:p-4 min-w-[180px] max-w-[240px] border-r border-slate-200/70 dark:border-slate-800 last:border-r-0 align-top data-highlighted:bg-emerald-100 dark:data-highlighted:bg-emerald-950/70"
                             >
                               <div className="flex flex-col items-start gap-1.5">
                                 <span className="font-extrabold text-sm text-slate-900 dark:text-white">
@@ -436,7 +479,7 @@ export function MedicationsView() {
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs sm:text-sm">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm sm:text-base">
                         {displayedVersion.times.map((time) => (
                           <tr
                             key={time}
@@ -450,15 +493,15 @@ export function MedicationsView() {
                               return (
                                 <td
                                   key={med.id}
-                                  className="p-3.5 sm:p-4 border-r border-slate-100 dark:border-slate-800/80 last:border-r-0 font-medium text-slate-700 dark:text-slate-300 align-middle"
+                                  data-testid={`medication-dose-cell-${med.id}-${time}`}
+                                  data-highlighted={
+                                    matchesMedicationSpecialty(med, activeSpecialtyKey) || undefined
+                                  }
+                                  className="p-3.5 sm:p-4 border-r border-slate-100 dark:border-slate-800/80 last:border-r-0 font-medium text-slate-700 dark:text-slate-300 text-center align-middle data-highlighted:bg-emerald-50 dark:data-highlighted:bg-emerald-950/40"
                                 >
-                                  {dose && dose.trim().length > 0 ? (
+                                  {dose?.trim() && (
                                     <span className="px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-semibold inline-block">
                                       {dose}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-300 dark:text-slate-600 select-none">
-                                      {t('medications:emptyDose')}
                                     </span>
                                   )}
                                 </td>
@@ -659,10 +702,7 @@ export function MedicationsView() {
                       <button
                         type="button"
                         data-testid={`medication-select-version-${entry.version.id}`}
-                        onClick={() => {
-                          setSelectedVersionId(entry.version.id)
-                          setQueryDate('')
-                        }}
+                        onClick={() => setSelectedVersionId(entry.version.id)}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                           isSelected
                             ? 'bg-indigo-600 text-white shadow-xs'
@@ -750,15 +790,9 @@ export function MedicationsView() {
                       return (
                         <td
                           key={med.id}
-                          className="p-3 border border-slate-300 font-medium text-slate-800"
+                          className="p-3 border border-slate-300 font-medium text-slate-800 text-center"
                         >
-                          {dose && dose.trim().length > 0 ? (
-                            <span>{dose}</span>
-                          ) : (
-                            <span className="text-slate-400">
-                              {t('medications:emptyDose')}
-                            </span>
-                          )}
+                          {dose?.trim() && <span>{dose}</span>}
                         </td>
                       )
                     })}
@@ -873,7 +907,7 @@ export function MedicationsView() {
       {isFormOpen && (
         <MedicationVersionForm
           mode={formMode}
-          baseVersion={formMode === 'NEW' ? (displayedVersion ?? currentVersion) : undefined}
+          baseVersion={formMode === 'NEW' ? currentVersion : undefined}
           version={formMode === 'CORRECTION' ? displayedVersion : undefined}
           onClose={() => setIsFormOpen(false)}
         />

@@ -200,7 +200,8 @@ Requisitos de produto, com a forma definida pela IA executora:
 - O usuário pode incluir e remover medicamentos e horários.
 - Cada medicamento tem nome, dosagem opcional, origem opcional, médico responsável opcional e especialidade opcional.
 - Cada versão aceita quantas informações adicionais o usuário quiser, visíveis no histórico de versões e nas mudanças impressas.
-- O filtro por data e a indicação da versão ficam no cartão da tabela, e a tabela fica logo abaixo do cabeçalho.
+- O select de versões, o filtro de especialidade e a indicação da versão ficam no cartão da tabela, e a tabela fica logo abaixo do cabeçalho.
+- A tabela tem uma ação de tela cheia, que sai pelo mesmo botão ou pela tecla Esc.
 - Os horários usam `<input type="time">`, como nos eventos do dia, e são ordenados quando o campo perde o foco.
 - A especialidade aparece como uma etiqueta, logo abaixo do nome e da dosagem, quando existir. O nome do médico fica no cadastro e no histórico de mudanças, fora da tabela.
 - A dosagem aparece na frente do nome do medicamento quando existir.
@@ -211,7 +212,8 @@ Requisitos de produto, com a forma definida pela IA executora:
 
 - O usuário vê a lista de versões, da mais recente para a mais antiga, com data, profissional, explicação e resumo das mudanças.
 - Escolher uma versão exibe a tabela dela.
-- Informar uma data exibe a tabela vigente nesse dia.
+- Um select no cartão da tabela lista as versões, da mais recente para a mais antiga, e exibe a escolhida. Cada opção mostra a data e, quando existir, o profissional.
+- Um filtro no cartão da tabela lista as especialidades da versão exibida, sem repetir grafias, e destaca as colunas dos medicamentos da especialidade escolhida. As demais colunas continuam visíveis. O filtro não aparece quando nenhum medicamento tem especialidade, volta para "Todas" quando a versão exibida não tem a especialidade escolhida, não altera nenhum dado e não afeta a impressão.
 - Olhar uma versão antiga não altera nenhum dado, e há um caminho direto de volta à vigente.
 
 ### 6.3 Origem
@@ -238,6 +240,7 @@ Requisitos de produto, com a forma definida pela IA executora:
 | :--- | :--- |
 | Versão vigente | `getCurrentMedicationVersion` |
 | Versão em uma data | `getMedicationVersionAt` |
+| Filtro por especialidade | `getMedicationSpecialties`, `matchesMedicationSpecialty` |
 | Lista de versões com resumo | `getMedicationVersionHistory` |
 | Agrupar por origem | `groupMedicationsBySource` |
 | Sugerir profissionais | `searchMedicationProfessionals` |
@@ -286,6 +289,11 @@ export interface MedicationSourceGroup {
   medications: MedicationColumn[]
 }
 
+export interface MedicationSpecialty {
+  key: string // texto normalizado com normalizeItemName
+  label: string
+}
+
 export function createMedicationId(): string
 export function normalizeMedicationVersionInput(input: MedicationVersionInput): MedicationVersionInput
 export function validateMedicationVersionInput(
@@ -311,6 +319,13 @@ export function getMedicationVersionHistory(
 export function groupMedicationsBySource(
   version: Pick<MedicationScheduleVersion, 'medications'>,
 ): MedicationSourceGroup[]
+export function getMedicationSpecialties(
+  version: Pick<MedicationScheduleVersion, 'medications'>,
+): MedicationSpecialty[]
+export function matchesMedicationSpecialty(
+  medication: MedicationColumn,
+  specialtyKey: string,
+): boolean
 export function searchMedicationProfessionals(
   query: string,
   versions: MedicationScheduleVersion[],
@@ -404,7 +419,8 @@ Testes de persistência:
 Testes de interface:
 
 - `router.test.tsx`: a rota `/medicamentos` abre a tela
-- Abertura na versão vigente, troca de versão, consulta por data e volta à vigente
+- Abertura na versão vigente, troca de versão pelo select e volta à vigente
+- Filtro de especialidade: opções sem repetição, destaque das colunas, volta para "Todas" e impressão sem destaque
 - Nova versão começa com o conteúdo vigente e com data, profissional e explicação vazios
 - Medicamento aparece com e sem dosagem
 - Célula salva texto livre

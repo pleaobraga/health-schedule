@@ -842,7 +842,7 @@ export function MedicationVersionForm({
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800">
-                        <th className="p-2.5 font-bold text-slate-700 dark:text-slate-300 min-w-[70px]">
+                        <th className="sticky left-0 z-10 p-2.5 font-bold text-slate-700 dark:text-slate-300 min-w-[70px] bg-slate-50 dark:bg-slate-800 shadow-[inset_-1px_0_0_var(--color-slate-200)] dark:shadow-[inset_-1px_0_0_var(--color-slate-700)]">
                           {t('medications:timeColumn')}
                         </th>
                         {medications.map((med) => (
@@ -863,7 +863,7 @@ export function MedicationVersionForm({
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {timeRows.map((row) => (
                         <tr key={row.id} className="hover:bg-slate-50/50">
-                          <td className="p-2.5 font-bold text-slate-900 dark:text-white">
+                          <td className="sticky left-0 z-10 p-2.5 font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-900 shadow-[inset_-1px_0_0_var(--color-slate-200)] dark:shadow-[inset_-1px_0_0_var(--color-slate-800)]">
                             {row.time || '—'}
                           </td>
                           {medications.map((med) => (
@@ -883,9 +883,6 @@ export function MedicationVersionForm({
                                     e.target.value,
                                   )
                                 }
-                                placeholder={t(
-                                  'medications:form.dosePlaceholder',
-                                )}
                                 className="w-full px-2 py-1 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30"
                               />
                             </td>

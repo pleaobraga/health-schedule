@@ -4,10 +4,12 @@ import {
   createMedicationId,
   getCurrentMedicationVersion,
   getMedicationFileBaseName,
+  getMedicationSpecialties,
   getMedicationVersionAt,
   getMedicationVersionChanges,
   getMedicationVersionHistory,
   groupMedicationsBySource,
+  matchesMedicationSpecialty,
   normalizeMedicationVersionInput,
   searchMedicationProfessionals,
   validateMedicationVersionInput,
@@ -780,6 +782,37 @@ describe('medication-schedule-utils', () => {
           to: 'Geriatra',
         },
       ])
+    })
+  })
+
+  describe('getMedicationSpecialties and matchesMedicationSpecialty', () => {
+    it('lists each specialty once, in order of first appearance, ignoring case, accents and blanks', () => {
+      expect(
+        getMedicationSpecialties({
+          medications: [
+            { id: 'a', name: 'A', specialty: 'Psiquiatra' },
+            { id: 'b', name: 'B' },
+            { id: 'c', name: 'C', specialty: '  Urologista ' },
+            { id: 'd', name: 'D', specialty: 'psiquiátra' },
+            { id: 'e', name: 'E', specialty: '   ' },
+          ],
+        }),
+      ).toEqual([
+        { key: 'psiquiatra', label: 'Psiquiatra' },
+        { key: 'urologista', label: 'Urologista' },
+      ])
+    })
+
+    it.each([
+      ['same spelling', 'Psiquiatra', 'psiquiatra', true],
+      ['different case and accents', ' PSIQUIÁTRA ', 'psiquiatra', true],
+      ['another specialty', 'Urologista', 'psiquiatra', false],
+      ['no specialty', undefined, 'psiquiatra', false],
+      ['no specialty and no filter', undefined, '', false],
+    ])('matches a medication with %s', (_case, specialty, key, expected) => {
+      expect(
+        matchesMedicationSpecialty({ id: 'a', name: 'A', specialty }, key),
+      ).toBe(expected)
     })
   })
 })

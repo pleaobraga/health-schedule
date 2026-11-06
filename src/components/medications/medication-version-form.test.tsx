@@ -212,6 +212,41 @@ describe('MedicationVersionForm', () => {
     })
   })
 
+  it('leaves empty dose fields without placeholder text', () => {
+    render(
+      <MedicationVersionForm
+        mode="CORRECTION"
+        version={baseVersion}
+        onClose={vi.fn()}
+      />,
+    )
+
+    const doseInput = screen.getByTestId('medication-dose-input-med_lamo-08:00')
+    fireEvent.change(doseInput, { target: { value: '' } })
+
+    expect(doseInput).not.toHaveAttribute('placeholder')
+  })
+
+  it('pins the time column of the doses table while scrolling sideways', () => {
+    render(
+      <MedicationVersionForm
+        mode="CORRECTION"
+        version={baseVersion}
+        onClose={vi.fn()}
+      />,
+    )
+
+    const doseInput = screen.getByTestId('medication-dose-input-med_lamo-08:00')
+    const row = doseInput.closest('tr') as HTMLTableRowElement
+    const header = doseInput
+      .closest('table')
+      ?.querySelector('thead th') as HTMLTableCellElement
+
+    expect(header).toHaveClass('sticky', 'left-0')
+    expect(row.cells[0]).toHaveTextContent('08:00')
+    expect(row.cells[0]).toHaveClass('sticky', 'left-0')
+  })
+
   it('shows translated error banners and marks aria-invalid on missing required fields', async () => {
     render(
       <MedicationVersionForm

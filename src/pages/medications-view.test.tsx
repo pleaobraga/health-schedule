@@ -200,34 +200,61 @@ describe('MedicationsView', () => {
     )
   })
 
-  it('looks up the version active on a queried date, or shows that no schedule existed before the first version', () => {
+  it('switches versions through the select, newest first, and returns to the current one', () => {
     useScheduleStore.setState({ medicationVersions: [version1, version2] })
 
     render(<MedicationsView />)
 
-    const dateInput = screen.getByTestId('medications-lookup-date-input')
+    const select = screen.getByTestId<HTMLSelectElement>(
+      'medications-version-select',
+    )
+    expect(select.value).toBe('medver_2')
+    expect(
+      Array.from(select.options).map((option) => option.textContent),
+    ).toEqual(['13/03/2026 · Dr. Carlos', '01/03/2026 · Dra. Marina'])
 
-    // Date between version1 (2026-03-01) and version2 (2026-03-13) shows version1
-    fireEvent.change(dateInput, { target: { value: '2026-03-05' } })
+    fireEvent.change(select, { target: { value: 'medver_1' } })
     expect(
       within(screen.getByTestId('medications-schedule-table')).queryByText(
         'Melatonina',
       ),
     ).not.toBeInTheDocument()
-
-    // Date before version1 shows that no schedule existed on that date
-    fireEvent.change(dateInput, { target: { value: '2026-02-15' } })
     expect(
-      screen.getByTestId('medications-no-version-at-date'),
+      screen.getByTestId('medications-viewing-historical-badge'),
     ).toBeInTheDocument()
 
-    // Back to current version
     fireEvent.click(screen.getByTestId('medications-back-to-current'))
+    expect(select.value).toBe('medver_2')
     expect(
       within(screen.getByTestId('medications-schedule-table')).getByText(
         'Melatonina',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('labels a version without a professional with its date only', () => {
+    useScheduleStore.setState({
+      medicationVersions: [{ ...version1, professional: undefined }],
+    })
+
+    render(<MedicationsView />)
+
+    const select = screen.getByTestId<HTMLSelectElement>(
+      'medications-version-select',
+    )
+    expect(select.options[0]?.textContent).toBe('01/03/2026')
+  })
+
+  it('keeps the select on the version chosen in the history list', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    fireEvent.click(screen.getByTestId('medication-select-version-medver_1'))
+
+    expect(
+      screen.getByTestId<HTMLSelectElement>('medications-version-select').value,
+    ).toBe('medver_1')
   })
 
   it('keeps a 10-medication schedule inside its own horizontally scrollable container', () => {
@@ -373,7 +400,7 @@ describe('MedicationsView', () => {
     expect(screen.queryByTestId('medication-print-sheet')).not.toBeInTheDocument()
   })
 
-  it('keeps the version status and date lookup in the table card, right below the header', () => {
+  it('keeps the version status and version select in the table card, right below the header', () => {
     useScheduleStore.setState({ medicationVersions: [version1, version2] })
 
     render(<MedicationsView />)
@@ -383,30 +410,13 @@ describe('MedicationsView', () => {
 
     expect(card).toContainElement(screen.getByTestId('medications-current-badge'))
     expect(card).toContainElement(
-      screen.getByTestId('medications-lookup-date-input'),
+      screen.getByTestId('medications-version-select'),
     )
     expect(
       card.compareDocumentPosition(
         screen.getByTestId('medications-edit-version-button'),
       ) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
-  })
-
-  it('keeps the date lookup available when no version existed on the queried date', () => {
-    useScheduleStore.setState({ medicationVersions: [version1, version2] })
-
-    render(<MedicationsView />)
-
-    fireEvent.change(screen.getByTestId('medications-lookup-date-input'), {
-      target: { value: '2026-02-15' },
-    })
-
-    expect(
-      screen.getByTestId('medications-no-version-at-date'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByTestId('medications-lookup-date-input'),
-    ).toBeInTheDocument()
   })
 
   it('shows the dosage beside the name and only the specialty as a tag, on screen and in print', () => {
@@ -531,5 +541,224 @@ describe('MedicationsView', () => {
         within(page2).getByTestId('medication-print-changes'),
       ) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
+  })
+
+  it('starts a new version from the current one while viewing an older version', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    fireEvent.click(screen.getByTestId('medication-select-version-medver_1'))
+    expect(
+      screen.getByTestId('medications-viewing-historical-badge'),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('medications-new-version-button'))
+
+    const form = screen.getByTestId('medication-version-form-modal')
+    const times = Array.from(
+      form.querySelectorAll<HTMLInputElement>('input[type="time"]'),
+    ).map((input) => input.value)
+
+    expect(times).toEqual(version2.times)
+  })
+
+  it('toggles the table in full screen and leaves it with Escape', () => {
+    useScheduleStore.setState({ medicationVersions: [version1, version2] })
+
+    render(<MedicationsView />)
+
+    const card = screen.getByTestId('medications-schedule-card')
+    const toggle = screen.getByTestId('medications-fullscreen-toggle')
+    expect(card).not.toHaveClass('fixed')
+    expect(toggle).toHaveAccessibleName('Ver tabela em tela cheia')
+
+    fireEvent.click(toggle)
+    expect(card).toHaveClass('fixed', 'inset-0')
+    expect(card).toContainElement(
+      screen.getByTestId('medications-schedule-table'),
+    )
+    expect(toggle).toHaveAccessibleName('Sair da tela cheia')
+
+    fireEvent.click(toggle)
+    expect(card).not.toHaveClass('fixed')
+
+    fireEvent.click(toggle)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(card).not.toHaveClass('fixed')
+  })
+
+  it('has no full screen action without a table to show', () => {
+    useScheduleStore.setState({
+      medicationVersions: [{ ...version1, effectiveDate: '2999-01-01' }],
+    })
+
+    render(<MedicationsView />)
+
+    expect(
+      screen.queryByTestId('medications-fullscreen-toggle'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('centers the dose and leaves a cell without a dose blank, on screen and in print', () => {
+    useScheduleStore.setState({ medicationVersions: [version2] })
+
+    render(<MedicationsView />)
+
+    const doseCell = screen.getByTestId('medication-dose-cell-med_lamo-08:00')
+    expect(doseCell).toHaveTextContent('1.5 comprimidos')
+    expect(doseCell).toHaveClass('text-center')
+    expect(
+      screen.getByTestId('medication-dose-cell-med_vitd-20:00'),
+    ).toBeEmptyDOMElement()
+
+    const printTable = screen.getByTestId('medication-print-table')
+    const printRow = within(printTable).getByText('20:00').closest('tr')
+    const printCells = printRow?.querySelectorAll('td') as NodeListOf<HTMLTableCellElement>
+    // Columns: time, Lamotrigina, Vitamina D, Melatonina
+    expect(printCells[1]).toHaveTextContent('1 comprimido')
+    expect(printCells[1]).toHaveClass('text-center')
+    expect(printCells[2]).toBeEmptyDOMElement()
+  })
+
+  describe('specialty filter', () => {
+    const specialtyVersion: MedicationScheduleVersion = {
+      ...version2,
+      medications: [
+        { id: 'med_lamo', name: 'Lamotrigina', specialty: 'Psiquiatra' },
+        { id: 'med_vitd', name: 'Vitamina D' },
+        { id: 'med_mela', name: 'Melatonina', specialty: ' psiquiatra ' },
+        { id: 'med_uro', name: 'Dutam', specialty: 'Urologista' },
+      ],
+    }
+
+    const highlightedColumns = () =>
+      ['med_lamo', 'med_vitd', 'med_mela', 'med_uro'].filter(
+        (id) =>
+          screen.getByTestId(`medication-col-header-${id}`).dataset
+            .highlighted === 'true',
+      )
+
+    it('offers all specialties plus the ones of the displayed version, without repeats', () => {
+      useScheduleStore.setState({ medicationVersions: [specialtyVersion] })
+
+      render(<MedicationsView />)
+
+      const select = screen.getByTestId<HTMLSelectElement>(
+        'medications-specialty-filter',
+      )
+      expect(
+        Array.from(select.options).map((option) => option.textContent),
+      ).toEqual(['Todas as especialidades', 'Psiquiatra', 'Urologista'])
+      expect(highlightedColumns()).toEqual([])
+    })
+
+    it('highlights every column of the chosen specialty and keeps the others visible', () => {
+      useScheduleStore.setState({ medicationVersions: [specialtyVersion] })
+
+      render(<MedicationsView />)
+
+      fireEvent.change(screen.getByTestId('medications-specialty-filter'), {
+        target: { value: 'psiquiatra' },
+      })
+
+      expect(highlightedColumns()).toEqual(['med_lamo', 'med_mela'])
+      expect(
+        screen.getByTestId('medication-dose-cell-med_lamo-08:00').dataset
+          .highlighted,
+      ).toBe('true')
+      expect(
+        screen.getByTestId('medication-dose-cell-med_mela-08:00').dataset
+          .highlighted,
+      ).toBe('true')
+      expect(
+        screen.getByTestId('medication-dose-cell-med_vitd-08:00').dataset
+          .highlighted,
+      ).toBeUndefined()
+      expect(
+        within(screen.getByTestId('medications-schedule-table')).getByText(
+          'Dutam',
+        ),
+      ).toBeInTheDocument()
+
+      fireEvent.change(screen.getByTestId('medications-specialty-filter'), {
+        target: { value: '' },
+      })
+      expect(highlightedColumns()).toEqual([])
+    })
+
+    it('leaves the print sheet without highlights', () => {
+      useScheduleStore.setState({ medicationVersions: [specialtyVersion] })
+
+      render(<MedicationsView />)
+
+      fireEvent.change(screen.getByTestId('medications-specialty-filter'), {
+        target: { value: 'psiquiatra' },
+      })
+
+      expect(
+        screen
+          .getByTestId('medication-print-table')
+          .querySelector('[data-highlighted]'),
+      ).toBeNull()
+    })
+
+    it('falls back to all specialties when the displayed version lacks the chosen one', () => {
+      useScheduleStore.setState({
+        medicationVersions: [
+          {
+            ...version1,
+            medications: [
+              { id: 'med_lamo', name: 'Lamotrigina', specialty: 'Neurologista' },
+            ],
+          },
+          specialtyVersion,
+        ],
+      })
+
+      render(<MedicationsView />)
+
+      fireEvent.change(screen.getByTestId('medications-specialty-filter'), {
+        target: { value: 'urologista' },
+      })
+      expect(highlightedColumns()).toEqual(['med_uro'])
+
+      fireEvent.change(screen.getByTestId('medications-version-select'), {
+        target: { value: 'medver_1' },
+      })
+
+      expect(
+        screen.getByTestId<HTMLSelectElement>('medications-specialty-filter')
+          .value,
+      ).toBe('')
+      expect(
+        screen.getByTestId('medication-col-header-med_lamo').dataset
+          .highlighted,
+      ).toBeUndefined()
+    })
+
+    it('hides the filter when no medication of the version has a specialty', () => {
+      useScheduleStore.setState({ medicationVersions: [version1] })
+
+      render(<MedicationsView />)
+
+      expect(
+        screen.queryByTestId('medications-specialty-filter'),
+      ).not.toBeInTheDocument()
+    })
+
+    it('does not change any stored data', () => {
+      useScheduleStore.setState({ medicationVersions: [specialtyVersion] })
+
+      render(<MedicationsView />)
+
+      fireEvent.change(screen.getByTestId('medications-specialty-filter'), {
+        target: { value: 'psiquiatra' },
+      })
+
+      expect(useScheduleStore.getState().medicationVersions).toEqual([
+        specialtyVersion,
+      ])
+    })
   })
 })
