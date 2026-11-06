@@ -65,12 +65,9 @@ jobs:
         with:
           path: './dist'
 
-  # Por enquanto só avisa: uma falha aqui não impede o deploy.
-  # Para bloquear, remova continue-on-error e use needs: [build, e2e] no job deploy.
   e2e:
     name: Testes E2E (Playwright)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: 1. Checkout do repositório
         uses: actions/checkout@v4
@@ -112,7 +109,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, e2e]
     steps:
       - name: 11. Publicação final no Pages
         id: deployment
