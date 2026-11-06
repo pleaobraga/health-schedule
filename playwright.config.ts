@@ -33,7 +33,7 @@ export default defineConfig({
     },
     {
       name: 'mobile',
-      testMatch: /(guest-session|medications)\.spec\.ts/,
+      testMatch: /(guest-session|medications|purchases|responsive|i18n-theme|a11y)\.spec\.ts/,
       use: {
         viewport: { width: 390, height: 844 },
         isMobile: true,
