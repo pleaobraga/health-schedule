@@ -157,18 +157,13 @@ The app will be available at `http://localhost:5173`.
 
 ### Environment Configuration
 
-For Firebase authentication and cloud synchronization, create a `.env.local` file:
+The app needs Firebase values to start, even in guest mode. Copy `.env.example` to `.env.local` and fill it in:
 
-```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
+```bash
+cp .env.example .env.local
 ```
 
-_(Note: The app runs in complete offline/guest mode even without Firebase credentials)._
+_(Note: Without these values the page stays blank. Without a Firebase project, any non-empty values work: guest mode runs offline and never calls Firebase. Tests don't need `.env.local`.)_
 
 ---
 

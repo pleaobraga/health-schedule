@@ -63,8 +63,13 @@ jspm_packages/
 
 # Vite / Build outputs
 dist
+dist-e2e
 dist-ssr
 *.local
+
+# Playwright
+playwright-report
+test-results
 
 # Editor directories and files
 .vscode/*
